@@ -24,6 +24,7 @@ export interface MacroEntry {
   value: number;
   macroString: string;
   name: string;
+  emoji: string;
 }
 
 /**
@@ -35,8 +36,13 @@ export interface GlobalConfig {
 
 export interface LayerConfig {
   name: string;
+  emoji: string;
   macros: MacroEntry[];
 }
+
+export const DEFAULT_LAYER_EMOJIS = ['🎮', '💼', '🏠', '⚙️'];
+export const DEFAULT_BUTTON_EMOJI = '';
+export const LAYER_SWITCH_EMOJI = '⚡';
 
 /**
  * stale z firmware
@@ -46,6 +52,7 @@ export const FIRMWARE_CONSTANTS = {
   MAX_LAYERS: 4,
   MAX_NAME_LEN: 16,
   MACRO_STRING_LEN: 32,
+  MAX_EMOJI_LEN: 8,
 } as const;
 
 /**
