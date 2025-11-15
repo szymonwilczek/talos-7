@@ -28,7 +28,6 @@ export function PCBVisualization({
     <Card>
       <CardContent className="p-6">
         <div className="flex flex-col items-center gap-6">
-          {/* OLED Display */}
           <OLEDDisplay
             layer={layer}
             layerIndex={activeLayer}

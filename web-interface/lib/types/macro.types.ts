@@ -11,9 +11,9 @@ export enum MacroType {
  * mapowanie enum -> czytelne nazwy
  */
 export const MacroTypeLabels: Record<MacroType, string> = {
-  [MacroType.KEY_PRESS]: 'Key Press',
-  [MacroType.MACRO_STRING]: 'Text Macro',
-  [MacroType.LAYER_TOGGLE]: 'Layer Toggle',
+  [MacroType.KEY_PRESS]: "Key Press",
+  [MacroType.MACRO_STRING]: "Text Macro",
+  [MacroType.LAYER_TOGGLE]: "Layer Toggle",
 };
 
 /**
@@ -40,9 +40,9 @@ export interface LayerConfig {
   macros: MacroEntry[];
 }
 
-export const DEFAULT_LAYER_EMOJIS = ['🎮', '💼', '🏠', '⚙️'];
-export const DEFAULT_BUTTON_EMOJI = '';
-export const LAYER_SWITCH_EMOJI = '⚡';
+export const DEFAULT_LAYER_EMOJIS = ["🎮", "💼", "🏠", "⚙️"];
+export const DEFAULT_BUTTON_EMOJI = "";
+export const LAYER_SWITCH_EMOJI = "⚡";
 
 /**
  * stale z firmware
@@ -58,12 +58,20 @@ export const FIRMWARE_CONSTANTS = {
 /**
  * status polaczenia
  */
-export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'ERROR';
+export type ConnectionStatus =
+  | "DISCONNECTED"
+  | "CONNECTING"
+  | "CONNECTED"
+  | "ERROR";
 
 /**
  * blad polaczenia
  */
 export interface ConnectionError {
-  type: 'BROWSER_NOT_SUPPORTED' | 'DEVICE_NOT_FOUND' | 'PROTOCOL_ERROR' | 'UNKNOWN';
+  type:
+    | "BROWSER_NOT_SUPPORTED"
+    | "DEVICE_NOT_FOUND"
+    | "PROTOCOL_ERROR"
+    | "UNKNOWN";
   message: string;
 }

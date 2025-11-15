@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { MacroEntry } from '@/lib/types/config.types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +29,7 @@ export function KeycapButton({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="relative w-24 h-24 flex flex-col items-center justify-center gap-1 transition-transform"
+      className="relative w-24 h-24 flex flex-col border-2 cursor-pointer items-center justify-center gap-1 transition-transform"
       style={{
         transform: isHovered ? 'translateY(2px)' : 'translateY(0)',
       }}

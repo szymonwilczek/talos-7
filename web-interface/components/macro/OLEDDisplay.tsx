@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { LayerConfig } from '@/lib/types/config.types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +22,8 @@ export function OLEDDisplay({
 }: OLEDDisplayProps) {
   const activeButton = selectedButton ?? hoveredButton;
 
+  // console.log(layer.macros[activeButton]);
+
   return (
     <Card className="w-full max-w-2xl h-[290px] bg-black border-2">
       <CardContent className="h-full p-4 text-white text-sm font-mono overflow-auto">
@@ -42,8 +43,8 @@ export function OLEDDisplay({
                 {layer.macros[activeButton].type === 0
                   ? 'Key Press'
                   : layer.macros[activeButton].type === 1
-                  ? 'Text String'
-                  : 'Layer Toggle'}
+                    ? 'Text String'
+                    : 'Layer Toggle'}
               </div>
             </div>
           </div>
