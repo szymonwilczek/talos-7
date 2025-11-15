@@ -82,9 +82,13 @@ static void process_command(const char* cmd_input) {
         printf("[CDC] Sent CONF_START\n");
         tud_cdc_write_flush();
         
-        // nazwy warstw
+        // nazwy i emotki warstw
         for (int layer = 0; layer < MAX_LAYERS; layer++) {
-            cdc_send_response_fmt("LAYER_NAME|%d|%s", layer, config->layer_names[layer]);
+            cdc_send_response_fmt("LAYER_NAME|%d|%s|%s", 
+                layer, 
+                config->layer_names[layer],
+                config->layer_emojis[layer]
+            );
             tud_cdc_write_flush();
         }
         printf("[CDC] Sent %d layer names\n", MAX_LAYERS);
@@ -94,13 +98,14 @@ static void process_command(const char* cmd_input) {
         for (int layer = 0; layer < MAX_LAYERS; layer++) {
             for (int btn = 0; btn < NUM_BUTTONS; btn++) {
                 macro_entry_t* macro = &config->macros[layer][btn];
-                cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s",
+                cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%s",
                     layer,
                     btn,
                     macro->type,
                     macro->value,
                     macro->macro_string,
-                    macro->name
+                    macro->name,
+                    macro->emoji
                 );
                 tud_cdc_write_flush();
                 macro_count++;
@@ -119,13 +124,14 @@ static void process_command(const char* cmd_input) {
         return;
     }
     
-    // SET_MACRO|layer|button|type|value|string|name
+    // SET_MACRO|layer|button|type|value|string|name|emoji
     if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
         int layer, button, type, value;
         char macro_string[MACRO_STRING_LEN] = {0};
         char name[MAX_NAME_LEN] = {0};
+        char emoji[MAX_EMOJI_LEN] = {0};
         
-        char* token = cmd_ptr + 10; // pomijanie SET_MACRO
+        char* token = cmd_ptr + 10;
         
         layer = atoi(token);
         token = strchr(token, '|');
@@ -147,7 +153,7 @@ static void process_command(const char* cmd_input) {
         if (!token) { cdc_send_response("ERROR|Invalid format"); return; }
         token++;
         
-        // macro_string (do nastepnego |)
+        // macro_string
         char* next_pipe = strchr(token, '|');
         if (next_pipe) {
             size_t str_len = next_pipe - token;
@@ -160,9 +166,23 @@ static void process_command(const char* cmd_input) {
             return;
         }
         
-        // name (reszta do konca linii)
-        strncpy(name, token, MAX_NAME_LEN - 1);
-        name[MAX_NAME_LEN - 1] = '\0';
+        // name
+        next_pipe = strchr(token, '|');
+        if (next_pipe) {
+            size_t name_len = next_pipe - token;
+            if (name_len >= MAX_NAME_LEN) name_len = MAX_NAME_LEN - 1;
+            strncpy(name, token, name_len);
+            name[name_len] = '\0';
+            token = next_pipe + 1;
+            
+            // emoji
+            strncpy(emoji, token, MAX_EMOJI_LEN - 1);
+            emoji[MAX_EMOJI_LEN - 1] = '\0';
+        } else {
+            // backward compatibility: jesli brak emoji, same name
+            strncpy(name, token, MAX_NAME_LEN - 1);
+            name[MAX_NAME_LEN - 1] = '\0';
+        }
         
         // walidacja
         if (layer >= 0 && layer < MAX_LAYERS && 
@@ -173,33 +193,57 @@ static void process_command(const char* cmd_input) {
             macro->value = value;
             strncpy(macro->macro_string, macro_string, MACRO_STRING_LEN - 1);
             strncpy(macro->name, name, MAX_NAME_LEN - 1);
+            strncpy(macro->emoji, emoji, MAX_EMOJI_LEN - 1);
             
             cdc_send_response("OK");
-            printf("[CDC] Macro set: L%d B%d Type=%d Value=%d String='%s' Name='%s'\n", 
-                   layer, button, type, value, macro_string, name);
+            printf("[CDC] Macro set: L%d B%d '%s' %s\n", layer, button, name, emoji);
         } else {
             cdc_send_response("ERROR|Invalid parameters");
         }
         return;
     }
     
-    // SET_LAYER_NAME|layer|name
+    // SET_LAYER_NAME|layer|name|emoji
     if (strncmp(cmd_ptr, "SET_LAYER_NAME|", 15) == 0) {
         int layer;
         char name[MAX_NAME_LEN] = {0};
+        char emoji[MAX_EMOJI_LEN] = {0};
         
-        if (sscanf(cmd_ptr, "SET_LAYER_NAME|%d|%15[^\n]", &layer, name) == 2 &&
-            layer >= 0 && layer < MAX_LAYERS) {
+        char* token = cmd_ptr + 15;
+        
+        layer = atoi(token);
+        token = strchr(token, '|');
+        if (!token) { cdc_send_response("ERROR|Invalid format"); return; }
+        token++;
+        
+        // name
+        char* next_pipe = strchr(token, '|');
+        if (next_pipe) {
+            size_t name_len = next_pipe - token;
+            if (name_len >= MAX_NAME_LEN) name_len = MAX_NAME_LEN - 1;
+            strncpy(name, token, name_len);
+            name[name_len] = '\0';
+            token = next_pipe + 1;
             
+            // emoji
+            strncpy(emoji, token, MAX_EMOJI_LEN - 1);
+            emoji[MAX_EMOJI_LEN - 1] = '\0';
+        } else {
+            // backward compatibility
+            strncpy(name, token, MAX_NAME_LEN - 1);
+            name[MAX_NAME_LEN - 1] = '\0';
+        }
+        
+        if (layer >= 0 && layer < MAX_LAYERS) {
             strncpy(config->layer_names[layer], name, MAX_NAME_LEN - 1);
+            strncpy(config->layer_emojis[layer], emoji, MAX_EMOJI_LEN - 1);
             cdc_send_response("OK");
-            printf("[CDC] Layer name set: L%d = %s\n", layer, name);
+            printf("[CDC] Layer name set: L%d = %s %s\n", layer, emoji, name);
         } else {
             cdc_send_response("ERROR|Invalid parameters");
         }
         return;
-    }
-    
+    }    
     // SAVE_FLASH
     if (strcmp(cmd_ptr, "SAVE_FLASH") == 0) {
         if (config_save()) {
