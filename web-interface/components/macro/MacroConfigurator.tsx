@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle } from 'lucide-react';
 import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '⚙️', '⚡', '📧', '💻', '🎵', '📝', '🔧'];
 
@@ -148,11 +149,14 @@ export function MacroConfigurator() {
           console.log(`✅ Macro change processed`);
         }
 
+        await new Promise(resolve => setTimeout(resolve, 150));
         setSaveProgress(((i + 1) / (totalChanges + 1)) * 100);
       }
 
       console.log('📤 Calling saveFlash...');
       await serialService.saveFlash();
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       console.log('✅ saveFlash completed successfully');
       setSaveProgress(100);
 
@@ -160,6 +164,7 @@ export function MacroConfigurator() {
       updateOriginalConfig();
       console.log('✅ Local state updated - changes should be cleared');
 
+      await new Promise(resolve => setTimeout(resolve, 400));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
@@ -170,7 +175,7 @@ export function MacroConfigurator() {
       });
     } finally {
       setIsSaving(false);
-      setSaveProgress(0);
+      setTimeout(() => setSaveProgress(0), 500);
     }
   };
 
@@ -214,13 +219,34 @@ export function MacroConfigurator() {
         </Button>
       </div>
 
-      {isSaving && <Progress value={saveProgress} />}
-      {saveSuccess && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>Configuration saved successfully!</AlertDescription>
-        </Alert>
-      )}
+      <AnimatePresence mode="wait">
+        {isSaving && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            key="saving"
+          >
+            <Progress value={saveProgress} />
+          </motion.div>
+        )}
+
+        {saveSuccess && !isSaving && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            key="success"
+          >
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>Configuration saved successfully!</AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Layer Tabs */}
       <LayerTabs
