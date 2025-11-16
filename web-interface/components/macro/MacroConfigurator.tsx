@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SerialService } from '@/lib/services/serial.service';
 import {
   GlobalConfig,
@@ -19,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle } from 'lucide-react';
+import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
+import { usePendingChanges } from '@/hooks/usePendingChanges';
 
 const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '⚙️', '⚡', '📧', '💻', '🎵', '📝', '🔧'];
 
@@ -30,10 +32,10 @@ export function MacroConfigurator() {
   const [activeLayer, setActiveLayer] = useState(0);
   const [selectedButton, setSelectedButton] = useState<number | null>(null);
   const [hoveredButton, setHoveredButton] = useState<number | null>(null);
-  const [pendingChanges, setPendingChanges] = useState<Map<string, any>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const { pendingChanges, updateOriginalConfig } = usePendingChanges(config);
 
   useEffect(() => {
     if (!SerialService.isSupported()) {
@@ -71,58 +73,35 @@ export function MacroConfigurator() {
     setConfig(null);
     setActiveLayer(0);
     setSelectedButton(null);
-    setPendingChanges(new Map());
   };
 
-  const handleLayerNameChange = useCallback(
-    (name: string, emoji: string) => {
-      if (!config) return;
-      const changeKey = `layer_${activeLayer}`;
-      setPendingChanges((prev) => {
-        const next = new Map(prev);
-        next.set(changeKey, { type: 'layer', layer: activeLayer, name, emoji });
-        return next;
-      });
-      setConfig({
-        ...config,
-        layers: config.layers.map((layer, idx) =>
-          idx === activeLayer ? { ...layer, name, emoji } : layer
-        ),
-      });
-    },
-    [config, activeLayer]
-  );
+  const handleLayerNameChange = (name: string, emoji: string) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      layers: config.layers.map((layer, idx) =>
+        idx === activeLayer ? { ...layer, name, emoji } : layer
+      ),
+    });
+  };
 
-  const handleMacroChange = useCallback(
-    (buttonIndex: number, macro: MacroEntry) => {
-      if (!config) return;
-      const changeKey = `macro_${activeLayer}_${buttonIndex}`;
-      setPendingChanges((prev) => {
-        const next = new Map(prev);
-        next.set(changeKey, {
-          type: 'macro',
-          layer: activeLayer,
-          button: buttonIndex,
-          macro,
-        });
-        return next;
-      });
-      setConfig({
-        ...config,
-        layers: config.layers.map((layer, idx) =>
-          idx === activeLayer
-            ? {
-              ...layer,
-              macros: layer.macros.map((m, btnIdx) =>
-                btnIdx === buttonIndex ? macro : m
-              ),
-            }
-            : layer
-        ),
-      });
-    },
-    [config, activeLayer]
-  );
+  const handleMacroChange = async (buttonIndex: number, macro: MacroEntry) => {
+    if (!config) return;
+
+    setConfig({
+      ...config,
+      layers: config.layers.map((layer, idx) =>
+        idx === activeLayer
+          ? {
+            ...layer,
+            macros: layer.macros.map((m, btnIdx) =>
+              btnIdx === buttonIndex ? macro : m
+            ),
+          }
+          : layer
+      ),
+    });
+  };
 
   const handleSaveChanges = async () => {
     if (pendingChanges.size === 0) return;
@@ -130,34 +109,61 @@ export function MacroConfigurator() {
     setSaveProgress(0);
     setSaveSuccess(false);
 
+    console.log('🔄 Starting save process...');
+
     try {
       const changes = Array.from(pendingChanges.values());
       const totalChanges = changes.length;
 
       for (let i = 0; i < changes.length; i++) {
         const change = changes[i];
+
         if (change.type === 'layer') {
+          console.log(`📤 Processing layer change: ${change.emoji} ${change.name}`);
           await serialService.setLayerName(change.layer, change.name, change.emoji);
-        } else if (change.type === 'macro') {
-          await serialService.setMacro(
-            change.layer,
-            change.button,
-            change.macro.type,
-            change.macro.value,
-            change.macro.macroString,
-            change.macro.name,
-            change.macro.emoji
-          );
+          console.log(`✅ Layer change processed`);
         }
+        else if (change.type === 'macro') {
+          const macro = change.macro;
+          console.log(`📤 Processing macro change: ${macro.emoji} ${macro.name}`);
+
+          if (macro.type === MacroType.SCRIPT && macro.script) {
+            await serialService.setScript(
+              change.layer,
+              change.button,
+              macro.scriptPlatform || ScriptPlatform.LINUX,
+              macro.script
+            );
+          } else {
+            await serialService.setMacro(
+              change.layer,
+              change.button,
+              macro.type,
+              macro.value,
+              macro.macroString,
+              macro.name,
+              macro.emoji
+            );
+          }
+          console.log(`✅ Macro change processed`);
+        }
+
         setSaveProgress(((i + 1) / (totalChanges + 1)) * 100);
       }
 
+      console.log('📤 Calling saveFlash...');
       await serialService.saveFlash();
+      console.log('✅ saveFlash completed successfully');
       setSaveProgress(100);
-      setPendingChanges(new Map());
+
+      console.log('🔄 Updating local state after save...');
+      updateOriginalConfig();
+      console.log('✅ Local state updated - changes should be cleared');
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
+      console.error('❌ Save failed with error:', err);
       setError({
         type: 'PROTOCOL_ERROR',
         message: err instanceof Error ? err.message : 'Save failed',
