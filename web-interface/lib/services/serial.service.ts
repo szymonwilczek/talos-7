@@ -4,10 +4,19 @@ import {
   MacroType,
   FIRMWARE_CONSTANTS,
   DEFAULT_LAYER_EMOJIS,
-} from "../types/macro.types";
+} from "../types/config.types";
+
+// script platform enum (0=linux, 1=windows, 2=macos)
+enum ScriptPlatform {
+  LINUX = 0,
+  WINDOWS = 1,
+  MACOS = 2,
+}
+
+const MAX_SCRIPT_SIZE = 2048;
 
 /**
- * serwis do komunikacji z Pico przez Web Serial API
+ * service for communication with pico via web serial api
  */
 export class SerialService {
   private port: SerialPort | null = null;
@@ -16,14 +25,14 @@ export class SerialService {
   private readBuffer: string = "";
 
   /**
-   * sprawdza czy przegladarka wspiera Web Serial API
+   * checks if browser supports web serial api
    */
   static isSupported(): boolean {
     return typeof navigator !== "undefined" && "serial" in navigator;
   }
 
   /**
-   * nawiazuje polaczenie z Pico
+   * establishes connection with pico
    */
   async connectPico(): Promise<void> {
     if (!SerialService.isSupported()) {
@@ -31,17 +40,17 @@ export class SerialService {
     }
 
     try {
-      // popup wybrania urzadzenia
+      // device selection popup
       this.port = await navigator.serial.requestPort({
         filters: [
-          { usbVendorId: 0x2e8a, usbProductId: 0x000a }, // Raspberry Pi Pico
+          { usbVendorId: 0x2e8a, usbProductId: 0x000a }, // raspberry pi pico
         ],
       });
 
-      // port z baudrate 115200
+      // open port with baudrate 115200
       await this.port.open({ baudRate: 115200 });
 
-      // reader i writer
+      // setup reader and writer
       if (this.port.readable) {
         this.reader = this.port.readable.getReader();
       }
@@ -49,15 +58,61 @@ export class SerialService {
         this.writer = this.port.writable.getWriter();
       }
 
-      // stabilizacja polaczenia
-      await this.delay(500);
+      // connection stabilization
+      await this.delay(1000);
+
+      // clear any residual data in buffer
+      this.readBuffer = "";
+
+      console.log("✅ Connection stabilized");
     } catch (error) {
       throw new Error(`Failed to connect: ${error}`);
     }
   }
 
   /**
-   * rozlacza sie z Pico
+   * uploads script to specific button
+   */
+  async setScript(
+    layer: number,
+    button: number,
+    platform: number,
+    scriptContent: string,
+  ): Promise<void> {
+    if (!this.port || !this.writer || !this.reader) {
+      throw new Error("Not connected");
+    }
+
+    const scriptSize = scriptContent.length;
+    if (scriptSize > MAX_SCRIPT_SIZE) {
+      throw new Error(
+        `Script too large (${scriptSize} > ${MAX_SCRIPT_SIZE} bytes)`,
+      );
+    }
+
+    const command = `SET_SCRIPT|${layer}|${button}|${platform}|${scriptSize}\n`;
+    await this.writeCommand(command);
+
+    const readyResponse = await this.readLine(2000);
+    if (!readyResponse.startsWith("READY")) {
+      throw new Error("Device not ready to receive script");
+    }
+
+    // send raw script bytes
+    const encoder = new TextEncoder();
+    const scriptBytes = encoder.encode(scriptContent);
+    await this.writer.write(scriptBytes);
+
+    const response = await this.readLine(5000);
+    if (!response.startsWith("OK")) {
+      throw new Error(`Script upload failed: ${response}`);
+    }
+
+    console.log("✅ Script uploaded successfully");
+  }
+
+  /**
+   * disconnects from pico
    */
   async disconnect(): Promise<void> {
     try {
@@ -81,7 +136,7 @@ export class SerialService {
   }
 
   /**
-   * wysyla komende i czeka na odpowiedz
+   * sends command and waits for response
    */
   private async sendCommand(command: string): Promise<string> {
     if (!this.writer) {
@@ -91,13 +146,25 @@ export class SerialService {
     const encoder = new TextEncoder();
     await this.writer.write(encoder.encode(command + "\n"));
 
-    return await this.readUntilNewline();
+    return await this.readLine();
   }
 
   /**
-   * czyta dane az do napotkania newline
+   * writes command without waiting for response
    */
-  private async readUntilNewline(timeout: number = 5000): Promise<string> {
+  private async writeCommand(command: string): Promise<void> {
+    if (!this.writer) {
+      throw new Error("Not connected");
+    }
+
+    const encoder = new TextEncoder();
+    await this.writer.write(encoder.encode(command));
+  }
+
+  /**
+   * reads data until newline is encountered
+   */
+  private async readLine(timeout: number = 5000): Promise<string> {
     if (!this.reader) {
       throw new Error("Not connected");
     }
@@ -109,7 +176,7 @@ export class SerialService {
         throw new Error("Read timeout");
       }
 
-      // czy w buforze jest juz newline
+      // check if buffer already contains newline
       const newlineIndex = this.readBuffer.indexOf("\n");
       if (newlineIndex !== -1) {
         const line = this.readBuffer.substring(0, newlineIndex).trim();
@@ -117,7 +184,7 @@ export class SerialService {
         return line;
       }
 
-      // czytaj wiecej danych
+      // read more data
       const { value, done } = await this.reader.read();
       if (done) {
         throw new Error("Stream closed");
@@ -129,7 +196,7 @@ export class SerialService {
   }
 
   /**
-   * pobiera konfiguracje z Pico
+   * reads configuration from pico
    */
   async readConfig(): Promise<GlobalConfig> {
     console.log("📤 Sending GET_CONF...");
@@ -156,16 +223,41 @@ export class SerialService {
 
     console.log("📖 Parsing configuration lines...");
     let lineCount = 0;
+    let pendingScriptMacro: { layer: number; button: number } | null = null;
 
     while (true) {
       try {
-        const line = await this.readUntilNewline(10000);
+        const line = await this.readLine(10000);
         lineCount++;
-        console.log(`Line ${lineCount}:`, line);
+        console.log(`Line ${lineCount}: ${line}`);
 
         if (line === "CONF_END") {
           console.log("✅ Configuration parsing complete");
           break;
+        }
+
+        // handle SCRIPT_DATA| (must be right after MACRO|...|3|...)
+        if (line.startsWith("SCRIPT_DATA|")) {
+          if (!pendingScriptMacro) {
+            console.warn("⚠️ SCRIPT_DATA without pending macro");
+            continue;
+          }
+
+          const scriptContent = line.substring(12); // after "SCRIPT_DATA|"
+          const { layer, button } = pendingScriptMacro;
+
+          // unescape special characters
+          config.layers[layer].macros[button].script = scriptContent
+            .replace(/\\n/g, "\n")
+            .replace(/\\r/g, "\r")
+            .replace(/\\\|/g, "|")
+            .replace(/\\\\/g, "\\");
+
+          console.log(
+            `  ➜ Script loaded: ${config.layers[layer].macros[button].script?.length || 0} bytes`,
+          );
+          pendingScriptMacro = null;
+          continue;
         }
 
         // LAYER_NAME|layer|name|emoji
@@ -180,30 +272,43 @@ export class SerialService {
           config.layers[layerIndex].emoji = layerEmoji;
 
           console.log(`  ➜ Layer ${layerIndex}: ${layerEmoji} ${layerName}`);
+          continue;
         }
 
-        // MACRO|layer|button|type|value|string|name|emoji
+        // MACRO|layer|button|type|value|string|name|emoji[|platform|size]
         if (line.startsWith("MACRO|")) {
           const parts = line.split("|");
-          const layerIndex = parseInt(parts[1]);
-          const buttonIndex = parseInt(parts[2]);
-          const type = parseInt(parts[3]) as MacroType;
-          const value = parseInt(parts[4]);
-          const macroString = parts[5] || "";
-          const name = parts[6] || "Empty";
-          const emoji = parts[7] || "";
+          if (parts.length >= 8) {
+            const layer = parseInt(parts[1]);
+            const button = parseInt(parts[2]);
+            const type = parseInt(parts[3]) as MacroType;
+            const value = parseInt(parts[4]);
+            const macroString = parts[5];
+            const name = parts[6];
+            const emoji = parts[7];
 
-          config.layers[layerIndex].macros[buttonIndex] = {
-            type,
-            value,
-            macroString,
-            name,
-            emoji,
-          };
+            const macro: MacroEntry = {
+              type,
+              value,
+              macroString,
+              name,
+              emoji,
+            };
 
-          console.log(
-            `  ➜ Macro L${layerIndex}B${buttonIndex}: ${emoji} ${name}`,
-          );
+            // if SCRIPT type, next line will be SCRIPT_DATA|
+            if (type === 3 && parts.length >= 10) {
+              macro.scriptPlatform = parseInt(parts[8]);
+              const scriptSize = parseInt(parts[9]);
+              pendingScriptMacro = { layer, button };
+              console.log(
+                `  ➜ Expecting script (${scriptSize} bytes) on next line`,
+              );
+            }
+
+            config.layers[layer].macros[button] = macro;
+            console.log(`  ➜ Button ${button}: ${name} (type ${type})`);
+          }
+          continue;
         }
       } catch (error) {
         if (error instanceof Error && error.message.includes("timeout")) {
@@ -218,8 +323,9 @@ export class SerialService {
     console.log("✅ Configuration loaded successfully");
     return config;
   }
+
   /**
-   * zapisuje pojedyncze makro
+   * sets single macro
    */
   async setMacro(
     layer: number,
@@ -243,7 +349,7 @@ export class SerialService {
   }
 
   /**
-   * ustawia nazwe warstwy
+   * sets layer name
    */
   async setLayerName(
     layer: number,
@@ -263,18 +369,23 @@ export class SerialService {
   }
 
   /**
-   * zapisuje konfiguracje do flash
+   * saves configuration to flash
    */
   async saveFlash(): Promise<void> {
+    console.log("📤 Sending SAVE_FLASH command...");
     const response = await this.sendCommand("SAVE_FLASH");
+    console.log("📥 Received response:", response);
 
-    if (response !== "OK") {
+    if (!response.includes("OK")) {
+      console.error("❌ Unexpected response:", response);
       throw new Error(`SAVE_FLASH failed: ${response}`);
     }
+
+    console.log("✅ SAVE_FLASH successful");
   }
 
   /**
-   * pomocnicza funkcja delay
+   * helper delay function
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

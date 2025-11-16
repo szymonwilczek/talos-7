@@ -2,22 +2,23 @@
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include "pico/stdlib.h"
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 // ==================== PRYWATNE ZMIENNE ====================
 static config_data_t g_config;
 static bool g_config_loaded = false;
+static uint8_t g_current_layer = 0;
 
 // ==================== DOMYŚLNE EMOTKI ====================
-static const char* DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {
-    "🎮",  // Layer 1: Gaming
-    "💼",  // Layer 2: Work
-    "🏠",  // Layer 3: Home
+static const char *DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {
+    "🎮", // Layer 1: Gaming
+    "💼", // Layer 2: Work
+    "🏠", // Layer 3: Home
     "⚙️"   // Layer 4: Settings
 };
 
-static const char* DEFAULT_LAYER_SWITCH_EMOJI = "⚡"; // BTN7
+static const char *DEFAULT_LAYER_SWITCH_EMOJI = "⚡"; // BTN7
 
 // ==================== CRC32 IMPLEMENTATION ====================
 static const uint32_t crc32_table[256] = {
@@ -63,117 +64,142 @@ static const uint32_t crc32_table[256] = {
     0x40DF0B66, 0x37D83BF0, 0xA9BCAE53, 0xDEBB9EC5, 0x47B2CF7F, 0x30B5FFE9,
     0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693,
     0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
-    0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
-};
+    0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D};
 
-uint32_t config_calculate_crc(const config_data_t* config) {
-    uint32_t crc = 0xFFFFFFFF;
-    const uint8_t* data = (const uint8_t*)config;
-    size_t len = sizeof(config_data_t) - sizeof(uint32_t); // exclude CRC field
-    
-    for (size_t i = 0; i < len; i++) {
-        crc = crc32_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
-    }
-    
-    return ~crc;
+uint32_t config_calculate_crc(const config_data_t *config) {
+  uint32_t crc = 0xFFFFFFFF;
+  const uint8_t *data = (const uint8_t *)config;
+  size_t len = offsetof(config_data_t, crc32);
+
+  for (size_t i = 0; i < len; i++) {
+    crc = crc32_table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+  }
+
+  return ~crc;
+}
+
+uint8_t config_get_current_layer(void) { return g_current_layer; }
+
+void config_cycle_layer(void) {
+  g_current_layer = (g_current_layer + 1) % MAX_LAYERS;
+  printf("[CONFIG] Switched to layer %d\n", g_current_layer);
 }
 
 // ==================== FABRYCZNA KONFIGURACJA ====================
 void config_set_factory_defaults(void) {
-    memset(&g_config, 0, sizeof(config_data_t));
-    
-    // nazwy i emotki warstw
-    for (int i = 0; i < MAX_LAYERS; i++) {
-        snprintf(g_config.layer_names[i], MAX_NAME_LEN, "Layer %d", i + 1);
-        strncpy(g_config.layer_emojis[i], DEFAULT_LAYER_EMOJIS[i], MAX_EMOJI_LEN - 1);
-        g_config.layer_emojis[i][MAX_EMOJI_LEN - 1] = '\0';
+  memset(&g_config, 0, sizeof(config_data_t));
+
+  // nazwy i emotki warstw
+  for (int i = 0; i < MAX_LAYERS; i++) {
+    snprintf(g_config.layer_names[i], MAX_NAME_LEN, "Layer %d", i + 1);
+    strncpy(g_config.layer_emojis[i], DEFAULT_LAYER_EMOJIS[i],
+            MAX_EMOJI_LEN - 1);
+    g_config.layer_emojis[i][MAX_EMOJI_LEN - 1] = '\0';
+  }
+
+  // Layer 0: F1-F7
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    g_config.macros[0][i].type = MACRO_TYPE_KEY_PRESS;
+    g_config.macros[0][i].value = 0x3A + i; // HID F1-F7 keycodes
+    snprintf(g_config.macros[0][i].name, MAX_NAME_LEN, "F%d", i + 1);
+    g_config.macros[0][i].emoji[0] = '\0'; // puste emoji domyslnie
+  }
+
+  // BTN7 (ostatni przycisk) = Layer Switch
+  g_config.macros[0][6].type = MACRO_TYPE_LAYER_TOGGLE;
+  g_config.macros[0][6].value =
+      0; // nieuzywane -> zawsze cykliczne przejscie (1->2->3->4->1)
+  snprintf(g_config.macros[0][6].name, MAX_NAME_LEN, "LayerSwitch");
+  strncpy(g_config.macros[0][6].emoji, DEFAULT_LAYER_SWITCH_EMOJI,
+          MAX_EMOJI_LEN - 1);
+
+  // Layer 1-3: puste
+  for (int layer = 1; layer < MAX_LAYERS; layer++) {
+    for (int btn = 0; btn < NUM_BUTTONS; btn++) {
+      g_config.macros[layer][btn].type = MACRO_TYPE_KEY_PRESS;
+      g_config.macros[layer][btn].value = 0;
+      snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "Empty");
+      g_config.macros[layer][btn].emoji[0] = '\0';
+
+      // BTN7 na kazdej warstwie = Layer Switch
+      if (btn == 6) {
+        g_config.macros[layer][btn].type = MACRO_TYPE_LAYER_TOGGLE;
+        g_config.macros[layer][btn].value = 0; // cykliczne przejscie
+        snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "LayerSwitch");
+        strncpy(g_config.macros[layer][btn].emoji, DEFAULT_LAYER_SWITCH_EMOJI,
+                MAX_EMOJI_LEN - 1);
+      }
     }
-    
-    // Layer 0: F1-F7
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        g_config.macros[0][i].type = MACRO_TYPE_KEY_PRESS;
-        g_config.macros[0][i].value = 0x3A + i; // HID F1-F7 keycodes
-        snprintf(g_config.macros[0][i].name, MAX_NAME_LEN, "F%d", i + 1);
-        g_config.macros[0][i].emoji[0] = '\0'; // puste emoji domyslnie
-    }
-    
-    // BTN7 (ostatni przycisk) = Layer Switch 
-    g_config.macros[0][6].type = MACRO_TYPE_LAYER_TOGGLE;
-    g_config.macros[0][6].value = 1; // przelacz na Layer 2
-    snprintf(g_config.macros[0][6].name, MAX_NAME_LEN, "LayerSwitch");
-    strncpy(g_config.macros[0][6].emoji, DEFAULT_LAYER_SWITCH_EMOJI, MAX_EMOJI_LEN - 1);
-    
-    // Layer 1-3: puste
-    for (int layer = 1; layer < MAX_LAYERS; layer++) {
-        for (int btn = 0; btn < NUM_BUTTONS; btn++) {
-            g_config.macros[layer][btn].type = MACRO_TYPE_KEY_PRESS;
-            g_config.macros[layer][btn].value = 0;
-            snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "Empty");
-            g_config.macros[layer][btn].emoji[0] = '\0';
-            
-            // BTN7 na kazdej warstwie = Layer Switch
-            if (btn == 6) {
-                g_config.macros[layer][btn].type = MACRO_TYPE_LAYER_TOGGLE;
-                g_config.macros[layer][btn].value = (layer + 1) % MAX_LAYERS;
-                snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "LayerSwitch");
-                strncpy(g_config.macros[layer][btn].emoji, DEFAULT_LAYER_SWITCH_EMOJI, MAX_EMOJI_LEN - 1);
-            }
-        }
-    }
-    
-    g_config.crc32 = config_calculate_crc(&g_config);
-    g_config_loaded = true;
+  }
+
+  g_config.crc32 = config_calculate_crc(&g_config);
+  g_config_loaded = true;
 }
 
 // ==================== ODCZYT Z FLASH ====================
 static bool config_load_from_flash(void) {
-    const uint8_t* flash_target = (const uint8_t*)(XIP_BASE + FLASH_TARGET_OFFSET);
-    
-    config_data_t temp_config;
-    memcpy(&temp_config, flash_target, sizeof(config_data_t));
-    
-    uint32_t calculated_crc = config_calculate_crc(&temp_config);
-    if (calculated_crc != temp_config.crc32) {
-        printf("[CONFIG] CRC mismatch! Calculated: 0x%08X, Stored: 0x%08X\n", 
-               calculated_crc, temp_config.crc32);
-        return false;
-    }
-    
-    memcpy(&g_config, &temp_config, sizeof(config_data_t));
-    printf("[CONFIG] Loaded from flash successfully\n");
-    return true;
+  const uint8_t *flash_target =
+      (const uint8_t *)(XIP_BASE + FLASH_TARGET_OFFSET);
+
+  config_data_t temp_config;
+  memcpy(&temp_config, flash_target, sizeof(config_data_t));
+
+  uint32_t calculated_crc = config_calculate_crc(&temp_config);
+  if (calculated_crc != temp_config.crc32) {
+    printf("[CONFIG] CRC mismatch! Calculated: 0x%08X, Stored: 0x%08X\n",
+           calculated_crc, temp_config.crc32);
+    return false;
+  }
+
+  memcpy(&g_config, &temp_config, sizeof(config_data_t));
+  printf("[CONFIG] Loaded from flash successfully\n");
+  return true;
 }
 
 // ==================== ZAPIS DO FLASH ====================
 bool config_save(void) {
-    g_config.crc32 = config_calculate_crc(&g_config);
-    
-    printf("[CONFIG] Saving to flash... CRC: 0x%08X\n", g_config.crc32);
-    
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(FLASH_TARGET_OFFSET, (const uint8_t*)&g_config, sizeof(config_data_t));
-    restore_interrupts(ints);
-    
-    printf("[CONFIG] Flash write complete\n");
-    return config_load_from_flash();
+  g_config.crc32 = config_calculate_crc(&g_config);
+
+  printf("[CONFIG] Saving to flash... CRC: 0x%08X\n", g_config.crc32);
+
+  uint32_t ints = save_and_disable_interrupts();
+  flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
+  flash_range_program(FLASH_TARGET_OFFSET, (const uint8_t *)&g_config,
+                      sizeof(config_data_t));
+  restore_interrupts(ints);
+
+  printf("[CONFIG] Flash write complete\n");
+
+  // weryfikacja przez odczyt
+  config_data_t *flash_config =
+      (config_data_t *)(XIP_BASE + FLASH_TARGET_OFFSET);
+  uint32_t flash_crc = config_calculate_crc(flash_config);
+
+  printf("[CONFIG] Verification: saved CRC=0x%08X, flash CRC=0x%08X\n",
+         g_config.crc32, flash_crc);
+
+  if (flash_crc == g_config.crc32) {
+    printf("[CONFIG] Verification successful\n");
+    return true;
+  } else {
+    printf("[CONFIG] ERROR: CRC mismatch after save\n");
+    return false;
+  }
 }
 
 // ==================== INICJALIZACJA ====================
 void config_init(void) {
-    printf("[CONFIG] Initializing...\n");
-    
-    if (config_load_from_flash()) {
-        g_config_loaded = true;
-        printf("[CONFIG] Configuration loaded from flash\n");
-    } else {
-        printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
-        config_set_factory_defaults();
-        config_save();
-    }
+  printf("[CONFIG] Initializing...\n");
+
+  if (config_load_from_flash()) {
+    g_config_loaded = true;
+    printf("[CONFIG] Configuration loaded from flash\n");
+  } else {
+    printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
+    config_set_factory_defaults();
+    config_save();
+  }
 }
 
 // ==================== GETTERY ====================
-config_data_t* config_get(void) {
-    return &g_config;
-}
+config_data_t *config_get(void) { return &g_config; }

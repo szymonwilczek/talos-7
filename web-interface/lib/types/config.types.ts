@@ -4,6 +4,7 @@ export enum MacroType {
   KEY_PRESS = 0,
   TEXT_STRING = 1,
   LAYER_TOGGLE = 2,
+  SCRIPT = 3,
 }
 
 export type ConnectionStatus =
@@ -20,6 +21,8 @@ export interface MacroEntry {
   macroString: string;
   name: string;
   emoji: string;
+  script?: string;
+  scriptPlatform?: number;
 }
 
 export interface LayerConfig {
@@ -53,6 +56,7 @@ export const FIRMWARE_CONSTANTS = {
   MAX_NAME_LEN: 16,
   MACRO_STRING_LEN: 32,
   MAX_EMOJI_LEN: 8,
+  MAX_SCRIPT_SIZE: 2048, // 2KB
 } as const;
 
 // ==================== HELPER TYPES ====================
@@ -163,7 +167,8 @@ export function isMacroType(value: unknown): value is MacroType {
   return (
     value === MacroType.KEY_PRESS ||
     value === MacroType.TEXT_STRING ||
-    value === MacroType.LAYER_TOGGLE
+    value === MacroType.LAYER_TOGGLE ||
+    value === MacroType.SCRIPT
   );
 }
 
@@ -194,6 +199,8 @@ export function formatMacroType(type: MacroType): string {
       return "Text Macro";
     case MacroType.LAYER_TOGGLE:
       return "Layer Toggle";
+    case MacroType.SCRIPT:
+      return "Script Execution";
     default:
       return "Unknown";
   }
@@ -272,7 +279,9 @@ export function macrosEqual(a: MacroEntry, b: MacroEntry): boolean {
     a.value === b.value &&
     a.macroString === b.macroString &&
     a.name === b.name &&
-    a.emoji === b.emoji
+    a.emoji === b.emoji &&
+    a.script === b.script &&
+    a.scriptPlatform === b.scriptPlatform
   );
 }
 

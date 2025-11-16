@@ -46,4 +46,13 @@ void cdc_send_response(const char* response);
  */
 void cdc_send_response_fmt(const char* format, ...);
 
+/**
+ * @brief odbiera skrypt przez CDC (duze dane)
+ * @param layer warstwa
+ * @param button przycisk
+ * @param platform 0=Linux, 1=Windows, 2=macOS
+ * @param script_size rozmiar skryptu w bajtach
+ */
+void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform, uint16_t script_size);
+
 #endif // CDC_PROTOCOL_H

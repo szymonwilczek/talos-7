@@ -44,7 +44,16 @@ export function OLEDDisplay({
                   ? 'Key Press'
                   : layer.macros[activeButton].type === 1
                     ? 'Text String'
-                    : 'Layer Toggle'}
+                    : layer.macros[activeButton].type === 2
+                      ? 'Layer Toggle'
+                      : layer.macros[activeButton].type === 3
+                        ? `Script (${layer.macros[activeButton].scriptPlatform === 0
+                          ? 'Linux'
+                          : layer.macros[activeButton].scriptPlatform === 1
+                            ? 'Windows'
+                            : 'macOS'
+                        })`
+                        : 'Unknown'}
               </div>
             </div>
           </div>

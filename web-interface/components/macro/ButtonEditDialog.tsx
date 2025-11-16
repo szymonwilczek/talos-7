@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { KeycodeDialog } from './KeycodeDialog';
+import { MAX_SCRIPT_SIZE, ScriptPlatform, ScriptPlatformLabels } from '@/lib/types/macro.types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface ButtonEditDialogProps {
   open: boolean;
@@ -44,6 +46,9 @@ export function ButtonEditDialog({
   const [macroType, setMacroType] = useState<MacroType>(MacroType.KEY_PRESS);
   const [macroValue, setMacroValue] = useState(0);
   const [macroString, setMacroString] = useState('');
+  const [scriptContent, setScriptContent] = useState('');
+  const [scriptPlatform, setScriptPlatform] = useState<ScriptPlatform>(ScriptPlatform.LINUX);
+  const [scriptFile, setScriptFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (macro) {
@@ -55,16 +60,48 @@ export function ButtonEditDialog({
     }
   }, [macro]);
 
+  useEffect(() => {
+    if (macro && macro.type === MacroType.SCRIPT) {
+      setScriptContent(macro.script || '');
+      setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
+    }
+  }, [macro]);
+
   const handleSave = () => {
     if (buttonIndex === null) return;
-    onSave(buttonIndex, {
+
+    const savedMacro: MacroEntry = {
       type: macroType,
       value: macroValue,
       macroString: macroString,
       name: macroName,
       emoji: macroEmoji,
-    });
+    };
+
+    if (macroType === MacroType.SCRIPT) {
+      savedMacro.script = scriptContent;
+      savedMacro.scriptPlatform = scriptPlatform;
+    }
+
+    onSave(buttonIndex, savedMacro);
     onClose();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content.length > MAX_SCRIPT_SIZE) {
+          alert(`Script too large! Max ${MAX_SCRIPT_SIZE} bytes`);
+          return;
+        }
+        setScriptContent(content);
+        setScriptFile(file);
+      };
+      reader.readAsText(file);
+    }
   };
 
   if (!open || buttonIndex === null) return null;
@@ -118,6 +155,7 @@ export function ButtonEditDialog({
                 <SelectItem value="0">Key Press</SelectItem>
                 <SelectItem value="1">Text String</SelectItem>
                 <SelectItem value="2">Layer Toggle</SelectItem>
+                <SelectItem value="3">Script Execution</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -154,23 +192,74 @@ export function ButtonEditDialog({
             </div>
           )}
 
+          {macroType === MacroType.SCRIPT && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="script-platform">Target Platform</Label>
+                <Select
+                  value={scriptPlatform.toString()}
+                  onValueChange={(v) => setScriptPlatform(parseInt(v) as ScriptPlatform)}
+                >
+                  <SelectTrigger id="script-platform">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">{ScriptPlatformLabels[ScriptPlatform.LINUX]}</SelectItem>
+                    <SelectItem value="1">{ScriptPlatformLabels[ScriptPlatform.WINDOWS]}</SelectItem>
+                    <SelectItem value="2">{ScriptPlatformLabels[ScriptPlatform.MACOS]}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Tabs defaultValue="editor" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="editor">Write Code</TabsTrigger>
+                  <TabsTrigger value="upload">Upload File</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="editor" className="space-y-2">
+                  <Label htmlFor="script-editor">Script Content</Label>
+                  <Textarea
+                    id="script-editor"
+                    value={scriptContent}
+                    onChange={(e) => setScriptContent(e.target.value.slice(0, MAX_SCRIPT_SIZE))}
+                    rows={12}
+                    className="font-mono text-xs"
+                    placeholder="#!/bin/bash&#10;echo 'Hello World'"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {scriptContent.length} / {MAX_SCRIPT_SIZE} bytes
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="upload" className="space-y-2">
+                  <Label htmlFor="script-file">Upload Script File</Label>
+                  <Input
+                    id="script-file"
+                    type="file"
+                    accept=".sh,.bash,.bat,.ps1,.zsh"
+                    onChange={handleFileUpload}
+                  />
+                  {scriptFile && (
+                    <p className="text-sm text-muted-foreground">
+                      Loaded: {scriptFile.name} ({scriptContent.length} bytes)
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+
           {macroType === MacroType.LAYER_TOGGLE && (
             <div className="space-y-2">
-              <Label htmlFor="target-layer">Target Layer</Label>
-              <Select
-                value={macroValue.toString()}
-                onValueChange={(v) => setMacroValue(parseInt(v))}
-              >
-                <SelectTrigger id="target-layer">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Layer 1</SelectItem>
-                  <SelectItem value="1">Layer 2</SelectItem>
-                  <SelectItem value="2">Layer 3</SelectItem>
-                  <SelectItem value="3">Layer 4</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Layer Cycling</Label>
+              <p className="text-sm text-muted-foreground">
+                This button will cycle through layers: 1 → 2 → 3 → 4 → 1
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+                <span className="text-2xl">🔄</span>
+                <span className="text-sm">Automatic layer rotation enabled</span>
+              </div>
             </div>
           )}
 
