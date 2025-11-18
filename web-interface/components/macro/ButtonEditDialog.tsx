@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MacroEntry, MacroType } from '@/lib/types/config.types';
+import { KeyPress, MacroEntry, MacroType } from '@/lib/types/config.types';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { KeycodeDialog } from './KeycodeDialog';
 import { MAX_SCRIPT_SIZE, ScriptPlatform, ScriptPlatformLabels } from '@/lib/types/macro.types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { KeySequenceInput } from './KeySequenceInput';
 
 interface ButtonEditDialogProps {
   open: boolean;
@@ -49,6 +50,7 @@ export function ButtonEditDialog({
   const [scriptContent, setScriptContent] = useState('');
   const [scriptPlatform, setScriptPlatform] = useState<ScriptPlatform>(ScriptPlatform.LINUX);
   const [scriptFile, setScriptFile] = useState<File | null>(null);
+  const [keySequence, setKeySequence] = useState<KeyPress[]>([]);
 
   useEffect(() => {
     if (macro) {
@@ -57,6 +59,7 @@ export function ButtonEditDialog({
       setMacroType(macro.type);
       setMacroValue(macro.value);
       setMacroString(macro.macroString);
+      setKeySequence(macro.keySequence || []);
     }
   }, [macro]);
 
@@ -76,6 +79,7 @@ export function ButtonEditDialog({
       macroString: macroString,
       name: macroName,
       emoji: macroEmoji,
+      keySequence: macroType === MacroType.KEY_SEQUENCE ? keySequence : undefined,
     };
 
     if (macroType === MacroType.SCRIPT) {
@@ -108,7 +112,7 @@ export function ButtonEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Button {buttonIndex + 1}</DialogTitle>
           <DialogDescription>Configure button macro settings</DialogDescription>
@@ -156,6 +160,7 @@ export function ButtonEditDialog({
                 <SelectItem value="1">Text String</SelectItem>
                 <SelectItem value="2">Layer Toggle</SelectItem>
                 <SelectItem value="3">Script Execution</SelectItem>
+                <SelectItem value="4">Key Sequence</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,6 +181,13 @@ export function ButtonEditDialog({
                 placeholder="e.g. 4 for 'A'"
               />
             </div>
+          )}
+
+          {macroType === MacroType.KEY_SEQUENCE && (
+            <KeySequenceInput
+              sequence={keySequence}
+              onChange={setKeySequence}
+            />
           )}
 
           {macroType === MacroType.TEXT_STRING && (
