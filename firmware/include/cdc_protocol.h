@@ -1,18 +1,18 @@
 #ifndef CDC_PROTOCOL_H
 #define CDC_PROTOCOL_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // ==================== PROTOKÓŁ CDC ====================
 // maksymalna dlugosc komendy
-#define CDC_MAX_COMMAND_LEN     256
+#define CDC_MAX_COMMAND_LEN 256
 
 // separator pol w komendzie
-#define CDC_FIELD_SEPARATOR     '|'
+#define CDC_FIELD_SEPARATOR '|'
 
 // zakonczenie komendy
-#define CDC_LINE_ENDING         '\n'
+#define CDC_LINE_ENDING '\n'
 
 // ==================== KOMENDY ====================
 // GET_CONF - pobranie calej konfiguracji
@@ -37,14 +37,14 @@ void cdc_protocol_task(void);
  * @brief wysyla odpowiedz przez CDC
  * @param response string do wyslania (automatycznie dodaje \r\n)
  */
-void cdc_send_response(const char* response);
+void cdc_send_response(const char *response);
 
 /**
  * @brief wysyla sformatowana odpowiedz
  * @param format format string
  * @param ... argumenty
  */
-void cdc_send_response_fmt(const char* format, ...);
+void cdc_send_response_fmt(const char *format, ...);
 
 /**
  * @brief odbiera skrypt przez CDC (duze dane)
@@ -53,6 +53,14 @@ void cdc_send_response_fmt(const char* format, ...);
  * @param platform 0=Linux, 1=Windows, 2=macOS
  * @param script_size rozmiar skryptu w bajtach
  */
-void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform, uint16_t script_size);
+void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
+                        uint16_t script_size);
+
+/**
+ * @brief loguje wiadomosc przez CDC (debug)
+ * @param format format string
+ * @param ... argumenty
+ */
+void cdc_log(const char *format, ...);
 
 #endif // CDC_PROTOCOL_H
