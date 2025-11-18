@@ -1,96 +1,109 @@
-#include "pico/stdlib.h"
-#include "tusb.h"
-#include "macro_config.h"
 #include "cdc_protocol.h"
-#include "mock_hardware.h"
+#include "hardware_interface.h"
+#include "macro_config.h"
+#include "macro_executor.h"
+#include "pico/stdlib.h"
 #include "pin_definitions.h"
+#include "tusb.h"
 #include <stdio.h>
 
-// ==================== BOOT MESSAGE ====================
+static bool button_processed[NUM_BUTTONS] = {false};
+
 static void print_boot_message(void) {
-    printf("\n");
-    printf("========================================\n");
-    printf("  MACRO KEYBOARD FIRMWARE v1.0\n");
-    printf("========================================\n");
-    printf("Device: Raspberry Pi Pico (RP2040)\n");
-    printf("USB VID:PID = 0x%04X:0x%04X\n", USB_VID, USB_PID);
-    printf("Buttons: %d (GP%d-GP%d)\n", NUM_BUTTONS, BTN_PIN_1, BTN_PIN_7);
-    printf("Layers: %d\n", MAX_LAYERS);
-    printf("========================================\n");
-    printf("\n");
+  sleep_ms(4000); // czekanie na CDC connection
+
+  cdc_log("\n");
+  cdc_log("========================================\n");
+  cdc_log("  MACRO KEYBOARD FIRMWARE v1.0\n");
+  cdc_log("========================================\n");
+  cdc_log("Device: Raspberry Pi Pico (RP2040)\n");
+  cdc_log("USB VID:PID = 0x%04X:0x%04X\n", USB_VID, USB_PID);
+  cdc_log("Buttons: %d (GP%d-GP%d)\n", NUM_BUTTONS, BTN_PIN_1, BTN_PIN_7);
+  cdc_log("LEDs: %d (GP%d-GP%d)\n", NUM_BUTTONS, LED_PIN_1, LED_PIN_7);
+  cdc_log("OLED: SPI0 (MOSI=GP%d, SCK=GP%d)\n", OLED_MOSI_PIN, OLED_SCK_PIN);
+  cdc_log("Layers: %d\n", MAX_LAYERS);
+  cdc_log("========================================\n");
+  cdc_log("\n");
 }
 
-// ==================== GŁÓWNA FUNKCJA ====================
 int main(void) {
-    // SDK
-    stdio_init_all();
-    
-    // stabilizacja USB
-    sleep_ms(500);
-    
-    // boot message
-    print_boot_message();
-    
-    // USB
-    printf("[MAIN] Initializing USB stack...\n");
-    tusb_init();
-    
-    // konfiguracja (flash)
-    printf("[MAIN] Loading configuration...\n");
-    config_init();
-    
-    // protokol CDC
-    printf("[MAIN] Initializing CDC protocol...\n");
-    cdc_protocol_init();
-    
-    // mock hardware - NA RAZIE TYLKO SYMULACJA
-    printf("[MAIN] Initializing mock hardware...\n");
-    mock_hardware_init();
-    
-    printf("[MAIN] System ready! Waiting for USB connection...\n");
-    printf("[MAIN] Connect via Serial (115200 baud) and send 'GET_CONF' to test.\n");
-    printf("\n");
-    
-    // periodic updates
-    uint32_t last_update_time = 0;
-    
-    // ==================== GŁÓWNA PĘTLA ====================
-    while (1) {
-        // USB stack task
-        tud_task();
-        
-        // CDC protocol task (incoming commands)
-        cdc_protocol_task();
-        
-        // mock hardware periodic update
-        uint32_t current_time = to_ms_since_boot(get_absolute_time());
-        if (current_time - last_update_time >= 1000) {
-            mock_hardware_update();
-            last_update_time = current_time;
-        }
-        
-        sleep_ms(1);
+  stdio_init_all();
+  tusb_init();
+  sleep_ms(1000);
+
+  cdc_log("[BOOT] Waiting for CDC connection...\n");
+  for (int i = 0; i < 100; i++) {
+    tud_task();
+    if (tud_cdc_connected()) {
+      cdc_log("[BOOT] CDC connected!\n");
+      break;
     }
-    
-    return 0;
+    sleep_ms(100);
+  }
+
+  print_boot_message();
+
+  cdc_log("[MAIN] Loading configuration...\n");
+  config_init();
+
+  cdc_log("[MAIN] Initializing CDC protocol...\n");
+  cdc_protocol_init();
+
+  cdc_log("[MAIN] Initializing hardware...\n");
+  hardware_init();
+
+  // displaying initial layer
+  uint8_t current_layer = config_get_current_layer();
+  oled_display_layer_info(current_layer);
+  leds_update_for_layer(current_layer);
+
+  cdc_log("[MAIN] System ready!\n");
+  cdc_log("[MAIN] Press Button 1 (GP%d) to test\n", BTN_PIN_1);
+  cdc_log("\n");
+
+  // button debounce
+  uint32_t last_button_time[NUM_BUTTONS] = {0};
+  const uint32_t DEBOUNCE_MS = 50;
+
+  while (1) {
+    tud_task();
+    cdc_protocol_task();
+
+    buttons_scan();
+
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    current_layer = config_get_current_layer();
+
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+      bool pressed = button_is_pressed(i);
+
+      if (pressed && !button_processed[i] &&
+          (now - last_button_time[i] > DEBOUNCE_MS)) {
+        cdc_log("[MAIN] Button %d pressed!\n", i + 1);
+        execute_macro(current_layer, i);
+        last_button_time[i] = now;
+        button_processed[i] = true;
+      } else if (!pressed) {
+        button_processed[i] = false; // reset after release
+      }
+    }
+
+    sleep_ms(1);
+  }
+
+  return 0;
 }
 
-// ==================== USB CDC CALLBACKS ====================
+// USB CDC Callbacks
+void tud_cdc_rx_cb(uint8_t itf) { (void)itf; }
 
-// invoked when CDC interface received data
-void tud_cdc_rx_cb(uint8_t itf) {
-    (void) itf;
-    // data handled in cdc_protocol_task()
-}
-
-// invoked when line state changes (DTR, RTS)
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
-    (void) itf;
-    (void) rts;
-    
-    if (dtr) {
-        printf("[USB] CDC connected\n");
-    } else {
-        printf("[USB] CDC disconnected\n");
-    }
+  (void)itf;
+  (void)rts;
+
+  if (dtr) {
+    printf("[USB] CDC connected\n");
+  } else {
+    printf("[USB] CDC disconnected\n");
+  }
 }
