@@ -5,6 +5,7 @@ export enum MacroType {
   TEXT_STRING = 1,
   LAYER_TOGGLE = 2,
   SCRIPT = 3,
+  KEY_SEQUENCE = 4,
 }
 
 export type ConnectionStatus =
@@ -15,6 +16,11 @@ export type ConnectionStatus =
 
 // ==================== INTERFACES ====================
 
+export interface KeyPress {
+  keycode: number;
+  modifiers: number; // bitmaska modyfikatorów
+}
+
 export interface MacroEntry {
   type: MacroType;
   value: number;
@@ -23,6 +29,7 @@ export interface MacroEntry {
   emoji: string;
   script?: string;
   scriptPlatform?: number;
+  keySequence?: KeyPress[];
 }
 
 export interface LayerConfig {
@@ -57,6 +64,17 @@ export const FIRMWARE_CONSTANTS = {
   MACRO_STRING_LEN: 32,
   MAX_EMOJI_LEN: 8,
   MAX_SCRIPT_SIZE: 2048, // 2KB
+} as const;
+
+export const MODIFIERS = {
+  CTRL: 1 << 0, // 0x01 - Left Ctrl
+  SHIFT: 1 << 1, // 0x02 - Left Shift
+  ALT: 1 << 2, // 0x04 - Left Alt
+  GUI: 1 << 3, // 0x08 - Left GUI (Win/Super/Cmd)
+  RIGHT_CTRL: 1 << 4, // 0x10 - Right Ctrl
+  RIGHT_SHIFT: 1 << 5, // 0x20 - Right Shift
+  RIGHT_ALT: 1 << 6, // 0x40 - Right Alt
+  RIGHT_GUI: 1 << 7, // 0x80 - Right GUI
 } as const;
 
 // ==================== HELPER TYPES ====================

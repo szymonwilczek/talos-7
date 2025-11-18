@@ -143,7 +143,8 @@ export function MacroConfigurator() {
               macro.value,
               macro.macroString,
               macro.name,
-              macro.emoji
+              macro.emoji,
+              macro.keySequence
             );
           }
           console.log(`✅ Macro change processed`);

@@ -55,7 +55,8 @@ export function usePendingChanges(config: GlobalConfig | null) {
           macro.name !== origMacro.name ||
           macro.emoji !== origMacro.emoji ||
           macro.script !== origMacro.script ||
-          macro.scriptPlatform !== origMacro.scriptPlatform;
+          macro.scriptPlatform !== origMacro.scriptPlatform || 
+          JSON.stringify(macro.keySequence) !== JSON.stringify(origMacro.keySequence);
 
         if (macroChanged) {
           console.log(`🔄 Macro ${layerIdx}-${buttonIdx} changed`);

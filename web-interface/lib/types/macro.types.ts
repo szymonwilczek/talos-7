@@ -1,3 +1,5 @@
+import { KeyPress } from "./config.types";
+
 /**
  * typy makr zgodne z firmware
  */
@@ -6,6 +8,7 @@ export enum MacroType {
   MACRO_STRING = 1,
   LAYER_TOGGLE = 2,
   SCRIPT = 3,
+  KEY_SQUENCE = 4,
 }
 
 /**
@@ -16,6 +19,7 @@ export const MacroTypeLabels: Record<MacroType, string> = {
   [MacroType.MACRO_STRING]: "Text Macro",
   [MacroType.LAYER_TOGGLE]: "Layer Toggle",
   [MacroType.SCRIPT]: "Script Execution",
+  [MacroType.KEY_SQUENCE]: "Key Sequence",
 };
 
 export enum ScriptPlatform {
@@ -41,6 +45,7 @@ export interface MacroEntry {
   emoji: string;
   script?: string;
   scriptPlatform?: ScriptPlatform;
+  keySequence?: KeyPress[];
 }
 
 /**
