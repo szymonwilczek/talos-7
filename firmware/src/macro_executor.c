@@ -1,6 +1,7 @@
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "pico/stdlib.h"
+#include "cdc_protocol.h"
 #include "tusb.h"
 #include <stdio.h>
 #include <string.h>
