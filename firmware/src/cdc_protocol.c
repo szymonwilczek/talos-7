@@ -78,6 +78,23 @@ void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
 }
 
 // ==================== PARSOWANIE KOMEND ====================
+
+void cdc_receive_sequence(uint8_t layer, uint8_t button, uint8_t count,
+                          uint8_t *steps) {
+  config_data_t *config = config_get();
+  macro_entry_t *macro = &config->macros[layer][button];
+
+  macro->type = MACRO_TYPE_KEY_SEQUENCE;
+  macro->sequence_length = count;
+
+  for (int i = 0; i < count && i < MAX_SEQUENCE_STEPS; i++) {
+    macro->sequence[i].keycode = steps[i * 2];
+    macro->sequence[i].modifiers = steps[i * 2 + 1];
+  }
+
+  cdc_send_response("OK");
+}
+
 static void process_command(const char *cmd_input) {
   printf("[CDC] Command received: %s\n", cmd_input);
 
@@ -138,30 +155,51 @@ static void process_command(const char *cmd_input) {
       for (int btn = 0; btn < NUM_BUTTONS; btn++) {
         macro_entry_t *macro = &config->macros[layer][btn];
         if (macro->type == MACRO_TYPE_SCRIPT) {
-          // tylko metadane, skrypt w nastepnej linii
+          // tylko metadane
           cdc_send_response_fmt(
               "MACRO|%d|%d|%d|%d|%s|%s|%s|%d|%d", layer, btn, macro->type,
               macro->value, macro->macro_string, macro->name, macro->emoji,
               macro->script_platform, (int)strlen(macro->script));
 
-          // skrypt jako osobna linia (escaped)
-          printf("SCRIPT_DATA|");
-          for (size_t i = 0; i < strlen(macro->script); i++) {
+          // tylko pierwsze 100 znakow
+          size_t script_len = strlen(macro->script);
+          size_t send_len = script_len > 100 ? 100 : script_len;
+
+          char escaped[256];
+          int escaped_len = 0;
+          for (size_t i = 0; i < send_len; i++) {
             char c = macro->script[i];
             if (c == '\n') {
-              printf("\\n");
+              escaped[escaped_len++] = '\\';
+              escaped[escaped_len++] = 'n';
             } else if (c == '\r') {
-              printf("\\r");
+              escaped[escaped_len++] = '\\';
+              escaped[escaped_len++] = 'r';
             } else if (c == '|') {
-              printf("\\|");
+              escaped[escaped_len++] = '\\';
+              escaped[escaped_len++] = '|';
             } else if (c == '\\') {
-              printf("\\\\");
+              escaped[escaped_len++] = '\\';
+              escaped[escaped_len++] = '\\';
             } else {
-              printf("%c", c);
+              escaped[escaped_len++] = c;
             }
           }
-          printf("\r\n");
-          tud_cdc_write_flush();
+          escaped[escaped_len] = '\0';
+
+          cdc_send_response_fmt("SCRIPT_DATA|%d|%d|%d|%s", layer, btn,
+                                macro->script_platform, escaped);
+        } else if (macro->type == MACRO_TYPE_KEY_SEQUENCE &&
+                   macro->sequence_length > 0) {
+          cdc_send_response_fmt("MACRO_SEQ|%d|%d|%s|%s|%d", layer, btn,
+                                macro->name, macro->emoji,
+                                macro->sequence_length);
+
+          for (int i = 0; i < macro->sequence_length; i++) {
+            cdc_send_response_fmt("SEQ_STEP|%d|%d|%d|%d|%d", layer, btn, i,
+                                  macro->sequence[i].keycode,
+                                  macro->sequence[i].modifiers);
+          }
         } else {
           cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%s", layer, btn,
                                 macro->type, macro->value, macro->macro_string,
@@ -363,6 +401,108 @@ static void process_command(const char *cmd_input) {
     } else {
       cdc_send_response("ERROR|Invalid parameters");
     }
+    return;
+  }
+
+  if (strncmp(cmd_ptr, "SET_MACRO_SEQ|", 14) == 0) {
+    cmd_ptr += 14;
+
+    int layer, button, step_count;
+    char name[MAX_NAME_LEN] = {0};
+    char emoji[MAX_EMOJI_LEN] = {0};
+
+    char *token = cmd_ptr;
+
+    // layer
+    layer = atoi(token);
+    token = strchr(token, '|');
+    if (!token) {
+      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+      return;
+    }
+    token++;
+
+    // button
+    button = atoi(token);
+    token = strchr(token, '|');
+    if (!token) {
+      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+      return;
+    }
+    token++;
+
+    // name
+    char *end_name = strchr(token, '|');
+    if (!end_name) {
+      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+      return;
+    }
+    size_t name_len = end_name - token;
+    if (name_len >= MAX_NAME_LEN)
+      name_len = MAX_NAME_LEN - 1;
+    strncpy(name, token, name_len);
+    name[name_len] = '\0';
+    token = end_name + 1;
+
+    // emoji
+    char *end_emoji = strchr(token, '|');
+    if (!end_emoji) {
+      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+      return;
+    }
+    size_t emoji_len = end_emoji - token;
+    if (emoji_len >= MAX_EMOJI_LEN)
+      emoji_len = MAX_EMOJI_LEN - 1;
+    strncpy(emoji, token, emoji_len);
+    emoji[emoji_len] = '\0';
+    token = end_emoji + 1;
+
+    // step_count
+    step_count = atoi(token);
+    token = strchr(token, '|');
+    if (!token) {
+      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+      return;
+    }
+    token++;
+
+    if (step_count < 0 || step_count > MAX_SEQUENCE_STEPS) {
+      cdc_send_response("ERROR|Invalid step count");
+      return;
+    }
+
+    // kroki
+    config_data_t *config = config_get();
+    macro_entry_t *macro = &config->macros[layer][button];
+
+    macro->type = MACRO_TYPE_KEY_SEQUENCE;
+    macro->sequence_length = step_count;
+    strncpy(macro->name, name, MAX_NAME_LEN - 1);
+    strncpy(macro->emoji, emoji, MAX_EMOJI_LEN - 1);
+
+    cmd_ptr = token; // cmd_ptr na poczatek steps
+
+    for (int i = 0; i < step_count; i++) {
+      int keycode, mods;
+      if (sscanf(cmd_ptr, "%d,%d", &keycode, &mods) == 2) {
+        macro->sequence[i].keycode = (uint8_t)keycode;
+        macro->sequence[i].modifiers = (uint8_t)mods;
+        printf("[CDC] Step %d: keycode=%d mods=0x%02X\n", i, keycode, mods);
+
+        // nastepny krok
+        cmd_ptr = strchr(cmd_ptr, ',');
+        if (cmd_ptr)
+          cmd_ptr++;
+        cmd_ptr = strchr(cmd_ptr, ',');
+        if (cmd_ptr)
+          cmd_ptr++;
+      } else {
+        cdc_send_response("ERROR|Invalid step format");
+        return;
+      }
+    }
+
+    cdc_send_response("OK");
     return;
   }
 
