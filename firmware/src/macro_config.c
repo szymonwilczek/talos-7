@@ -13,14 +13,9 @@ static bool g_config_loaded = false;
 static uint8_t g_current_layer = 0;
 
 // ==================== DOMYŚLNE EMOTKI ====================
-static const char *DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {
-    "🎮", // Layer 1: Gaming
-    "💼", // Layer 2: Work
-    "🏠", // Layer 3: Home
-    "⚙️"   // Layer 4: Settings
-};
-
-static const char *DEFAULT_LAYER_SWITCH_EMOJI = "⚡"; // BTN7
+static const uint8_t DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {
+    0, 1, 2, 7};                                     // 🎮, 💼, 🏠, 🎵
+static const uint8_t DEFAULT_LAYER_SWITCH_EMOJI = 4; // ⚡
 
 // ==================== CRC32 IMPLEMENTATION ====================
 static const uint32_t crc32_table[256] = {
@@ -100,10 +95,7 @@ void config_set_factory_defaults(void) {
 
   // nazwy i emotki warstw
   for (int i = 0; i < MAX_LAYERS; i++) {
-    snprintf(g_config.layer_names[i], MAX_NAME_LEN, "Layer %d", i + 1);
-    strncpy(g_config.layer_emojis[i], DEFAULT_LAYER_EMOJIS[i],
-            MAX_EMOJI_LEN - 1);
-    g_config.layer_emojis[i][MAX_EMOJI_LEN - 1] = '\0';
+    g_config.layer_emojis[i] = DEFAULT_LAYER_EMOJIS[i];
   }
 
   // Layer 0: F1-F7
@@ -111,32 +103,44 @@ void config_set_factory_defaults(void) {
     g_config.macros[0][i].type = MACRO_TYPE_KEY_PRESS;
     g_config.macros[0][i].value = 0x3A + i; // HID F1-F7 keycodes
     snprintf(g_config.macros[0][i].name, MAX_NAME_LEN, "F%d", i + 1);
-    g_config.macros[0][i].emoji[0] = '\0'; // puste emoji domyslnie
+    g_config.macros[0][i].emoji_index = 0; // Domyślny
   }
 
   // BTN7 (ostatni przycisk) = Layer Switch
   g_config.macros[0][6].type = MACRO_TYPE_LAYER_TOGGLE;
   g_config.macros[0][6].value =
-      0; // nieuzywane -> zawsze cykliczne przejscie (1->2->3->4->1)
+      0; // cykliczne przejscie (1->2->3->4->1)
   snprintf(g_config.macros[0][6].name, MAX_NAME_LEN, "LayerSwitch");
-  strncpy(g_config.macros[0][6].emoji, DEFAULT_LAYER_SWITCH_EMOJI,
-          MAX_EMOJI_LEN - 1);
+  g_config.macros[0][6].emoji_index = DEFAULT_LAYER_SWITCH_EMOJI; // ⚡
 
   // Layer 1-3: puste
-  for (int layer = 1; layer < MAX_LAYERS; layer++) {
+  for (int layer = 0; layer < MAX_LAYERS; layer++) {
     for (int btn = 0; btn < NUM_BUTTONS; btn++) {
       g_config.macros[layer][btn].type = MACRO_TYPE_KEY_PRESS;
       g_config.macros[layer][btn].value = 0;
       snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "Empty");
-      g_config.macros[layer][btn].emoji[0] = '\0';
+      g_config.macros[layer][btn].emoji_index = 0; // domyslny
+
+      // defaultowe emoji dla przyciskow
+      if (btn == 0)
+        g_config.macros[layer][btn].emoji_index = 0; // 🎮
+      else if (btn == 1)
+        g_config.macros[layer][btn].emoji_index = 1; // 💼
+      else if (btn == 2)
+        g_config.macros[layer][btn].emoji_index = 2; // 🏠
+      else if (btn == 3)
+        g_config.macros[layer][btn].emoji_index = 17; // Ghost
+      else if (btn == 4)
+        g_config.macros[layer][btn].emoji_index = 7; // 🎵 
+      else if (btn == 5)
+        g_config.macros[layer][btn].emoji_index = 9; // Mail 
 
       // BTN7 na kazdej warstwie = Layer Switch
       if (btn == 6) {
         g_config.macros[layer][btn].type = MACRO_TYPE_LAYER_TOGGLE;
         g_config.macros[layer][btn].value = 0; // cykliczne przejscie
-        snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "LayerSwitch");
-        strncpy(g_config.macros[layer][btn].emoji, DEFAULT_LAYER_SWITCH_EMOJI,
-                MAX_EMOJI_LEN - 1);
+        g_config.macros[layer][btn].emoji_index =
+            DEFAULT_LAYER_SWITCH_EMOJI; // ⚡
       }
     }
   }
@@ -243,6 +247,8 @@ void config_init(void) {
   if (config_load_from_flash()) {
     g_config_loaded = true;
     printf("[CONFIG] Configuration loaded from flash\n");
+    config_set_factory_defaults(); // for testing purposes
+    config_save();
   } else {
     printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
     config_set_factory_defaults();

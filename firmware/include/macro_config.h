@@ -45,7 +45,7 @@ typedef struct {
   uint16_t value;                          // keycode lub target layer
   char macro_string[MACRO_STRING_LEN];     // tekst makra
   char name[MAX_NAME_LEN];                 // nazwa makra
-  char emoji[MAX_EMOJI_LEN];               // emoji przycisku (UTF-8)
+  uint8_t emoji_index;                     // indeks emoji
   char script[MAX_SCRIPT_SIZE];            // skrypt makra
   uint8_t script_platform;                 // platforma skryptu
   key_step_t sequence[MAX_SEQUENCE_STEPS]; // sekwencja klawiszy
@@ -55,7 +55,7 @@ typedef struct {
 // ==================== GLOBALNA KONFIGURACJA ====================
 typedef struct {
   char layer_names[MAX_LAYERS][MAX_NAME_LEN];    // nazwy warstw
-  char layer_emojis[MAX_LAYERS][MAX_EMOJI_LEN];  // emoji warstw
+  uint8_t layer_emojis[MAX_LAYERS];              // emoji warstw
   macro_entry_t macros[MAX_LAYERS][NUM_BUTTONS]; // wszystkie makra
   uint32_t crc32;                                // checksum
 } config_data_t;
