@@ -15,6 +15,8 @@ add_executable(macrokeyboard
     src/cdc_protocol.c
     src/usb_descriptors.c
     src/mock_hardware.c
+    src/hardware_interface.c
+    src/macro_executor.c
 )
 
 target_include_directories(macrokeyboard PRIVATE
@@ -26,12 +28,15 @@ target_link_libraries(macrokeyboard
     pico_unique_id
     hardware_flash
     hardware_sync
+    hardware_i2c
+    hardware_gpio
+    hardware_spi
     tinyusb_device
     tinyusb_board
 )
 
 # USB output
-pico_enable_stdio_usb(macrokeyboard 0)
+pico_enable_stdio_usb(macrokeyboard 1)
 pico_enable_stdio_uart(macrokeyboard 0)
 
 pico_add_extra_outputs(macrokeyboard)
