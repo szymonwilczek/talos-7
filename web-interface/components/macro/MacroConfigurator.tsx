@@ -23,7 +23,7 @@ import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '⚙️', '⚡', '📧', '💻', '🎵', '📝', '🔧'];
+const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻'];
 
 export function MacroConfigurator() {
   const [serialService] = useState(() => new SerialService());
