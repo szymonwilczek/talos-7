@@ -141,31 +141,48 @@ static const uint8_t font5x7[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // DEL
 };
 
-static const uint8_t emoji_bitmaps[10][8] = {
-    // 0: 🎮 (gaming)
-    {0x7E, 0x81, 0xA5, 0xA5, 0x81, 0xBD, 0x81, 0x7E},
+static const uint8_t emoji_bitmaps[18][8] = {
+    // 0: 🎮 (controller)
+    {0x38, 0x44, 0x94, 0x44, 0x46, 0x95, 0x44, 0x38},
     // 1: 💼 (briefcase)
-    {0x7E, 0x81, 0x81, 0xFF, 0x81, 0x81, 0x81, 0x7E},
+    {0x7c, 0x46, 0x4a, 0x5a, 0x5a, 0x4a, 0x46, 0x7c},
     // 2: 🏠 (home)
-    {0x08, 0x1C, 0x2A, 0x49, 0x49, 0x49, 0x7F, 0x00},
-    // 3: ⚙️ (settings)
-    {0x18, 0x24, 0x42, 0x99, 0x24, 0x42, 0x81, 0x00},
+    {0x10, 0xf8, 0x8c, 0xe6, 0x86, 0x8c, 0xf8, 0x10},
+    // 3: 🔧 (settings - wrench)
+    {0x00, 0x00, 0xc7, 0x7c, 0x7c, 0xc7, 0x00, 0x00},
     // 4: ⚡ (lightning)
-    {0x08, 0x1C, 0x3E, 0x7F, 0x1C, 0x08, 0x08, 0x00},
-    // 5: 📧 (email)
-    {0x7E, 0x81, 0x85, 0x89, 0x91, 0xA1, 0x81, 0x7E},
+    {0x00, 0x80, 0xc8, 0x6c, 0x3e, 0x1b, 0x09, 0x00},
+    // 5: 📧 (mail)
+    {0x00, 0x3e, 0x41, 0x5d, 0x51, 0x4e, 0x20, 0x00},
     // 6: 💻 (computer)
-    {0x7E, 0x81, 0x81, 0xBD, 0x81, 0x81, 0x81, 0x7E},
-    // 7: 🎵 (music)
-    {0x0C, 0x0E, 0x0A, 0x0A, 0x7A, 0x3A, 0x1A, 0x00},
+    {0x3e, 0x22, 0xa2, 0xe2, 0xe2, 0xa2, 0x22, 0x3e},
+    // 7: 🎵 (music note)
+    {0xc0, 0xfc, 0xc2, 0x02, 0x02, 0x62, 0x7e, 0x60},
     // 8: 📝 (note)
-    {0x7E, 0x81, 0x81, 0x8D, 0x91, 0xA1, 0x81, 0x7E},
-    // 9: 🔧 (wrench)
-    {0x40, 0x60, 0x50, 0x48, 0x44, 0x42, 0x41, 0x40},
+    {0xc0, 0xa0, 0x50, 0x28, 0x1c, 0x0a, 0x07, 0x03},
+    // 9: ☕ (coffee cup)
+    {0x7e, 0xc2, 0xc2, 0xc2, 0xc2, 0xfe, 0x64, 0x3c},
+    // 10: 🗡️ (sword)
+    {0xd8, 0xf0, 0x78, 0x7c, 0x5e, 0x0f, 0x07, 0x03},
+    // 11: ❤️ (heart)
+    {0x00, 0x0c, 0x12, 0x22, 0x44, 0x22, 0x12, 0x0c},
+    // 12: 🔔 (bell)
+    {0x40, 0x7c, 0xc6, 0xc6, 0x7c, 0x40, 0x00, 0x00},
+    // 13: 🧪 (lab probe)
+    {0x40, 0xa0, 0x91, 0x8f, 0x8f, 0x91, 0xa0, 0x40},
+    // 14: 🔒 (lock)
+    {0x78, 0xfe, 0xf9, 0xc9, 0xf9, 0xfe, 0x78, 0x00},
+    // 15: ☂️ (umbrella)
+    {0x0c, 0x0e, 0x4f, 0x8f, 0x7f, 0x0f, 0x0e, 0x0c},
+    // 16: 🦕 (dinosaur)
+    {0x06, 0x15, 0xff, 0x7d, 0xff, 0x40, 0x30, 0x00},
+    // 17: 👻 (ghost)
+    {0x3e, 0x45, 0x47, 0xf5, 0xcf, 0x83, 0x82, 0x84},
 };
 
-static const char *emoji_strings[10] = {"🎮", "💼", "🏠", "⚙️",  "⚡",
-                                        "📧", "💻", "🎵", "📝", "🔧"};
+static const char *emoji_strings[19] = {"🎮", "💼", "🏠", "⚡", "📧", "💻",
+                                        "🎵", "📝", "☕", "🗡️", "❤️",  "🔔",
+                                        "🧪", "🔒", "☂️",  "🦕", "👻", "🔧"};
 
 static uint8_t oled_buffer[OLED_WIDTH * OLED_HEIGHT / 8];
 
@@ -316,15 +333,10 @@ void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
   }
 }
 
-void oled_draw_emoji(uint8_t x, uint8_t y, const char *emoji_str) {
-  for (int i = 0; i < 10; i++) {
-    if (strcmp(emoji_str, emoji_strings[i]) == 0) {
-      oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[i]);
-      return;
-    }
-  }
-  // fallback: jako string
-  oled_draw_string(x, y, emoji_str);
+void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index) {
+  if (emoji_index >= 18)
+    emoji_index = 0; // fallback
+  oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
 }
 
 void oled_update(void) {
@@ -349,36 +361,37 @@ void oled_display_layer_info(uint8_t layer) {
   config_data_t *config = config_get();
 
   // tytul na gorze (y=0)
-  char line1[16];
+  oled_draw_emoji(0, 0, config->layer_emojis[layer]);
+  char line1[32];
   snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
-  oled_draw_string(0, 0, line1);
+  oled_draw_string(15, 0, line1);
 
-  // separator pod tytulem (y=10)
-  oled_draw_line(10);
+  // separator
+  oled_draw_line(15);
 
   // rzad 1: przyciski 1 2 3 (y=16 dla label, y=24 dla emoji)
-  oled_draw_string(0, 16, "[1]");
-  oled_draw_emoji(0, 24, config->macros[layer][0].emoji);
+  oled_draw_string(0, 24, "[1]");
+  oled_draw_emoji(18, 24, config->macros[layer][0].emoji_index); // Obok [1]
 
-  oled_draw_string(42, 16, "[2]");
-  oled_draw_emoji(42, 24, config->macros[layer][1].emoji);
+  oled_draw_string(42, 24, "[2]");
+  oled_draw_emoji(60, 24, config->macros[layer][1].emoji_index); // Obok [2]
 
-  oled_draw_string(84, 16, "[3]");
-  oled_draw_emoji(84, 24, config->macros[layer][2].emoji);
+  oled_draw_string(84, 24, "[3]");
+  oled_draw_emoji(102, 24, config->macros[layer][2].emoji_index); // Obok [3]
 
   // rzad 2: przyciski 4 5 6 (y=32 dla label, y=40 dla emoji)
-  oled_draw_string(0, 32, "[4]");
-  oled_draw_emoji(0, 40, config->macros[layer][3].emoji);
+  oled_draw_string(0, 40, "[4]");
+  oled_draw_emoji(18, 40, config->macros[layer][3].emoji_index);
 
-  oled_draw_string(42, 32, "[5]");
-  oled_draw_emoji(42, 40, config->macros[layer][4].emoji);
+  oled_draw_string(42, 40, "[5]");
+  oled_draw_emoji(60, 40, config->macros[layer][4].emoji_index);
 
-  oled_draw_string(84, 32, "[6]");
-  oled_draw_emoji(84, 40, config->macros[layer][5].emoji);
+  oled_draw_string(84, 40, "[6]");
+  oled_draw_emoji(102, 40, config->macros[layer][5].emoji_index);
 
   // layer switch na dole (y=56)
   oled_draw_string(0, 56, "[7]");
-  oled_draw_emoji(18, 56, config->macros[layer][6].emoji);
+  oled_draw_emoji(18, 56, config->macros[layer][6].emoji_index);
 
   oled_update();
 }
@@ -389,20 +402,14 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
 
-  // title (odwrocone: y=56)
+  oled_draw_emoji(0, 8, macro->emoji_index);
   char title[32];
   snprintf(title, sizeof(title), "Button %d", button + 1);
-  oled_draw_string(0, 56, title);
+  oled_draw_string(12, 8, title);
 
-  oled_draw_line(46); // separator (odwrocone: y=46)
+  // separator
+  oled_draw_line(25);
 
-  // emoji (wieksze, odwrocone: y=32)
-  oled_draw_emoji(50, 32, macro->emoji);
-
-  // name (odwrocone: y=16)
-  oled_draw_string(0, 16, macro->name);
-
-  // type (odwrocone: y=8)
   const char *type_str = "";
   switch (macro->type) {
   case MACRO_TYPE_KEY_PRESS:
@@ -421,7 +428,9 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
     type_str = "Sequence";
     break;
   }
-  oled_draw_string(0, 8, type_str);
+  int len = strlen(type_str);
+  int x = (OLED_WIDTH - len * 6) / 2;
+  oled_draw_string(x, 48, type_str); // wycentrowany
 
   oled_update();
 }

@@ -3,6 +3,7 @@
 #include "tusb.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // ==================== PRYWATNE ZMIENNE ====================
@@ -142,7 +143,7 @@ static void process_command(const char *cmd_input) {
 
     // nazwy i emotki warstw
     for (int layer = 0; layer < MAX_LAYERS; layer++) {
-      cdc_send_response_fmt("LAYER_NAME|%d|%s|%s", layer,
+      cdc_send_response_fmt("LAYER_NAME|%d|%s|%d", layer,
                             config->layer_names[layer],
                             config->layer_emojis[layer]);
       tud_cdc_write_flush();
@@ -156,10 +157,9 @@ static void process_command(const char *cmd_input) {
         macro_entry_t *macro = &config->macros[layer][btn];
         if (macro->type == MACRO_TYPE_SCRIPT) {
           // tylko metadane
-          cdc_send_response_fmt(
-              "MACRO|%d|%d|%d|%d|%s|%s|%s|%d|%d", layer, btn, macro->type,
-              macro->value, macro->macro_string, macro->name, macro->emoji,
-              macro->script_platform, (int)strlen(macro->script));
+          cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%d", layer, btn,
+                                macro->type, macro->value, macro->macro_string,
+                                macro->name, macro->emoji_index);
 
           // tylko pierwsze 100 znakow
           size_t script_len = strlen(macro->script);
@@ -191,8 +191,8 @@ static void process_command(const char *cmd_input) {
                                 macro->script_platform, escaped);
         } else if (macro->type == MACRO_TYPE_KEY_SEQUENCE &&
                    macro->sequence_length > 0) {
-          cdc_send_response_fmt("MACRO_SEQ|%d|%d|%s|%s|%d", layer, btn,
-                                macro->name, macro->emoji,
+          cdc_send_response_fmt("MACRO_SEQ|%d|%d|%s|%d|%d", layer, btn,
+                                macro->name, macro->emoji_index,
                                 macro->sequence_length);
 
           for (int i = 0; i < macro->sequence_length; i++) {
@@ -201,9 +201,9 @@ static void process_command(const char *cmd_input) {
                                   macro->sequence[i].modifiers);
           }
         } else {
-          cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%s", layer, btn,
+          cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%d", layer, btn,
                                 macro->type, macro->value, macro->macro_string,
-                                macro->name, macro->emoji);
+                                macro->name, macro->emoji_index);
         }
       }
     }
@@ -220,12 +220,12 @@ static void process_command(const char *cmd_input) {
     return;
   }
 
-  // SET_MACRO|layer|button|type|value|string|name|emoji
+  // SET_MACRO|layer|button|type|value|string|name|emoji_index
   if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
     int layer, button, type, value;
     char macro_string[MACRO_STRING_LEN] = {0};
     char name[MAX_NAME_LEN] = {0};
-    char emoji[MAX_EMOJI_LEN] = {0};
+    uint8_t emoji_index = 0;
 
     char *token = cmd_ptr + 10;
 
@@ -285,13 +285,13 @@ static void process_command(const char *cmd_input) {
       name[name_len] = '\0';
       token = next_pipe + 1;
 
-      // emoji
-      strncpy(emoji, token, MAX_EMOJI_LEN - 1);
-      emoji[MAX_EMOJI_LEN - 1] = '\0';
+      // emoji_index
+      emoji_index = atoi(token);
     } else {
-      // backward compatibility: jesli brak emoji, same name
+      // backward compatibility: jesli brak emoji_index, same name
       strncpy(name, token, MAX_NAME_LEN - 1);
       name[MAX_NAME_LEN - 1] = '\0';
+      emoji_index = 0; // domyslny
     }
 
     // walidacja
@@ -303,21 +303,22 @@ static void process_command(const char *cmd_input) {
       macro->value = value;
       strncpy(macro->macro_string, macro_string, MACRO_STRING_LEN - 1);
       strncpy(macro->name, name, MAX_NAME_LEN - 1);
-      strncpy(macro->emoji, emoji, MAX_EMOJI_LEN - 1);
+      macro->emoji_index = emoji_index;
 
       cdc_send_response("OK");
-      printf("[CDC] Macro set: L%d B%d '%s' %s\n", layer, button, name, emoji);
+      printf("[CDC] Macro set: L%d B%d '%s' %d\n", layer, button, name,
+             emoji_index);
     } else {
       cdc_send_response("ERROR|Invalid parameters");
     }
     return;
   }
 
-  // SET_LAYER_NAME|layer|name|emoji
+  // SET_LAYER_NAME|layer|name|emoji_index
   if (strncmp(cmd_ptr, "SET_LAYER_NAME|", 15) == 0) {
     int layer;
     char name[MAX_NAME_LEN] = {0};
-    char emoji[MAX_EMOJI_LEN] = {0};
+    uint8_t emoji_index = 0;
 
     char *token = cmd_ptr + 15;
 
@@ -339,20 +340,20 @@ static void process_command(const char *cmd_input) {
       name[name_len] = '\0';
       token = next_pipe + 1;
 
-      // emoji
-      strncpy(emoji, token, MAX_EMOJI_LEN - 1);
-      emoji[MAX_EMOJI_LEN - 1] = '\0';
+      // emoji_index
+      emoji_index = atoi(token);
     } else {
       // backward compatibility
       strncpy(name, token, MAX_NAME_LEN - 1);
       name[MAX_NAME_LEN - 1] = '\0';
+      emoji_index = 0; // domyslny
     }
 
     if (layer >= 0 && layer < MAX_LAYERS) {
       strncpy(config->layer_names[layer], name, MAX_NAME_LEN - 1);
-      strncpy(config->layer_emojis[layer], emoji, MAX_EMOJI_LEN - 1);
+      config->layer_emojis[layer] = emoji_index;
       cdc_send_response("OK");
-      printf("[CDC] Layer name set: L%d = %s %s\n", layer, emoji, name);
+      printf("[CDC] Layer name set: L%d = %d %s\n", layer, emoji_index, name);
     } else {
       cdc_send_response("ERROR|Invalid parameters");
     }
@@ -409,7 +410,7 @@ static void process_command(const char *cmd_input) {
 
     int layer, button, step_count;
     char name[MAX_NAME_LEN] = {0};
-    char emoji[MAX_EMOJI_LEN] = {0};
+    uint8_t emoji_index = 0;
 
     char *token = cmd_ptr;
 
@@ -444,17 +445,14 @@ static void process_command(const char *cmd_input) {
     name[name_len] = '\0';
     token = end_name + 1;
 
-    // emoji
+    // emoji_index
     char *end_emoji = strchr(token, '|');
     if (!end_emoji) {
       cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
       return;
     }
     size_t emoji_len = end_emoji - token;
-    if (emoji_len >= MAX_EMOJI_LEN)
-      emoji_len = MAX_EMOJI_LEN - 1;
-    strncpy(emoji, token, emoji_len);
-    emoji[emoji_len] = '\0';
+    emoji_index = atoi(token);
     token = end_emoji + 1;
 
     // step_count
@@ -478,7 +476,7 @@ static void process_command(const char *cmd_input) {
     macro->type = MACRO_TYPE_KEY_SEQUENCE;
     macro->sequence_length = step_count;
     strncpy(macro->name, name, MAX_NAME_LEN - 1);
-    strncpy(macro->emoji, emoji, MAX_EMOJI_LEN - 1);
+    macro->emoji_index = emoji_index;
 
     cmd_ptr = token; // cmd_ptr na poczatek steps
 
@@ -521,6 +519,7 @@ static void process_command(const char *cmd_input) {
   printf("[CDC] Unknown command: '%s'\n", cmd_ptr);
   cdc_send_response("ERROR|Unknown command");
 }
+
 // ==================== INICJALIZACJA ====================
 void cdc_protocol_init(void) {
   cmd_buffer_pos = 0;
