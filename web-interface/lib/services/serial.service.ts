@@ -2,6 +2,7 @@ import {
   GlobalConfig,
   MacroEntry,
   MacroType,
+  KeyPress,
   FIRMWARE_CONSTANTS,
   DEFAULT_LAYER_EMOJIS,
 } from "../types/config.types";
@@ -83,7 +84,10 @@ export class SerialService {
       throw new Error("Not connected");
     }
 
-    const scriptSize = scriptContent.length;
+    const encoder = new TextEncoder();
+    const scriptBytes = encoder.encode(scriptContent);
+    const scriptSize = scriptBytes.length;
+
     if (scriptSize > MAX_SCRIPT_SIZE) {
       throw new Error(
         `Script too large (${scriptSize} > ${MAX_SCRIPT_SIZE} bytes)`,
@@ -99,10 +103,7 @@ export class SerialService {
     }
 
     // send raw script bytes
-    const encoder = new TextEncoder();
-    const scriptBytes = encoder.encode(scriptContent);
     await this.writer.write(scriptBytes);
-
     const response = await this.readLine(5000);
     if (!response.startsWith("OK")) {
       throw new Error(`Script upload failed: ${response}`);
@@ -275,6 +276,45 @@ export class SerialService {
           continue;
         }
 
+        if (line.startsWith("MACRO_SEQ|")) {
+          const parts = line.split("|");
+          const layer = parseInt(parts[1]);
+          const button = parseInt(parts[2]);
+          const name = parts[3];
+          const emoji = parts[4];
+          const count = parseInt(parts[5]);
+
+          config.layers[layer].macros[button] = {
+            type: MacroType.KEY_SEQUENCE,
+            value: 0,
+            macroString: "",
+            name,
+            emoji,
+            keySequence: [],
+          };
+
+          console.log(`  ➜ Key sequence: ${name} (${count} steps)`);
+          continue;
+        }
+
+        if (line.startsWith("SEQ_STEP|")) {
+          const parts = line.split("|");
+          const layer = parseInt(parts[1]);
+          const button = parseInt(parts[2]);
+          const keycode = parseInt(parts[4]);
+          const modifiers = parseInt(parts[5]);
+
+          if (!config.layers[layer].macros[button].keySequence) {
+            config.layers[layer].macros[button].keySequence = [];
+          }
+
+          config.layers[layer].macros[button].keySequence!.push({
+            keycode,
+            modifiers,
+          });
+          continue;
+        }
+
         // MACRO|layer|button|type|value|string|name|emoji[|platform|size]
         if (line.startsWith("MACRO|")) {
           const parts = line.split("|");
@@ -335,8 +375,31 @@ export class SerialService {
     macroString: string,
     name: string,
     emoji: string,
+    keySequence?: KeyPress[],
   ): Promise<void> {
     console.log(`📤 Setting macro L${layer}B${button}: ${emoji} ${name}`);
+
+    if (
+      type === MacroType.KEY_SEQUENCE &&
+      keySequence &&
+      keySequence.length > 0
+    ) {
+      const steps = keySequence.slice(0, 5);
+      const stepsStr = steps
+        .map((s) => `${s.keycode},${s.modifiers}`)
+        .join(",");
+      const command = `SET_MACRO_SEQ|${layer}|${button}|${name}|${emoji}|${steps.length}|${stepsStr}`;
+
+      console.log(`  Sending sequence with ${steps.length} steps`);
+      const response = await this.sendCommand(command);
+
+      if (response !== "OK") {
+        throw new Error(`Failed to set key sequence: ${response}`);
+      }
+
+      console.log("✅ Macro set successfully");
+      return;
+    }
 
     const command = `SET_MACRO|${layer}|${button}|${type}|${value}|${macroString}|${name}|${emoji}`;
     const response = await this.sendCommand(command);
