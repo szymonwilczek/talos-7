@@ -25,7 +25,7 @@ export function OLEDDisplay({
   // console.log(layer.macros[activeButton]);
 
   return (
-    <Card className="w-full max-w-2xl h-[290px] bg-black border-2">
+    <Card className="w-full max-w-2xl h-[290px] bg-black border-2 border-foreground/30">
       <CardContent className="h-full p-4 text-white text-sm font-mono overflow-auto">
         {activeButton !== null ? (
           <div className="space-y-3">
