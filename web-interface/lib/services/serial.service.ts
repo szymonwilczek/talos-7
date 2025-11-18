@@ -16,6 +16,28 @@ enum ScriptPlatform {
 
 const MAX_SCRIPT_SIZE = 2048;
 
+const emoji_strings = [
+  "🎮",
+  "💼",
+  "🏠",
+  "⚙️",
+  "⚡",
+  "📧",
+  "💻",
+  "🎵",
+  "📝",
+  "☕",
+  "🗡️",
+  "❤️",
+  "🔔",
+  "🧪",
+  "🔒",
+  "☂️",
+  "🦕",
+  "👻",
+  "🔧",
+];
+
 /**
  * service for communication with pico via web serial api
  */
@@ -266,13 +288,16 @@ export class SerialService {
           const parts = line.split("|");
           const layerIndex = parseInt(parts[1]);
           const layerName = parts[2] || `Layer ${layerIndex + 1}`;
-          const layerEmoji =
-            parts[3] || DEFAULT_LAYER_EMOJIS[layerIndex] || "⚙️";
+          const layerEmojiIndex =
+            parseInt(parts[3]) || DEFAULT_LAYER_EMOJIS[layerIndex] || 0;
+          config.layers[layerIndex].emoji =
+            emoji_strings[layerEmojiIndex] || "🎮";
 
           config.layers[layerIndex].name = layerName;
-          config.layers[layerIndex].emoji = layerEmoji;
 
-          console.log(`  ➜ Layer ${layerIndex}: ${layerEmoji} ${layerName}`);
+          console.log(
+            `  ➜ Layer ${layerIndex}: ${emoji_strings[layerEmojiIndex]} ${layerName}`,
+          );
           continue;
         }
 
@@ -325,7 +350,8 @@ export class SerialService {
             const value = parseInt(parts[4]);
             const macroString = parts[5];
             const name = parts[6];
-            const emoji = parts[7];
+            const emojiIndex = parseInt(parts[7]);
+            const emoji = emoji_strings[emojiIndex] || "🎮";
 
             const macro: MacroEntry = {
               type,
@@ -377,7 +403,10 @@ export class SerialService {
     emoji: string,
     keySequence?: KeyPress[],
   ): Promise<void> {
-    console.log(`📤 Setting macro L${layer}B${button}: ${emoji} ${name}`);
+    const emojiIndex = emoji_strings.indexOf(emoji);
+    console.log(
+      `📤 Setting macro L${layer}B${button}: ${emoji_strings[emojiIndex]} ${name}`,
+    );
 
     if (
       type === MacroType.KEY_SEQUENCE &&
@@ -388,7 +417,7 @@ export class SerialService {
       const stepsStr = steps
         .map((s) => `${s.keycode},${s.modifiers}`)
         .join(",");
-      const command = `SET_MACRO_SEQ|${layer}|${button}|${name}|${emoji}|${steps.length}|${stepsStr}`;
+      const command = `SET_MACRO_SEQ|${layer}|${button}|${name}|${emojiIndex}|${steps.length}|${stepsStr}`;
 
       console.log(`  Sending sequence with ${steps.length} steps`);
       const response = await this.sendCommand(command);
@@ -401,7 +430,7 @@ export class SerialService {
       return;
     }
 
-    const command = `SET_MACRO|${layer}|${button}|${type}|${value}|${macroString}|${name}|${emoji}`;
+    const command = `SET_MACRO|${layer}|${button}|${type}|${value}|${macroString}|${name}|${emojiIndex}`;
     const response = await this.sendCommand(command);
 
     if (response !== "OK") {
@@ -419,9 +448,10 @@ export class SerialService {
     name: string,
     emoji: string,
   ): Promise<void> {
+    const emojiIndex = emoji_strings.indexOf(emoji);
     console.log(`📤 Setting layer ${layer} name: ${emoji} ${name}`);
 
-    const command = `SET_LAYER_NAME|${layer}|${name}|${emoji}`;
+    const command = `SET_LAYER_NAME|${layer}|${name}|${emojiIndex}`;
     const response = await this.sendCommand(command);
 
     if (response !== "OK") {

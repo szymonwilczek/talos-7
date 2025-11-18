@@ -53,9 +53,9 @@ export interface ConnectionError {
 
 // ==================== CONSTANTS ====================
 
-export const DEFAULT_LAYER_EMOJIS = ["🎮", "💼", "🏠", "⚙️"];
-export const DEFAULT_BUTTON_EMOJI = "";
-export const LAYER_SWITCH_EMOJI = "⚡";
+export const DEFAULT_LAYER_EMOJIS = [0, 1, 2, 7];
+export const DEFAULT_BUTTON_EMOJI = 0;
+export const LAYER_SWITCH_EMOJI = 4; 
 
 export const FIRMWARE_CONSTANTS = {
   MAX_LAYERS: 4,
