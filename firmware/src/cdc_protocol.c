@@ -1,5 +1,6 @@
 #include "cdc_protocol.h"
 #include "macro_config.h"
+#include "hardware_interface.h"
 #include "tusb.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -402,6 +403,15 @@ static void process_command(const char *cmd_input) {
     } else {
       cdc_send_response("ERROR|Invalid parameters");
     }
+    return;
+  }
+
+  if (strcmp(cmd_ptr, "RELOAD_CONFIG") == 0) {
+    printf("[CDC] RELOAD_CONFIG command received\n");
+    config_init();
+    oled_display_layer_info(0);
+    cdc_send_response("OK");
+    printf("[CDC] Config reloaded\n");
     return;
   }
 

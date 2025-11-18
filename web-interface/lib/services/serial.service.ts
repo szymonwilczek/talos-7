@@ -475,6 +475,15 @@ export class SerialService {
     }
 
     console.log("✅ SAVE_FLASH successful");
+
+    // przeladuj config w firmware
+    console.log("📤 Sending RELOAD_CONFIG command...");
+    const reloadResponse = await this.sendCommand("RELOAD_CONFIG");
+    if (!reloadResponse.includes("OK")) {
+      console.warn("⚠️ RELOAD_CONFIG failed, but save was successful");
+    } else {
+      console.log("✅ Config reloaded in firmware");
+    }
   }
 
   /**
