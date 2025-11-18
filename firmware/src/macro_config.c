@@ -2,7 +2,9 @@
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include "pico/stdlib.h"
+#include "tusb.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // ==================== PRYWATNE ZMIENNE ====================
@@ -89,6 +91,13 @@ void config_cycle_layer(void) {
 void config_set_factory_defaults(void) {
   memset(&g_config, 0, sizeof(config_data_t));
 
+  // dla wszystkich mark sequence_length = 0
+  for (int layer = 0; layer < MAX_LAYERS; layer++) {
+    for (int btn = 0; btn < NUM_BUTTONS; btn++) {
+      g_config.macros[layer][btn].sequence_length = 0;
+    }
+  }
+
   // nazwy i emotki warstw
   for (int i = 0; i < MAX_LAYERS; i++) {
     snprintf(g_config.layer_names[i], MAX_NAME_LEN, "Layer %d", i + 1);
@@ -160,29 +169,69 @@ static bool config_load_from_flash(void) {
 bool config_save(void) {
   g_config.crc32 = config_calculate_crc(&g_config);
 
-  printf("[CONFIG] Saving to flash... CRC: 0x%08X\n", g_config.crc32);
+  char msg[128];
+  // snprintf(msg, sizeof(msg),
+  //          "[CONFIG] Saving to flash... CRC: 0x%08X, size: %d bytes\n",
+  //          g_config.crc32, sizeof(config_data_t));
+  // tud_cdc_write_str(msg);
+  // tud_cdc_write_flush();
+
+  // wymagany rozmiar sektora (wielokrotnosc 4KB)
+  uint32_t sector_size = FLASH_SECTOR_SIZE_CALC;
+  uint32_t aligned_size =
+      (sizeof(config_data_t) + 255) & ~255; // wyrownanie do 256 bajtow
+
+  // snprintf(msg, sizeof(msg),
+  //          "[CONFIG] Sector size: %lu bytes, aligned size: %lu bytes\n",
+  //          sector_size, aligned_size);
+  // tud_cdc_write_str(msg);
+  // tud_cdc_write_flush();
+
+  // wyrownany bufor
+  uint8_t *aligned_buffer = malloc(aligned_size);
+  if (!aligned_buffer) {
+    // tud_cdc_write_str("[CONFIG] ERROR: Memory allocation failed\n");
+    // tud_cdc_write_flush();
+    return false;
+  }
+
+  memset(aligned_buffer, 0xFF, aligned_size);
+  memcpy(aligned_buffer, &g_config, sizeof(config_data_t));
 
   uint32_t ints = save_and_disable_interrupts();
-  flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
-  flash_range_program(FLASH_TARGET_OFFSET, (const uint8_t *)&g_config,
-                      sizeof(config_data_t));
+  flash_range_erase(FLASH_TARGET_OFFSET,
+                    sector_size); // czysc odpowiednia liczbe sektorow
+  flash_range_program(FLASH_TARGET_OFFSET, aligned_buffer, aligned_size);
   restore_interrupts(ints);
 
-  printf("[CONFIG] Flash write complete\n");
+  free(aligned_buffer);
 
-  // weryfikacja przez odczyt
-  config_data_t *flash_config =
-      (config_data_t *)(XIP_BASE + FLASH_TARGET_OFFSET);
-  uint32_t flash_crc = config_calculate_crc(flash_config);
+  // tud_cdc_write_str("[CONFIG] Flash write complete\n");
+  // tud_cdc_write_flush();
 
-  printf("[CONFIG] Verification: saved CRC=0x%08X, flash CRC=0x%08X\n",
-         g_config.crc32, flash_crc);
+  sleep_ms(100);
+
+  // weryfikacja
+  config_data_t temp_verify;
+  const uint8_t *flash_target =
+      (const uint8_t *)(XIP_BASE + FLASH_TARGET_OFFSET);
+  memcpy(&temp_verify, flash_target, sizeof(config_data_t));
+
+  uint32_t flash_crc = config_calculate_crc(&temp_verify);
+
+  // snprintf(msg, sizeof(msg),
+  //          "[CONFIG] Verification: saved CRC=0x%08X, flash CRC=0x%08X\n",
+  //          g_config.crc32, flash_crc);
+  // tud_cdc_write_str(msg);
+  // tud_cdc_write_flush();
 
   if (flash_crc == g_config.crc32) {
-    printf("[CONFIG] Verification successful\n");
+    // tud_cdc_write_str("[CONFIG] Verification successful\n");
+    // tud_cdc_write_flush();
     return true;
   } else {
-    printf("[CONFIG] ERROR: CRC mismatch after save\n");
+    // tud_cdc_write_str("[CONFIG] ERROR: CRC mismatch after save\n");
+    // tud_cdc_write_flush();
     return false;
   }
 }
