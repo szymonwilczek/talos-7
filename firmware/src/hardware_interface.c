@@ -363,7 +363,7 @@ void oled_display_layer_info(uint8_t layer) {
   if (config_mode == 1) {
     printf("[OLED] Config mode active, displaying special screen\n");
     oled_clear();
-    oled_draw_string(0, 16, "Setup..."); 
+    oled_draw_string(0, 16, "Setup...");
     oled_draw_string(0, 32, "See live web preview");
     oled_draw_string(0, 48, "Remember to apply!");
     oled_update();
@@ -376,7 +376,13 @@ void oled_display_layer_info(uint8_t layer) {
   // tytul na gorze (y=0)
   oled_draw_emoji(0, 0, config->layer_emojis[layer]);
   char line1[32];
-  snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
+  if (strlen(config->layer_names[layer]) > 0) {
+    // nazwa warstwy
+    snprintf(line1, sizeof(line1), "%s", config->layer_names[layer]);
+  } else {
+    // fallback: Layer X/4
+    snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
+  }
   oled_draw_string(15, 0, line1);
 
   // separator
