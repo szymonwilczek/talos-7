@@ -33,7 +33,7 @@ interface ButtonEditDialogProps {
   onSave: (buttonIndex: number, macro: MacroEntry) => void;
 }
 
-const SUGGESTED_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻'];
+const SUGGESTED_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻', '🔫', '⏳', '🌷'];
 
 export function ButtonEditDialog({
   open,

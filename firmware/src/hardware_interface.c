@@ -143,7 +143,7 @@ static const uint8_t font5x7[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // DEL
 };
 
-static const uint8_t emoji_bitmaps[18][8] = {
+static const uint8_t emoji_bitmaps[21][8] = {
     // 0: 🎮 (controller)
     {0x38, 0x44, 0x94, 0x44, 0x46, 0x95, 0x44, 0x38},
     // 1: 💼 (briefcase)
@@ -159,7 +159,7 @@ static const uint8_t emoji_bitmaps[18][8] = {
     // 6: 💻 (computer)
     {0x3e, 0x22, 0xa2, 0xe2, 0xe2, 0xa2, 0x22, 0x3e},
     // 7: 🎵 (music note)
-    {0xc0, 0xfc, 0xc2, 0x02, 0x02, 0x62, 0x7e, 0x60},
+    {0xc0, 0xfe, 0xc2, 0x02, 0x62, 0x7e, 0x60, 0x00},
     // 8: 📝 (note)
     {0xc0, 0xa0, 0x50, 0x28, 0x1c, 0x0a, 0x07, 0x03},
     // 9: ☕ (coffee cup)
@@ -180,11 +180,17 @@ static const uint8_t emoji_bitmaps[18][8] = {
     {0x06, 0x15, 0xff, 0x7d, 0xff, 0x40, 0x30, 0x00},
     // 17: 👻 (ghost)
     {0x3e, 0x45, 0x47, 0xf5, 0xcf, 0x83, 0x82, 0x84},
+    // 18: 🔫 (pistol)
+    {0x07, 0x06, 0x06, 0x0e, 0x16, 0x96, 0xfe, 0x7c},
+    // 19: ⏳ (hourglass)
+    {0x82, 0xee, 0x92, 0x92, 0x92, 0xee, 0x82, 0x00},
+    // 20: 🌷 (tulip)
+    {0x20, 0x4f, 0x9e, 0xff, 0x9e, 0x4f, 0x20, 0x00},
 };
 
-static const char *emoji_strings[19] = {"🎮", "💼", "🏠", "⚡", "📧", "💻",
-                                        "🎵", "📝", "☕", "🗡️", "❤️",  "🔔",
-                                        "🧪", "🔒", "☂️",  "🦕", "👻", "🔧"};
+static const char *emoji_strings[21] = {
+    "🎮", "💼", "🏠", "⚡", "📧", "💻", "🎵", "📝", "☕", "🗡️", "❤️",
+    "🔔", "🧪", "🔒", "☂️",  "🦕", "👻", "🔧", "🔫", "⏳", "🌷"};
 
 static uint8_t oled_buffer[OLED_WIDTH * OLED_HEIGHT / 8];
 
@@ -336,7 +342,7 @@ void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
 }
 
 void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index) {
-  if (emoji_index >= 18)
+  if (emoji_index >= 21)
     emoji_index = 0; // fallback
   oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
 }
