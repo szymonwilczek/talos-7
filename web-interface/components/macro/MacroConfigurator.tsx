@@ -323,6 +323,7 @@ export function MacroConfigurator() {
         open={selectedButton !== null}
         buttonIndex={selectedButton}
         macro={selectedButton !== null ? currentLayer.macros[selectedButton] : null}
+        layerMacros={currentLayer.macros}
         onClose={() => setSelectedButton(null)}
         onSave={handleMacroChange}
       />

@@ -29,6 +29,7 @@ interface ButtonEditDialogProps {
   open: boolean;
   buttonIndex: number | null;
   macro: MacroEntry | null;
+  layerMacros: MacroEntry[]; // lista makr do walidacji
   onClose: () => void;
   onSave: (buttonIndex: number, macro: MacroEntry) => void;
 }
@@ -39,6 +40,7 @@ export function ButtonEditDialog({
   open,
   buttonIndex,
   macro,
+  layerMacros,
   onClose,
   onSave,
 }: ButtonEditDialogProps) {
@@ -51,6 +53,10 @@ export function ButtonEditDialog({
   const [scriptPlatform, setScriptPlatform] = useState<ScriptPlatform>(ScriptPlatform.LINUX);
   const [scriptFile, setScriptFile] = useState<File | null>(null);
   const [keySequence, setKeySequence] = useState<KeyPress[]>([]);
+
+  const canSelectLayerToggle = !layerMacros?.some(
+    (m, idx) => m.type === MacroType.LAYER_TOGGLE && idx !== buttonIndex
+  );
 
   useEffect(() => {
     if (macro) {
@@ -158,7 +164,9 @@ export function ButtonEditDialog({
               <SelectContent>
                 <SelectItem value="0">Key Press</SelectItem>
                 <SelectItem value="1">Text String</SelectItem>
-                <SelectItem value="2">Layer Toggle</SelectItem>
+                {canSelectLayerToggle && (
+                  <SelectItem value="2">Layer Toggle</SelectItem>
+                )}
                 <SelectItem value="3">Script Execution</SelectItem>
                 <SelectItem value="4">Key Sequence</SelectItem>
               </SelectContent>

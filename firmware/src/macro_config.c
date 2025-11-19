@@ -138,6 +138,7 @@ void config_set_factory_defaults(void) {
       if (btn == 6) {
         g_config.macros[layer][btn].type = MACRO_TYPE_LAYER_TOGGLE;
         g_config.macros[layer][btn].value = 0; // cykliczne przejscie
+        snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "LayerSwitch");
         g_config.macros[layer][btn].emoji_index =
             DEFAULT_LAYER_SWITCH_EMOJI; // ⚡
       }
