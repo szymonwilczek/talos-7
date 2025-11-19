@@ -531,9 +531,55 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   case MACRO_TYPE_KEY_PRESS:
     snprintf(details, sizeof(details), "Key: %s", get_key_name(macro->value));
     break;
-  case MACRO_TYPE_TEXT_STRING:
-    snprintf(details, sizeof(details), "Text: \"%s\"", macro->macro_string);
+  case MACRO_TYPE_TEXT_STRING: {
+    const char *analyze_ptr = macro->macro_string;
+    bool has_unicode = false;
+    bool has_visible_ascii = false;
+
+    // analiza znakow w stringu
+    while (*analyze_ptr) {
+      uint32_t cp = utf8_to_codepoint(&analyze_ptr);
+      if (cp == 0)
+        continue;
+
+      if (cp > 127) {
+        has_unicode = true;
+      } else if (cp > 32 && cp < 127) {
+        has_visible_ascii = true;
+      }
+    }
+
+    if (has_unicode && !has_visible_ascii) {
+      snprintf(details, sizeof(details), "Text: [Unicode/Emoji]");
+    } else {
+      // 10 znakow tresci + 3 kropki + null terminator
+      char safe_preview[16];
+      const char *ptr = macro->macro_string;
+      size_t idx = 0;
+      const size_t CHAR_LIMIT = 10; // limit widocznych znakow przed kropkami
+
+      while (*ptr && idx < CHAR_LIMIT) {
+        uint32_t cp = utf8_to_codepoint(&ptr);
+        if (cp == 0)
+          continue;
+
+        if (cp < 128) {
+          safe_preview[idx++] = (char)cp;
+        } else {
+          safe_preview[idx++] = '?';
+        }
+      }
+      safe_preview[idx] = '\0';
+
+      // cos zostalo - dodaj kropki
+      if (*ptr != '\0') {
+        strcat(safe_preview, "...");
+      }
+
+      snprintf(details, sizeof(details), "Text: \"%s\"", safe_preview);
+    }
     break;
+  }
   case MACRO_TYPE_LAYER_TOGGLE:
     snprintf(details, sizeof(details), "Layer Toggle to Layer %d",
              macro->value + 1);
