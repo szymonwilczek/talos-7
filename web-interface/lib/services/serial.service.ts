@@ -308,7 +308,8 @@ export class SerialService {
           const layer = parseInt(parts[1]);
           const button = parseInt(parts[2]);
           const name = parts[3];
-          const emoji = parts[4];
+          const emojiIndex = parseInt(parts[4]);
+          const emoji = emoji_strings[emojiIndex] || "🎮";
           const count = parseInt(parts[5]);
 
           config.layers[layer].macros[button] = {
