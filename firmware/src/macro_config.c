@@ -13,9 +13,9 @@ static bool g_config_loaded = false;
 static uint8_t g_current_layer = 0;
 
 // ==================== DOMYŚLNE EMOTKI ====================
-static const uint8_t DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {
-    0, 1, 2, 7};                                     // 🎮, 💼, 🏠, 🎵
-static const uint8_t DEFAULT_LAYER_SWITCH_EMOJI = 4; // ⚡
+static const uint8_t DEFAULT_LAYER_EMOJIS[MAX_LAYERS] = {0, 1, 2,
+                                                         7}; // 🎮, 💼, 🏠, 🎵
+static const uint8_t DEFAULT_LAYER_SWITCH_EMOJI = 4;         // ⚡
 
 // ==================== CRC32 IMPLEMENTATION ====================
 static const uint32_t crc32_table[256] = {
@@ -108,8 +108,7 @@ void config_set_factory_defaults(void) {
 
   // BTN7 (ostatni przycisk) = Layer Switch
   g_config.macros[0][6].type = MACRO_TYPE_LAYER_TOGGLE;
-  g_config.macros[0][6].value =
-      0; // cykliczne przejscie (1->2->3->4->1)
+  g_config.macros[0][6].value = 0; // cykliczne przejscie (1->2->3->4->1)
   snprintf(g_config.macros[0][6].name, MAX_NAME_LEN, "LayerSwitch");
   g_config.macros[0][6].emoji_index = DEFAULT_LAYER_SWITCH_EMOJI; // ⚡
 
@@ -131,9 +130,9 @@ void config_set_factory_defaults(void) {
       else if (btn == 3)
         g_config.macros[layer][btn].emoji_index = 17; // Ghost
       else if (btn == 4)
-        g_config.macros[layer][btn].emoji_index = 7; // 🎵 
+        g_config.macros[layer][btn].emoji_index = 7; // 🎵
       else if (btn == 5)
-        g_config.macros[layer][btn].emoji_index = 9; // Mail 
+        g_config.macros[layer][btn].emoji_index = 9; // Mail
 
       // BTN7 na kazdej warstwie = Layer Switch
       if (btn == 6) {
@@ -247,7 +246,7 @@ void config_init(void) {
   if (config_load_from_flash()) {
     g_config_loaded = true;
     printf("[CONFIG] Configuration loaded from flash\n");
-    config_set_factory_defaults(); // for testing purposes
+    // config_set_factory_defaults(); // for testing purposes
     config_save();
   } else {
     printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
