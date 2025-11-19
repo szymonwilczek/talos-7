@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+extern uint8_t config_mode; // 0 - normal, 1 - config mode 
+
 // inicjalizacja calego hardware
 void hardware_init(void);
 

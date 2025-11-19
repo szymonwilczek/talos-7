@@ -486,6 +486,15 @@ export class SerialService {
     }
   }
 
+  async setConfigMode(mode: number): Promise<void> {
+    console.log("📤 Sending SET_CONFIG_MODE|" + mode);
+    const response = await this.sendCommand(`SET_CONFIG_MODE|${mode}`);
+    console.log("📥 Response:", response);
+    if (!response.includes("OK")) {
+      throw new Error(`SET_CONFIG_MODE failed: ${response}`);
+    }
+  }
+
   /**
    * helper delay function
    */

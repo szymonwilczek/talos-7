@@ -48,6 +48,14 @@ export function MacroConfigurator() {
     }
   }, []);
 
+  useEffect(() => {
+    if (status === 'CONNECTED' && config) {
+      serialService.setConfigMode(pendingChanges.size > 0 ? 1 : 0)
+        .then(() => console.log("✅ setConfigMode sent successfully"))
+        .catch((err) => console.error("❌ setConfigMode failed:", err));
+    }
+  }, [pendingChanges.size, status, config]);
+
   const handleConnect = async () => {
     setStatus('CONNECTING');
     setError(null);

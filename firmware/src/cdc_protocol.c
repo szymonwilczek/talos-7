@@ -1,6 +1,6 @@
 #include "cdc_protocol.h"
-#include "macro_config.h"
 #include "hardware_interface.h"
+#include "macro_config.h"
 #include "tusb.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -412,6 +412,27 @@ static void process_command(const char *cmd_input) {
     oled_display_layer_info(0);
     cdc_send_response("OK");
     printf("[CDC] Config reloaded\n");
+    config_mode = 0; // wyjscie z trybu konfiguracji
+    return;
+  }
+
+  if (strncmp(cmd_ptr, "SET_CONFIG_MODE|", 15) == 0) {
+    char *token = cmd_ptr + 15;
+    token = strchr(token, '|'); // '|'
+    if (token) {
+      token++; // za '|'
+      config_mode = atoi(token);
+    } else {
+      config_mode = 0; // domyslnie
+    }
+    printf("[CDC] SET_CONFIG_MODE received, mode=%d\n", config_mode);
+
+    uint8_t current_layer = config_get_current_layer();
+    printf("[CDC] Current layer: %d, refreshing OLED for layer 0\n",
+           current_layer);
+    oled_display_layer_info(0);
+
+    cdc_send_response("OK");
     return;
   }
 

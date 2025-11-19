@@ -14,6 +14,8 @@
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
 
+uint8_t config_mode = 0;
+
 // SSD1306 commands
 #define OLED_CMD_SET_CONTRAST 0x81
 #define OLED_CMD_DISPLAY_ALL_ON_RESUME 0xA4
@@ -357,6 +359,17 @@ void oled_update(void) {
 
 void oled_display_layer_info(uint8_t layer) {
   oled_clear();
+
+  if (config_mode == 1) {
+    printf("[OLED] Config mode active, displaying special screen\n");
+    oled_clear();
+    oled_draw_string(0, 16, "Setup..."); 
+    oled_draw_string(0, 32, "See live web preview");
+    oled_draw_string(0, 48, "Remember to apply!");
+    oled_update();
+    printf("[OLED] Special screen drawn\n");
+    return;
+  }
 
   config_data_t *config = config_get();
 
