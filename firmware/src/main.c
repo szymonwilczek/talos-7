@@ -32,14 +32,11 @@ int main(void) {
   sleep_ms(1000);
 
   cdc_log("[BOOT] Waiting for CDC connection...\n");
-  for (int i = 0; i < 100; i++) {
-    tud_task();
-    if (tud_cdc_connected()) {
-      cdc_log("[BOOT] CDC connected!\n");
-      break;
-    }
-    sleep_ms(100);
+  tud_task();
+  if (tud_cdc_connected()) {
+    cdc_log("[BOOT] CDC connected!\n");
   }
+  sleep_ms(100);
 
   print_boot_message();
 
