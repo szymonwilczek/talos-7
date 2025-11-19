@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useRef } from 'react';
+import { OLEDAlert } from './OLEDAlert';
 
 interface OLEDDisplayProps {
   layer: LayerConfig;
@@ -114,21 +115,16 @@ export function OLEDDisplay({
     return parts.join('+');
   };
 
-  const formatSequence = (sequence?: KeyPress[]): string => {
-    if (!sequence || sequence.length === 0) return 'Empty';
-    return sequence.map(formatKeyPress).join('+');
-  };
-
   const formatSequenceVim = (sequence?: KeyPress[]): string => {
     if (!sequence || sequence.length === 0) return 'Empty';
     let buf = '';
     // pierwszy klawisz z modyfikatorami (vim like)
     const first = sequence[0];
     let mods = '';
-    if (first.modifiers & MODIFIERS.CTRL) mods += 'C'; // ctrl
-    if (first.modifiers & MODIFIERS.SHIFT) mods += 'S'; // shift
-    if (first.modifiers & MODIFIERS.ALT) mods += 'A'; // alt
-    if (first.modifiers & MODIFIERS.GUI) mods += 'M'; // meta (gui)
+    if (first.modifiers & MODIFIERS.CTRL) mods += 'C';
+    if (first.modifiers & MODIFIERS.SHIFT) mods += 'S';
+    if (first.modifiers & MODIFIERS.ALT) mods += 'A';
+    if (first.modifiers & MODIFIERS.GUI) mods += 'M';
     if (mods) {
       buf += `<${mods}-${getKeyName(first.keycode)}>`;
     } else {
@@ -141,27 +137,82 @@ export function OLEDDisplay({
     return buf;
   };
 
+  const analyzeString = (str: string) => {
+    let hasUnicode = false;
+    let hasVisibleAscii = false;
+    let truncated = "";
+    let count = 0;
+    const LIMIT = 10;
+    let originalLength = 0;
+
+    for (const char of str) {
+      const cp = char.codePointAt(0) || 0;
+      originalLength++;
+
+      if (count < LIMIT) {
+        if (cp > 127) {
+          truncated += "?";
+        } else {
+          truncated += char;
+        }
+        count++;
+      }
+
+      if (cp > 127) {
+        hasUnicode = true;
+      } else if (cp > 32 && cp < 127) {
+        hasVisibleAscii = true;
+      }
+    }
+
+    if (originalLength > LIMIT) {
+      truncated += "...";
+    }
+
+    return { hasUnicode, hasVisibleAscii, truncated };
+  };
+
   const getActionDetails = (macro: any) => {
     switch (macro.type) {
       case 0: // KeyPress
-        return `Key: ${getKeyName(macro.value)}`;
-      case 1: // TextString
-        return `Text: "${macro.macroString || ''}"`;
+        return { text: `Key: ${getKeyName(macro.value)}`, alert: null };
+      case 1: { // TextString
+        const { hasUnicode, hasVisibleAscii, truncated } = analyzeString(macro.macroString || '');
+
+        if (hasUnicode && !hasVisibleAscii) {
+          // pure unicode - firmware replacement
+          return {
+            text: "Text: [Unicode/Emoji]",
+            alert: "pure" as const
+          };
+        } else if (hasUnicode) {
+          // mixed - firmware shows '?'
+          return {
+            text: `Text: "${truncated}"`,
+            alert: "mixed" as const
+          };
+        } else {
+          // pure ASCII
+          return { text: `Text: "${truncated}"`, alert: null };
+        }
+      }
       case 2: // LayerToggle
-        return `Layer Toggle (to Layer ${macro.value + 1})`;
+        return { text: `Layer Toggle to Layer ${macro.value + 1}`, alert: null };
       case 3: // Script
         const platform = macro.scriptPlatform === 0 ? 'Linux' :
           macro.scriptPlatform === 1 ? 'Windows' : 'macOS';
-        return `Script (${platform})`;
+        return { text: `Script (${platform})`, alert: null };
       case 4: // KeySequence
-        return `Sequence: ${formatSequenceVim(macro.keySequence)}`;
+        return { text: `Sequence: ${formatSequenceVim(macro.keySequence)}`, alert: null };
       default:
-        return 'Unknown Action';
+        return { text: 'Unknown Action', alert: null };
     }
   };
 
+  const details = activeButton !== null ? getActionDetails(layer.macros[activeButton]) : null;
+
   return (
-    <Card className="w-[252px] h-[128px] md:w-[378px] md:h-[192px] lg:w-[350px] lg:h-[210px] bg-[#000000] border-2 border-foreground/30 font-mono" style={{
+    <Card className="w-[252px] h-[128px] md:w-[378px] md:h-[192px] lg:w-[350px] lg:h-[210px] bg-[#000000] border-2 border-foreground/30 font-mono relative" style={{
       fontFamily: 'PixelMix, monospace',
       fontSize: '12px',
       lineHeight: '1',
@@ -171,34 +222,43 @@ export function OLEDDisplay({
       fontSynthesis: 'none',
       imageRendering: 'pixelated'
     }}>
-      <CardContent className="h-full p-4 text-[#00ffff] text-sm overflow-hidden">
+      <CardContent className="h-full p-4 text-[#00ffff] text-sm overflow-hidden relative">
         {activeButton !== null ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 -mt-4">
+          <div className="flex flex-col h-full gap-3">
+            <div className="flex items-center justify-between gap-2 -mt-4 shrink-0">
               <div className='flex items-center gap-2'>
                 <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[activeButton].emoji)} color="#00ffff" size={20} />
-                <span className='max-md:text-sm max-lg:text-md text-xl text-[#00ffff]'>{layer.macros[activeButton].name || `Button ${activeButton + 1}`}</span>
+                <span className='max-md:text-sm max-lg:text-md text-xl text-[#00ffff] truncate max-w-[120px]'>
+                  {layer.macros[activeButton].name || `Button ${activeButton + 1}`}
+                </span>
               </div>
-              <Badge variant={selectedButton !== null ? 'default' : 'outline'}>
+              <Badge variant={selectedButton !== null ? 'default' : 'outline'} className="shrink-0">
                 {selectedButton !== null ? 'Editing' : 'Preview'}
               </Badge>
             </div>
-            <Separator className="bg-[#00ffff]" />
-            <div className="flex items-center justify-center text-center mt-12 space-y-2">
-              <div className="text-xl text-[#fff000]">
-                {getActionDetails(layer.macros[activeButton])}
+
+            <Separator className="bg-[#00ffff] shrink-0" />
+
+            <div className="flex-1 flex items-center justify-center text-center min-h-0">
+              <div className="text-xl text-[#fff000] break-words w-full px-2">
+                {details?.text}
               </div>
             </div>
+
+            {/* Script Preview */}
             {layer.macros[activeButton].type === 3 && (
-              <div className="mt-1">
+              <div className="mt-1 shrink-0">
                 <Label className="text-xs text-gray-400 block mb-2">Script Content (first 50 chars):</Label>
                 <Textarea
                   value={layer.macros[activeButton].script?.substring(0, 50) || ''}
                   readOnly
-                  className="text-xs font-mono bg-gray-800 text-white border-gray-600 resize-none"
-                  rows={3}
+                  className="text-xs font-mono bg-gray-800 text-white border-gray-600 resize-none h-12"
                 />
               </div>
+            )}
+
+            {details?.alert && (
+              <OLEDAlert variant={details.alert} />
             )}
           </div>
         ) : (
