@@ -58,6 +58,7 @@ typedef struct {
   uint8_t layer_emojis[MAX_LAYERS];              // emoji warstw
   macro_entry_t macros[MAX_LAYERS][NUM_BUTTONS]; // wszystkie makra
   uint32_t crc32;                                // checksum
+  uint8_t global_text_platform;                  // domyslna platforma tekstu
 } config_data_t;
 
 // ==================== FLASH STORAGE ====================
@@ -74,5 +75,6 @@ uint32_t config_calculate_crc(const config_data_t *config);
 uint8_t config_get_current_layer(void);
 void config_cycle_layer(void);
 uint8_t config_get_current_layer(void);
+uint8_t detect_platform(void);
 
 #endif // MACRO_CONFIG_H

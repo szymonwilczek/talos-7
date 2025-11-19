@@ -103,7 +103,7 @@ void config_set_factory_defaults(void) {
     g_config.macros[0][i].type = MACRO_TYPE_KEY_PRESS;
     g_config.macros[0][i].value = 0x3A + i; // HID F1-F7 keycodes
     snprintf(g_config.macros[0][i].name, MAX_NAME_LEN, "F%d", i + 1);
-    g_config.macros[0][i].emoji_index = 0; // Domyślny
+    g_config.macros[0][i].emoji_index = 0; // domyslny
   }
 
   // BTN7 (ostatni przycisk) = Layer Switch
@@ -146,6 +146,7 @@ void config_set_factory_defaults(void) {
 
   g_config.crc32 = config_calculate_crc(&g_config);
   g_config_loaded = true;
+  g_config.global_text_platform = detect_platform();
 }
 
 // ==================== ODCZYT Z FLASH ====================
@@ -251,6 +252,7 @@ void config_init(void) {
   } else {
     printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
     config_set_factory_defaults();
+    g_config.global_text_platform = detect_platform();
     config_save();
   }
 }
