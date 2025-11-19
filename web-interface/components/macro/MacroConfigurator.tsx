@@ -297,9 +297,11 @@ export function MacroConfigurator() {
               id="layer-name"
               value={currentLayer.name}
               onChange={(e) =>
-                handleLayerNameChange(e.target.value.slice(0, 16), currentLayer.emoji)
+                handleLayerNameChange(e.target.value
+                  .replace(/[^a-zA-Z0-9 ]/g, '')
+                  .slice(0, 15), currentLayer.emoji)
               }
-              maxLength={16}
+              maxLength={15}
               placeholder="Enter layer name"
             />
           </div>
