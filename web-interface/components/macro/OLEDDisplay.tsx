@@ -119,6 +119,28 @@ export function OLEDDisplay({
     return sequence.map(formatKeyPress).join('+');
   };
 
+  const formatSequenceVim = (sequence?: KeyPress[]): string => {
+    if (!sequence || sequence.length === 0) return 'Empty';
+    let buf = '';
+    // pierwszy klawisz z modyfikatorami (vim like)
+    const first = sequence[0];
+    let mods = '';
+    if (first.modifiers & MODIFIERS.CTRL) mods += 'C'; // ctrl
+    if (first.modifiers & MODIFIERS.SHIFT) mods += 'S'; // shift
+    if (first.modifiers & MODIFIERS.ALT) mods += 'A'; // alt
+    if (first.modifiers & MODIFIERS.GUI) mods += 'M'; // meta (gui)
+    if (mods) {
+      buf += `<${mods}-${getKeyName(first.keycode)}>`;
+    } else {
+      buf += getKeyName(first.keycode);
+    }
+    // nastepne klawisze
+    for (let i = 1; i < sequence.length; i++) {
+      buf += '+' + getKeyName(sequence[i].keycode);
+    }
+    return buf;
+  };
+
   const getActionDetails = (macro: any) => {
     switch (macro.type) {
       case 0: // KeyPress
@@ -132,7 +154,7 @@ export function OLEDDisplay({
           macro.scriptPlatform === 1 ? 'Windows' : 'macOS';
         return `Script (${platform})`;
       case 4: // KeySequence
-        return `Sequence: ${formatSequence(macro.keySequence)}`;
+        return `Sequence: ${formatSequenceVim(macro.keySequence)}`;
       default:
         return 'Unknown Action';
     }
