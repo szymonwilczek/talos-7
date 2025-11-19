@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-extern uint8_t config_mode; // 0 - normal, 1 - config mode 
+extern uint8_t config_mode; // 0 - normal, 1 - config mode
 
 // inicjalizacja calego hardware
 void hardware_init(void);
@@ -14,7 +14,7 @@ void buttons_init(void);
 bool button_is_pressed(uint8_t button_index);
 void buttons_scan(void);
 
-// obsluga LED 
+// obsluga LED
 void leds_init(void);
 void led_set(uint8_t led_index, bool state);
 void led_toggle(uint8_t led_index);
@@ -26,5 +26,9 @@ void oled_clear(void);
 void oled_display_layer_info(uint8_t layer);
 void oled_display_button_preview(uint8_t layer, uint8_t button);
 void oled_update(void);
+
+// helpery
+bool map_char_to_hid(char c, uint8_t *keycode, uint8_t *modifiers);
+uint32_t utf8_to_codepoint(const char **str);
 
 #endif // HARDWARE_INTERFACE_H

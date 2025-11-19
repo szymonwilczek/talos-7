@@ -618,6 +618,143 @@ void leds_update_for_layer(uint8_t layer) {
   }
 }
 
+bool map_char_to_hid(char c, uint8_t *keycode, uint8_t *modifiers) {
+  *modifiers = 0;
+  if (c >= 'a' && c <= 'z') {
+    *keycode = c - 'a' + 4;
+  } else if (c >= 'A' && c <= 'Z') {
+    *keycode = c - 'A' + 4;
+    *modifiers = 0x02; // SHIFT
+  } else if (c >= '1' && c <= '9') {
+    *keycode = c - '1' + 30;
+  } else if (c == '0') {
+    *keycode = 39;
+  } else if (c == ' ') {
+    *keycode = 44;
+  } else if (c == '\n' || c == '\r') {
+    *keycode = 40; // Enter
+  } else if (c == '!') {
+    *keycode = 30; // 1
+    *modifiers = 0x02;
+  } else if (c == '@') {
+    *keycode = 31; // 2
+    *modifiers = 0x02;
+  } else if (c == '#') {
+    *keycode = 32; // 3
+    *modifiers = 0x02;
+  } else if (c == '$') {
+    *keycode = 33; // 4
+    *modifiers = 0x02;
+  } else if (c == '%') {
+    *keycode = 34; // 5
+    *modifiers = 0x02;
+  } else if (c == '^') {
+    *keycode = 35; // 6
+    *modifiers = 0x02;
+  } else if (c == '&') {
+    *keycode = 36; // 7
+    *modifiers = 0x02;
+  } else if (c == '*') {
+    *keycode = 37; // 8
+    *modifiers = 0x02;
+  } else if (c == '(') {
+    *keycode = 38; // 9
+    *modifiers = 0x02;
+  } else if (c == ')') {
+    *keycode = 39; // 0
+    *modifiers = 0x02;
+  } else if (c == '_') {
+    *keycode = 45; // -
+    *modifiers = 0x02;
+  } else if (c == '+') {
+    *keycode = 46; // =
+    *modifiers = 0x02;
+  } else if (c == '{') {
+    *keycode = 47; // [
+    *modifiers = 0x02;
+  } else if (c == '}') {
+    *keycode = 48; // ]
+    *modifiers = 0x02;
+  } else if (c == '|') {
+    *keycode = 49; // \
+    *modifiers = 0x02;
+  } else if (c == ':') {
+    *keycode = 51; // ;
+    *modifiers = 0x02;
+  } else if (c == '"') {
+    *keycode = 52; // '
+    *modifiers = 0x02;
+  } else if (c == '~') {
+    *keycode = 53; // `
+    *modifiers = 0x02;
+  } else if (c == '<') {
+    *keycode = 54; // ,
+    *modifiers = 0x02;
+  } else if (c == '>') {
+    *keycode = 55; // .
+    *modifiers = 0x02;
+  } else if (c == '?') {
+    *keycode = 56; // /
+    *modifiers = 0x02;
+  } else if (c == '\t') {
+    *keycode = 43; // Tab
+  } else if (c == '\b') {
+    *keycode = 42; // Backspace
+  } else if (c == '.') {
+    *keycode = 55;
+  } else if (c == ',') {
+    *keycode = 54;
+  } else if (c == '-') {
+    *keycode = 45;
+  } else if (c == '=') {
+    *keycode = 46;
+  } else if (c == '[') {
+    *keycode = 47;
+  } else if (c == ']') {
+    *keycode = 48;
+  } else if (c == '\\') {
+    *keycode = 49;
+  } else if (c == ';') {
+    *keycode = 51;
+  } else if (c == '\'') {
+    *keycode = 52;
+  } else if (c == '`') {
+    *keycode = 53;
+  } else if (c == '/') {
+    *keycode = 56;
+  } else {
+    return false; // Nieobsługiwany znak
+  }
+  return true;
+}
+
+uint32_t utf8_to_codepoint(const char **str) {
+  unsigned char c = **str;
+  (*str)++;
+  if (c < 0x80)
+    return c;
+  if (c < 0xC0)
+    return 0; // Invalid
+  int len = 0;
+  if (c < 0xE0)
+    len = 1;
+  else if (c < 0xF0)
+    len = 2;
+  else if (c < 0xF8)
+    len = 3;
+  else
+    return 0;
+  uint32_t code = c & (0xFF >> (len + 1));
+  for (int i = 0; i < len; i++) {
+    c = **str;
+    (*str)++;
+    if ((c & 0xC0) != 0x80)
+      return 0;
+    code = (code << 6) | (c & 0x3F);
+  }
+  return code;
+}
+
 // ==================== INIT ====================
 
 void hardware_init(void) {
