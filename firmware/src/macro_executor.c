@@ -203,12 +203,20 @@ void execute_macro(uint8_t layer, uint8_t button) {
         uint8_t keycode, modifiers;
         if (map_char_to_hid((char)code, &keycode, &modifiers)) {
           cdc_log("[HID] ASCII: key=%d mods=%d\n", keycode, modifiers);
+
           while (!tud_hid_ready())
             tud_task();
+
           uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
           tud_hid_keyboard_report(1, modifiers, report);
+
           cdc_log("[HID] Sent ASCII press\n");
+
           sleep_ms(2);
+
+          while (!tud_hid_ready())
+            tud_task();
+
           tud_hid_keyboard_report(1, 0, NULL);
           cdc_log("[HID] Sent ASCII release\n");
           sleep_ms(10);
@@ -219,6 +227,8 @@ void execute_macro(uint8_t layer, uint8_t button) {
         send_unicode(detected_os, code);
       }
     }
+    while (!tud_hid_ready())
+      tud_task();
     tud_hid_keyboard_report(1, 0, NULL);
     cdc_log("[EXECUTOR] Macro finished\n");
     break;
