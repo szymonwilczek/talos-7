@@ -238,7 +238,7 @@ const char *format_sequence_short(key_step_t *sequence, uint8_t len) {
   if (len == 0)
     return buf;
 
-  // pierwszey klawisz + modyfikatory (vim like)
+  // pierwszy klawisz + modyfikatory (vim like)
   char mods[8] = "";
   if (sequence[0].modifiers & 1)
     strcat(mods, "C"); // ctrl
