@@ -380,44 +380,61 @@ void oled_display_layer_info(uint8_t layer) {
 
   config_data_t *config = config_get();
 
-  // tytul na gorze (y=0)
-  oled_draw_emoji(0, 0, config->layer_emojis[layer]);
+  // tytul
   char line1[32];
   if (strlen(config->layer_names[layer]) > 0) {
-    // nazwa warstwy
     snprintf(line1, sizeof(line1), "%s", config->layer_names[layer]);
   } else {
-    // fallback: Layer X/4
     snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
   }
-  oled_draw_string(15, 0, line1);
+
+  int title_len = strlen(line1);
+  int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
+  int title_x = 0;
+  title_x = (OLED_WIDTH - title_width) / 2;
+  if (title_x < 0)
+    title_x = 0;
+  oled_draw_emoji(title_x, 0, config->layer_emojis[layer]);
+  oled_draw_string(title_x + 15, 0, line1);
 
   // separator
   oled_draw_line(15);
 
-  // rzad 1: przyciski 1 2 3 (y=16 dla label, y=24 dla emoji)
-  oled_draw_string(0, 24, "[1]");
-  oled_draw_emoji(18, 24, config->macros[layer][0].emoji_index); // Obok [1]
+  // wycentrowany grid przyciskow
+  int gap = 12;                                     // odstep miedzy przyciskami
+  int button_width = 26 + gap;                      // 26px + gap
+  int grid_width = 3 * button_width - gap;          // 90px (ostatni bez gap)
+  int grid_x_start = (OLED_WIDTH - grid_width) / 2; // ~19
+  int row1_y = 24;
+  int row2_y = 40;
+  int row3_y = 56;
 
-  oled_draw_string(42, 24, "[2]");
-  oled_draw_emoji(60, 24, config->macros[layer][1].emoji_index); // Obok [2]
+  // rzad 1: [1] [2] [3]
+  oled_draw_string(grid_x_start, row1_y, "[1]");
+  oled_draw_emoji(grid_x_start + 18, row1_y,
+                  config->macros[layer][0].emoji_index);
+  oled_draw_string(grid_x_start + button_width, row1_y, "[2]");
+  oled_draw_emoji(grid_x_start + button_width + 18, row1_y,
+                  config->macros[layer][1].emoji_index);
+  oled_draw_string(grid_x_start + 2 * button_width, row1_y, "[3]");
+  oled_draw_emoji(grid_x_start + 2 * button_width + 18, row1_y,
+                  config->macros[layer][2].emoji_index);
 
-  oled_draw_string(84, 24, "[3]");
-  oled_draw_emoji(102, 24, config->macros[layer][2].emoji_index); // Obok [3]
+  // rzad 2: [4] [5] [6]
+  oled_draw_string(grid_x_start, row2_y, "[4]");
+  oled_draw_emoji(grid_x_start + 18, row2_y,
+                  config->macros[layer][3].emoji_index);
+  oled_draw_string(grid_x_start + button_width, row2_y, "[5]");
+  oled_draw_emoji(grid_x_start + button_width + 18, row2_y,
+                  config->macros[layer][4].emoji_index);
+  oled_draw_string(grid_x_start + 2 * button_width, row2_y, "[6]");
+  oled_draw_emoji(grid_x_start + 2 * button_width + 18, row2_y,
+                  config->macros[layer][5].emoji_index);
 
-  // rzad 2: przyciski 4 5 6 (y=32 dla label, y=40 dla emoji)
-  oled_draw_string(0, 40, "[4]");
-  oled_draw_emoji(18, 40, config->macros[layer][3].emoji_index);
-
-  oled_draw_string(42, 40, "[5]");
-  oled_draw_emoji(60, 40, config->macros[layer][4].emoji_index);
-
-  oled_draw_string(84, 40, "[6]");
-  oled_draw_emoji(102, 40, config->macros[layer][5].emoji_index);
-
-  // layer switch na dole (y=56)
-  oled_draw_string(0, 56, "[7]");
-  oled_draw_emoji(18, 56, config->macros[layer][6].emoji_index);
+  // rzad 3: [7]
+  int center_x = (OLED_WIDTH - 26) / 2; // 26px dla [7] bez gap
+  oled_draw_string(center_x, row3_y, "[7]");
+  oled_draw_emoji(center_x + 18, row3_y, config->macros[layer][6].emoji_index);
 
   oled_update();
 }
