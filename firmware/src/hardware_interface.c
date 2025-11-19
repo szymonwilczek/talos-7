@@ -202,6 +202,49 @@ static bool button_prev_states[NUM_BUTTONS] = {false};
 // LED states
 static bool led_states[NUM_BUTTONS] = {false};
 
+const char *get_key_name(uint8_t keycode) {
+  static const char *key_names[] = {
+      "A",     "B",   "C",         "D",   "E",     "F",   "G",   "H",   "I",
+      "J",     "K",   "L",         "M",   "N",     "O",   "P",   "Q",   "R",
+      "S",     "T",   "U",         "V",   "W",     "X",   "Y",   "Z",   "1",
+      "2",     "3",   "4",         "5",   "6",     "7",   "8",   "9",   "0",
+      "Enter", "Esc", "Backspace", "Tab", "Space", "F1",  "F2",  "F3",  "F4",
+      "F5",    "F6",  "F7",        "F8",  "F9",    "F10", "F11", "F12", "→",
+      "←",     "↓",   "↑"};
+  if (keycode >= 4 && keycode <= 29)
+    return key_names[keycode - 4]; // A-Z
+  if (keycode >= 30 && keycode <= 39)
+    return key_names[keycode - 30 + 26]; // 1-0
+  if (keycode == 40)
+    return "Enter";
+  if (keycode == 41)
+    return "Esc";
+  if (keycode == 42)
+    return "Backspace";
+  if (keycode == 43)
+    return "Tab";
+  if (keycode == 44)
+    return "Space";
+  if (keycode >= 58 && keycode <= 69)
+    return key_names[keycode - 58 + 36]; // F1-F12
+  if (keycode >= 79 && keycode <= 82)
+    return key_names[keycode - 79 + 48]; // arrows
+  return "Key";
+}
+
+const char *format_sequence_short(key_step_t *sequence, uint8_t len) {
+  static char buf[32];
+  buf[0] = '\0';
+  for (int i = 0; i < len && i < 3; i++) { // max 3 dla oled
+    if (i > 0)
+      strcat(buf, "+");
+    strcat(buf, get_key_name(sequence[i].keycode));
+  }
+  if (len > 3)
+    strcat(buf, "...");
+  return buf;
+}
+
 // ==================== OLED LOW-LEVEL ====================
 
 static void oled_write_cmd(uint8_t cmd) {
@@ -445,35 +488,56 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
 
-  oled_draw_emoji(0, 8, macro->emoji_index);
+  // emoji + nazwa przycisku
   char title[32];
-  snprintf(title, sizeof(title), "Button %d", button + 1);
-  oled_draw_string(12, 8, title);
+  if (strlen(macro->name) > 0) {
+    snprintf(title, sizeof(title), "%s", macro->name);
+  } else {
+    snprintf(title, sizeof(title), "Button %d", button + 1);
+  }
+  int title_len = strlen(title);
+  int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
+  int title_x = (OLED_WIDTH - title_width) / 2;
+  if (title_x < 0)
+    title_x = 0;
+  oled_draw_emoji(title_x, 0, macro->emoji_index);
+  oled_draw_string(title_x + 15, 0, title);
 
   // separator
-  oled_draw_line(25);
+  oled_draw_line(16);
 
-  const char *type_str = "";
+  // szczegoly akcji przycisku
+  char details[64];
   switch (macro->type) {
   case MACRO_TYPE_KEY_PRESS:
-    type_str = "Key";
+    snprintf(details, sizeof(details), "Key: %s", get_key_name(macro->value));
     break;
   case MACRO_TYPE_TEXT_STRING:
-    type_str = "Text";
+    snprintf(details, sizeof(details), "Text: \"%s\"", macro->macro_string);
     break;
   case MACRO_TYPE_LAYER_TOGGLE:
-    type_str = "Layer";
+    snprintf(details, sizeof(details), "Layer Toggle to Layer %d",
+             macro->value + 1);
     break;
   case MACRO_TYPE_SCRIPT:
-    type_str = "Script";
+    snprintf(details, sizeof(details), "Script (%s)",
+             macro->script_platform == 0   ? "Linux"
+             : macro->script_platform == 1 ? "Windows"
+                                           : "macOS");
     break;
   case MACRO_TYPE_KEY_SEQUENCE:
-    type_str = "Sequence";
+    // skrocona wersja
+    snprintf(details, sizeof(details), "Sequence: %s",
+             format_sequence_short(macro->sequence, macro->sequence_length));
+    break;
+  default:
+    snprintf(details, sizeof(details), "Unknown Action");
     break;
   }
-  int len = strlen(type_str);
+  // wycentrowane szczegoly
+  int len = strlen(details);
   int x = (OLED_WIDTH - len * 6) / 2;
-  oled_draw_string(x, 48, type_str); // wycentrowany
+  oled_draw_string(x, 40, details);
 
   oled_update();
 }
