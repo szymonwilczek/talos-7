@@ -235,9 +235,28 @@ const char *get_key_name(uint8_t keycode) {
 const char *format_sequence_short(key_step_t *sequence, uint8_t len) {
   static char buf[32];
   buf[0] = '\0';
-  for (int i = 0; i < len && i < 3; i++) { // max 3 dla oled
-    if (i > 0)
-      strcat(buf, "+");
+  if (len == 0)
+    return buf;
+
+  // pierwszey klawisz + modyfikatory (vim like)
+  char mods[8] = "";
+  if (sequence[0].modifiers & 1)
+    strcat(mods, "C"); // ctrl
+  if (sequence[0].modifiers & 2)
+    strcat(mods, "S"); // shift
+  if (sequence[0].modifiers & 4)
+    strcat(mods, "A"); // alt
+  if (sequence[0].modifiers & 8)
+    strcat(mods, "M"); // meta (gui)
+  if (strlen(mods) > 0) {
+    sprintf(buf, "<%s-%s>", mods, get_key_name(sequence[0].keycode));
+  } else {
+    strcpy(buf, get_key_name(sequence[0].keycode));
+  }
+
+  // nastepne klawisze
+  for (int i = 1; i < len && i < 3; i++) {
+    strcat(buf, "+");
     strcat(buf, get_key_name(sequence[i].keycode));
   }
   if (len > 3)
