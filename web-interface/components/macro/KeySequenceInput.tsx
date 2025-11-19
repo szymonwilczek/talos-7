@@ -24,8 +24,8 @@ export function KeySequenceInput({ sequence, onChange }: KeySequenceInputProps) 
     e.preventDefault();
     e.stopPropagation();
 
-    if (sequence.length >= 5) {
-      console.log('Maximum sequence length reached');
+    if (sequence.length >= 3) {
+      console.log('Maximum sequence length reached (3 keys)');
       setRecording(false);
       return;
     }
@@ -154,7 +154,7 @@ export function KeySequenceInput({ sequence, onChange }: KeySequenceInputProps) 
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Key Sequence Steps ({sequence.length}/5)</Label>
+          <Label>Key Sequence Steps ({sequence.length}/3)</Label>
           <Button
             type="button"
             variant="ghost"

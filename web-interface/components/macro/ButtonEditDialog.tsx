@@ -141,7 +141,7 @@ export function ButtonEditDialog({
               id="button-name"
               value={macroName}
               onChange={(e) => setMacroName(e.target.value.slice(0, 16))}
-              maxLength={16}
+              maxLength={15}
               placeholder="Enter button name"
             />
           </div>
