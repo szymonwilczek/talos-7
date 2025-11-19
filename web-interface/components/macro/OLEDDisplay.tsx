@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useEffect, useRef } from 'react';
 
 interface OLEDDisplayProps {
   layer: LayerConfig;
@@ -14,6 +15,69 @@ interface OLEDDisplayProps {
   selectedButton: number | null;
   hoveredButton: number | null;
 }
+
+const emoji_strings = [
+  "🎮", "💼", "🏠", "🔧", "⚡", "📧", "💻", "🎵", "📝", "☕", "🗡️", "❤️",
+  "🔔", "🧪", "🔒", "☂️", "🦕", "👻", "🔫", "⏳", "🌷"
+];
+
+const getEmojiIndex = (emoji: string): number => {
+  const index = emoji_strings.indexOf(emoji);
+  return index >= 0 ? index : 0; // gamepad
+};
+
+// emoji z firmware
+const emojiBitmaps: number[][] = [
+  [0x38, 0x44, 0x94, 0x44, 0x46, 0x95, 0x44, 0x38], // 0: 🎮
+  [0x7c, 0x46, 0x4a, 0x5a, 0x5a, 0x4a, 0x46, 0x7c], // 1: 💼
+  [0x10, 0xf8, 0x8c, 0xe6, 0x86, 0x8c, 0xf8, 0x10], // 2: 🏠
+  [0x00, 0x00, 0xc7, 0x7c, 0x7c, 0xc7, 0x00, 0x00], // 3: 🔧
+  [0x00, 0x80, 0xc8, 0x6c, 0x3e, 0x1b, 0x09, 0x00], // 4: ⚡
+  [0x00, 0x3e, 0x41, 0x5d, 0x51, 0x4e, 0x20, 0x00], // 5: 📧
+  [0x3e, 0x22, 0xa2, 0xe2, 0xe2, 0xa2, 0x22, 0x3e], // 6: 💻
+  [0xc0, 0xfe, 0xc2, 0x02, 0x62, 0x7e, 0x60, 0x00], // 7: 🎵
+  [0xc0, 0xa0, 0x50, 0x28, 0x1c, 0x0a, 0x07, 0x03], // 8: 📝
+  [0x7e, 0xc2, 0xc2, 0xc2, 0xc2, 0xfe, 0x64, 0x3c], // 9: ☕
+  [0xd8, 0xf0, 0x78, 0x7c, 0x5e, 0x0f, 0x07, 0x03], // 10: 🗡️
+  [0x00, 0x0c, 0x12, 0x22, 0x44, 0x22, 0x12, 0x0c], // 11: ❤️
+  [0x40, 0x7c, 0xc6, 0xc6, 0x7c, 0x40, 0x00, 0x00], // 12: 🔔
+  [0x40, 0xa0, 0x91, 0x8f, 0x8f, 0x91, 0xa0, 0x40], // 13: 🧪
+  [0x78, 0xfe, 0xf9, 0xc9, 0xf9, 0xfe, 0x78, 0x00], // 14: 🔒
+  [0x0c, 0x0e, 0x4f, 0x8f, 0x7f, 0x0f, 0x0e, 0x0c], // 15: ☂️
+  [0x06, 0x15, 0xff, 0x7d, 0xff, 0x40, 0x30, 0x00], // 16: 🦕
+  [0x3e, 0x45, 0x47, 0xf5, 0xcf, 0x83, 0x82, 0x84], // 17: 👻
+  [0x07, 0x06, 0x06, 0x0e, 0x16, 0x96, 0xfe, 0x7c], // 18: 🔫
+  [0x82, 0xee, 0x92, 0x92, 0x92, 0xee, 0x82, 0x00], // 19: ⏳
+  [0x20, 0x4f, 0x9e, 0xff, 0x9e, 0x4f, 0x20, 0x00], // 20: 🌷
+];
+
+const EmojiCanvas: React.FC<{ emojiIndex: number; color: string, size?: number }> = ({ emojiIndex, color, size = 16 }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const bitmap = emojiBitmaps[emojiIndex] || emojiBitmaps[0];
+    const scale = size / 8;
+
+    ctx.clearRect(0, 0, size, size);
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        if (bitmap[x] & (1 << y)) {
+          ctx.fillStyle = color;
+          ctx.fillRect(x * scale, y * scale, scale, scale);
+        }
+      }
+    }
+
+    ctx.imageSmoothingEnabled = false;
+  }, [emojiIndex, size]);
+
+  return <canvas ref={canvasRef} width={size} height={size} className="inline-block" />;
+};
 
 export function OLEDDisplay({
   layer,
@@ -75,28 +139,36 @@ export function OLEDDisplay({
   };
 
   return (
-    <Card className="w-full max-w-2xl h-[290px] bg-black border-2 border-foreground/30">
-      <CardContent className="h-full p-4 text-white text-sm font-mono overflow-auto">
+    <Card className="w-[252px] h-[128px] md:w-[378px] md:h-[192px] lg:w-[350px] lg:h-[210px] bg-[#000000] border-2 border-foreground/30 font-mono" style={{
+      fontFamily: 'PixelMix, monospace',
+      fontSize: '12px',
+      lineHeight: '1',
+      WebkitFontSmoothing: 'none',
+      MozOsxFontSmoothing: 'none',
+      textRendering: 'optimizeSpeed',
+      fontSynthesis: 'none',
+      imageRendering: 'pixelated'
+    }}>
+      <CardContent className="h-full p-4 text-[#00ffff] text-sm overflow-hidden">
         {activeButton !== null ? (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 -mt-4">
+              <div className='flex items-center gap-2'>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[activeButton].emoji)} color="#00ffff" size={20} />
+                <span className='max-md:text-sm max-lg:text-md text-xl text-[#00ffff]'>{layer.macros[activeButton].name || `Button ${activeButton + 1}`}</span>
+              </div>
               <Badge variant={selectedButton !== null ? 'default' : 'outline'}>
                 {selectedButton !== null ? 'Editing' : 'Preview'}
               </Badge>
-              <span>Button {activeButton + 1}</span>
             </div>
-            <Separator className="bg-gray-700" />
-            <div className="text-center space-y-2">
-              <div className="text-5xl">{layer.macros[activeButton].emoji || ''}</div>
-              <div className="text-lg">{layer.macros[activeButton].name}</div>
-              <div className="text-xs text-gray-400">
+            <Separator className="bg-[#00ffff]" />
+            <div className="flex items-center justify-center text-center mt-12 space-y-2">
+              <div className="text-xl text-[#fff000]">
                 {getActionDetails(layer.macros[activeButton])}
               </div>
             </div>
-
-            {/* Szczegóły dla Script */}
             {layer.macros[activeButton].type === 3 && (
-              <div className="mt-4">
+              <div className="mt-1">
                 <Label className="text-xs text-gray-400 block mb-2">Script Content (first 50 chars):</Label>
                 <Textarea
                   value={layer.macros[activeButton].script?.substring(0, 50) || ''}
@@ -108,32 +180,52 @@ export function OLEDDisplay({
             )}
           </div>
         ) : (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <span className="text-xl">{layer.emoji}</span>
-                <span>{layer.name}</span>
-              </span>
-              <Badge variant="outline">
-                Layer {layerIndex + 1}/{totalLayers}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 -mt-4">
+              <div className='flex items-center gap-2'>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.emoji)} color="#00ffff" size={20} />
+                <span className='max-md:text-sm max-lg:text-md text-xl'>{layer.name || `Layer ${layerIndex + 1}/${totalLayers}`}</span>
+              </div>
+              <Badge variant={selectedButton !== null ? 'default' : 'outline'}>
+                {selectedButton !== null ? 'Editing' : 'Preview'}
               </Badge>
             </div>
-            <Separator className="bg-gray-700" />
-            <div className="space-y-1">
-              {layer.macros.slice(0, 6).map((macro, idx) =>
-                macro.name !== 'Empty' ? (
-                  <div key={idx} className="flex items-center gap-2 text-xs">
-                    <Badge variant="secondary">{idx + 1}</Badge>
-                    <span>{macro.emoji}</span>
-                    <span>{macro.name}</span>
-                    <span className="text-gray-400">({getActionDetails(macro)})</span>
-                  </div>
-                ) : null
-              )}
+            <Separator className="bg-[#00ffff]" />
+            <div className="grid grid-cols-3 gap-2 text-start">
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[1]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[0].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[2]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[1].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[3]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[2].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[4]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[3].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[5]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[4].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="flex flex-row items-center justify-center">
+                <span className="max-md:text-sm max-lg:text-md text-xl">[6]</span>
+                <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[5].emoji)} color="#00ffff" size={20} />
+              </div>
+              <div className="col-span-3 flex justify-center">
+                <div className="flex flex-row items-center justify-center text-[#fff000]">
+                  <span className="max-md:text-sm max-lg:text-md text-xl">[7]</span>
+                  <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[6].emoji)} color="#fff000" size={20} />
+                </div>
+              </div>
             </div>
           </div>
         )}
       </CardContent>
-    </Card>
+    </Card >
   );
 }
