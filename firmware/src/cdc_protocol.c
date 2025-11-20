@@ -170,34 +170,37 @@ static void process_command(const char *cmd_input) {
                                   macro->terminal_shortcut[i].modifiers);
           }
 
-          // tylko pierwsze 100 znakow
-          size_t script_len = strlen(macro->script);
-          size_t send_len = script_len > 100 ? 100 : script_len;
+          // PELNA tresc skryptu strumieniowo
+          // najpierw naglowek linii
+          char header[64];
+          snprintf(header, sizeof(header), "SCRIPT_DATA|%d|%d|%d|", layer, btn,
+                   macro->script_platform);
+          tud_cdc_write_str(header);
 
-          char escaped[256];
-          int escaped_len = 0;
-          for (size_t i = 0; i < send_len; i++) {
+          // tresc znak po znaku bezposrednio do usb
+          size_t len = strlen(macro->script);
+          for (size_t i = 0; i < len; i++) {
             char c = macro->script[i];
-            if (c == '\n') {
-              escaped[escaped_len++] = '\\';
-              escaped[escaped_len++] = 'n';
-            } else if (c == '\r') {
-              escaped[escaped_len++] = '\\';
-              escaped[escaped_len++] = 'r';
-            } else if (c == '|') {
-              escaped[escaped_len++] = '\\';
-              escaped[escaped_len++] = '|';
-            } else if (c == '\\') {
-              escaped[escaped_len++] = '\\';
-              escaped[escaped_len++] = '\\';
-            } else {
-              escaped[escaped_len++] = c;
-            }
-          }
-          escaped[escaped_len] = '\0';
+            if (c == '\n')
+              tud_cdc_write_str("\\n");
+            else if (c == '\r')
+              tud_cdc_write_str("\\r");
+            else if (c == '|')
+              tud_cdc_write_str("\\|");
+            else if (c == '\\')
+              tud_cdc_write_str("\\\\");
+            else
+              tud_cdc_write_char(c);
 
-          cdc_send_response_fmt("SCRIPT_DATA|%d|%d|%d|%s", layer, btn,
-                                macro->script_platform, escaped);
+            // flushowanie bufora raz na jakis czas zeby nie zapchac FIFO
+            // TinyUSB
+            if (i % 64 == 0)
+              tud_task();
+          }
+
+          // koniec linii SCRIPT_DATA
+          tud_cdc_write_str("\r\n");
+          tud_cdc_write_flush();
         } else if (macro->type == MACRO_TYPE_KEY_SEQUENCE &&
                    macro->sequence_length > 0) {
           cdc_send_response_fmt("MACRO_SEQ|%d|%d|%s|%d|%d", layer, btn,
