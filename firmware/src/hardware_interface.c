@@ -229,6 +229,14 @@ const char *get_key_name(uint8_t keycode) {
     return key_names[keycode - 58 + 36]; // F1-F12
   if (keycode >= 79 && keycode <= 82)
     return key_names[keycode - 79 + 48]; // arrows
+  if (keycode == 224)
+    return "Ctrl";
+  if (keycode == 225)
+    return "Shift";
+  if (keycode == 226)
+    return "Alt";
+  if (keycode == 227)
+    return "Meta";
   return "Key";
 }
 
