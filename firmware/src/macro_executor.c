@@ -151,6 +151,77 @@ void send_unicode(uint8_t platform, uint32_t codepoint) {
   tud_hid_keyboard_report(1, 0, NULL);
 }
 
+static void press_sequence(uint8_t modifiers, uint8_t keycode) {
+  // 1. modyfikatory + klawisz
+  while (!tud_hid_ready())
+    tud_task();
+
+  uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
+  tud_hid_keyboard_report(1, modifiers, report);
+
+  // solidne przytrzymanie, zeby system zarejestrowal skrot
+  sleep_ms(100);
+
+  // 2. pusc klawisz (zostaw modyfikatory)
+  if (keycode != 0) {
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_keyboard_report(1, modifiers, NULL);
+    sleep_ms(20);
+  }
+
+  // 3. ANTI-SPOTLIGHT TRICK
+  // jesli wsrod modyfikatorow jest GUI (Meta/Command), docisniecie na chwile
+  // CTRL system pomysli, ze konczona jest sekwencja "Meta+Ctrl" ktora nie
+  // otwiera menu na linuxach
+  if (modifiers & (MODIFIER_LEFT_GUI | MODIFIER_RIGHT_GUI)) {
+    uint8_t safe_mods = modifiers | MODIFIER_LEFT_CTRL;
+
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_keyboard_report(1, safe_mods, NULL);
+    sleep_ms(20);
+  }
+
+  // 4. pusc wszystko
+  while (!tud_hid_ready())
+    tud_task();
+  tud_hid_keyboard_report(1, 0, NULL);
+
+  sleep_ms(50);
+}
+
+// wpisuje tekst znak po znaku (obsluguje unicode i ascii)
+static void type_text_content(const char *text, uint8_t platform) {
+  const char *p = text;
+  while (*p) {
+    uint32_t code = utf8_to_codepoint(&p);
+    if (code == 0)
+      continue;
+
+    if (code < 128) {
+      // ascii
+      uint8_t keycode, modifiers;
+      if (map_char_to_hid((char)code, &keycode, &modifiers)) {
+        while (!tud_hid_ready())
+          tud_task();
+
+        uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
+        tud_hid_keyboard_report(1, modifiers, report);
+        sleep_ms(2);
+
+        while (!tud_hid_ready())
+          tud_task();
+        tud_hid_keyboard_report(1, 0, NULL);
+        sleep_ms(2);
+      }
+    } else {
+      // unicode - wymaga wczesniejszej definicji send_unicode
+      send_unicode(platform, code);
+    }
+  }
+}
+
 void execute_macro(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
@@ -244,9 +315,66 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_SCRIPT: {
-    printf("[SCRIPT] Executing script (platform=%d):\n%s\n",
-           macro->script_platform, macro->script);
-    // TODO
+    uint8_t platform = macro->script_platform;
+    cdc_log("[SCRIPT] Executing script (platform=%d)\n", platform);
+
+    if (platform == 0) { // LINUX
+      // 1. wykonaj skrot do terminala
+      if (macro->terminal_shortcut_length > 0) {
+        for (int i = 0; i < macro->terminal_shortcut_length; i++) {
+          press_sequence(macro->terminal_shortcut[i].modifiers,
+                         macro->terminal_shortcut[i].keycode);
+
+          // minimalny odstep miedzy kolejnymi skrotami (jesli sekwencja ma > 1)
+          if (i < macro->terminal_shortcut_length - 1)
+            sleep_ms(100);
+        }
+      } else {
+        // fallback: ctrl+alt+t
+        press_sequence(0x05, 23);
+      }
+
+      // zwiekszony czas na otwarcie okna terminala
+      sleep_ms(1500);
+
+      // 2. utworz plik (heredoc)
+      type_text_content("cat << 'EOF' > /tmp/m.sh\n", platform);
+      sleep_ms(200);
+
+      // 3. wpisz tresc
+      type_text_content(macro->script, platform);
+
+      // 4. zamknij plik (enter -> eof -> enter)
+      press_sequence(0, 40); // enter
+      type_text_content("EOF\n", platform);
+      sleep_ms(200);
+
+      // 5. uruchom
+      type_text_content("chmod +x /tmp/m.sh && /tmp/m.sh && rm /tmp/m.sh\n",
+                        platform);
+
+    } else if (platform == 1) { // WINDOWS
+      press_sequence(0x08, 21); // Win + R
+      sleep_ms(500);
+      type_text_content("powershell\n", platform);
+      sleep_ms(1500);
+      type_text_content(macro->script, platform);
+      press_sequence(0, 40);
+
+    } else if (platform == 2) { // MACOS
+      press_sequence(0x08, 44); // Cmd + Space
+      sleep_ms(300);
+      type_text_content("Terminal", platform);
+      sleep_ms(100);
+      press_sequence(0, 40);
+      sleep_ms(1000);
+      type_text_content("cat << 'EOF' > /tmp/m.sh\n", platform);
+      type_text_content(macro->script, platform);
+      press_sequence(0, 40);
+      type_text_content("EOF\n", platform);
+      sleep_ms(100);
+      type_text_content("sh /tmp/m.sh && rm /tmp/m.sh\n", platform);
+    }
     break;
   }
 
@@ -254,28 +382,7 @@ void execute_macro(uint8_t layer, uint8_t button) {
     cdc_log("[HID] Executing key sequence (%d steps)\n",
             macro->sequence_length);
     for (int i = 0; i < macro->sequence_length; i++) {
-      key_step_t *step = &macro->sequence[i];
-      uint8_t keycode[6] = {0};
-      keycode[0] = step->keycode;
-
-      cdc_log("[HID] Step %d: mods=0x%02X key=0x%02X\n", i, step->modifiers,
-              step->keycode);
-
-      // czekanie na gotowosc HID przed "press"
-      while (!tud_hid_ready()) {
-        tud_task();
-        sleep_ms(1);
-      }
-      tud_hid_keyboard_report(1, step->modifiers, keycode);
-      sleep_ms(50);
-
-      // czekanie na gotowosc HID przed "release"
-      while (!tud_hid_ready()) {
-        tud_task();
-        sleep_ms(1);
-      }
-      tud_hid_keyboard_report(1, 0, NULL);
-      sleep_ms(20);
+      press_sequence(macro->sequence[i].modifiers, macro->sequence[i].keycode);
     }
     break;
   }

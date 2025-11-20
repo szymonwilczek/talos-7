@@ -103,6 +103,7 @@ export class SerialService {
     button: number,
     platform: number,
     scriptContent: string,
+    terminalShortcut: KeyPress[],
   ): Promise<void> {
     if (!this.port || !this.writer || !this.reader) {
       throw new Error("Not connected");
@@ -118,7 +119,15 @@ export class SerialService {
       );
     }
 
-    const command = `SET_SCRIPT|${layer}|${button}|${platform}|${scriptSize}\n`;
+    // format: len|k,m,k,m
+    const shortcutLen = terminalShortcut.length;
+    const shortcutStr = terminalShortcut
+      .map((s) => `${s.keycode},${s.modifiers}`)
+      .join(",");
+
+    // SET_MACRO_SCRIPT|l|b|p|size|sc_len|sc_data
+    const command = `SET_MACRO_SCRIPT|${layer}|${button}|${platform}|${scriptSize}|${shortcutLen}|${shortcutStr}\n`;
+
     await this.writeCommand(command);
 
     const readyResponse = await this.readLine(2000);
@@ -126,7 +135,6 @@ export class SerialService {
       throw new Error("Device not ready to receive script");
     }
 
-    // send raw script bytes
     await this.writer.write(scriptBytes);
     const response = await this.readLine(5000);
     if (!response.startsWith("OK")) {
@@ -343,6 +351,23 @@ export class SerialService {
           continue;
         }
 
+        if (line.startsWith("SCRIPT_SHORTCUT|")) {
+          const parts = line.split("|");
+          const layer = parseInt(parts[1]);
+          const button = parseInt(parts[2]);
+          const keycode = parseInt(parts[4]);
+          const modifiers = parseInt(parts[5]);
+
+          if (!config.layers[layer].macros[button].terminalShortcut) {
+            config.layers[layer].macros[button].terminalShortcut = [];
+          }
+          config.layers[layer].macros[button].terminalShortcut!.push({
+            keycode,
+            modifiers,
+          });
+          continue;
+        }
+
         // MACRO|layer|button|type|value|string|name|emoji[|platform|size]
         if (line.startsWith("MACRO|")) {
           const parts = line.split("|");
@@ -364,14 +389,9 @@ export class SerialService {
               emoji,
             };
 
-            // if SCRIPT type, next line will be SCRIPT_DATA|
-            if (type === 3 && parts.length >= 10) {
+            if (type === 3 && parts.length >= 9) {
               macro.scriptPlatform = parseInt(parts[8]);
-              const scriptSize = parseInt(parts[9]);
               pendingScriptMacro = { layer, button };
-              console.log(
-                `  ➜ Expecting script (${scriptSize} bytes) on next line`,
-              );
             }
 
             config.layers[layer].macros[button] = macro;

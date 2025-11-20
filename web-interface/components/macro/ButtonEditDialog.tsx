@@ -53,6 +53,7 @@ export function ButtonEditDialog({
   const [scriptPlatform, setScriptPlatform] = useState<ScriptPlatform>(ScriptPlatform.LINUX);
   const [scriptFile, setScriptFile] = useState<File | null>(null);
   const [keySequence, setKeySequence] = useState<KeyPress[]>([]);
+  const [terminalShortcut, setTerminalShortcut] = useState<KeyPress[]>([]);
 
   const canSelectLayerToggle = !layerMacros?.some(
     (m, idx) => m.type === MacroType.LAYER_TOGGLE && idx !== buttonIndex
@@ -66,6 +67,7 @@ export function ButtonEditDialog({
       setMacroValue(macro.value);
       setMacroString(macro.macroString);
       setKeySequence(macro.keySequence || []);
+      setTerminalShortcut(macro.terminalShortcut || []);
     }
   }, [macro]);
 
@@ -91,6 +93,7 @@ export function ButtonEditDialog({
     if (macroType === MacroType.SCRIPT) {
       savedMacro.script = scriptContent;
       savedMacro.scriptPlatform = scriptPlatform;
+      savedMacro.terminalShortcut = terminalShortcut;
     }
 
     onSave(buttonIndex, savedMacro);
@@ -230,6 +233,21 @@ export function ButtonEditDialog({
                   </SelectContent>
                 </Select>
               </div>
+
+              {scriptPlatform === ScriptPlatform.LINUX && (
+                <div className="space-y-2">
+                  <Label>Terminal Shortcut</Label>
+                  <div className="p-2 border rounded-md bg-muted/20">
+                    <KeySequenceInput
+                      sequence={terminalShortcut}
+                      onChange={setTerminalShortcut}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Record the keyboard shortcut that opens your terminal (e.g. Ctrl+Alt+T).
+                  </p>
+                </div>
+              )}
 
               <Tabs defaultValue="editor" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">

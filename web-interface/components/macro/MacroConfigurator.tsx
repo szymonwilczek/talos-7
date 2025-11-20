@@ -141,7 +141,8 @@ export function MacroConfigurator() {
               change.layer,
               change.button,
               macro.scriptPlatform || ScriptPlatform.LINUX,
-              macro.script
+              macro.script,
+              macro.terminalShortcut || []
             );
           } else {
             await serialService.setMacro(

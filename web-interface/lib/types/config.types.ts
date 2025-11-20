@@ -29,6 +29,7 @@ export interface MacroEntry {
   emoji: string;
   script?: string;
   scriptPlatform?: number;
+  terminalShortcut?: KeyPress[]; 
   keySequence?: KeyPress[];
 }
 

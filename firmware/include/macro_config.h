@@ -42,14 +42,16 @@ typedef enum {
 // ==================== STRUKTURA MAKRA ====================
 typedef struct {
   macro_type_t type;
-  uint16_t value;                          // keycode lub target layer
-  char macro_string[MACRO_STRING_LEN];     // tekst makra
-  char name[MAX_NAME_LEN];                 // nazwa makra
-  uint8_t emoji_index;                     // indeks emoji
-  char script[MAX_SCRIPT_SIZE];            // skrypt makra
-  uint8_t script_platform;                 // platforma skryptu
-  key_step_t sequence[MAX_SEQUENCE_STEPS]; // sekwencja klawiszy
-  uint8_t sequence_length;                 // dlugosc sekwencji
+  uint16_t value;                                   // keycode lub target layer
+  char macro_string[MACRO_STRING_LEN];              // tekst makra
+  char name[MAX_NAME_LEN];                          // nazwa makra
+  uint8_t emoji_index;                              // indeks emoji
+  char script[MAX_SCRIPT_SIZE];                     // skrypt makra
+  uint8_t script_platform;                          // platforma skryptu
+  key_step_t terminal_shortcut[MAX_SEQUENCE_STEPS]; // skrot terminala
+  uint8_t terminal_shortcut_length;                 // dlugosc skrotu
+  key_step_t sequence[MAX_SEQUENCE_STEPS];          // sekwencja klawiszy
+  uint8_t sequence_length;                          // dlugosc sekwencji
 } macro_entry_t;
 
 // ==================== GLOBALNA KONFIGURACJA ====================
