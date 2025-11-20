@@ -4,8 +4,6 @@ import { LayerConfig, KeyPress, MODIFIERS } from '@/lib/types/config.types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useRef } from 'react';
 import { OLEDAlert } from './OLEDAlert';
 
@@ -105,36 +103,59 @@ export function OLEDDisplay({
     return keyNames[keycode] || `Key ${keycode}`;
   };
 
-  const formatKeyPress = (kp: KeyPress): string => {
+  const formatStepVim = (kp: KeyPress) => {
     const parts: string[] = [];
-    if (kp.modifiers & MODIFIERS.CTRL) parts.push('Ctrl');
-    if (kp.modifiers & MODIFIERS.SHIFT) parts.push('Shift');
-    if (kp.modifiers & MODIFIERS.ALT) parts.push('Alt');
-    if (kp.modifiers & MODIFIERS.GUI) parts.push('⊞');
-    parts.push(getKeyName(kp.keycode));
-    return parts.join('+');
+    if (kp.modifiers & MODIFIERS.GUI) parts.push('M');
+    if (kp.modifiers & MODIFIERS.CTRL) parts.push('C');
+    if (kp.modifiers & MODIFIERS.SHIFT) parts.push('S');
+    if (kp.modifiers & MODIFIERS.ALT) parts.push('A');
+
+    const keyName = getKeyName(kp.keycode);
+    // jesli keyName to nie "Key 0" (pusty) to dodaj
+    if (kp.keycode !== 0) parts.push(keyName);
+
+    if (parts.length > 0) {
+      // logika nawiasow < >
+      if (kp.modifiers !== 0 || keyName.length > 1) {
+        return `<${parts.join('-')}>`;
+      }
+      return keyName;
+    }
+    return '';
   };
 
-  const formatSequenceVim = (sequence?: KeyPress[]): string => {
+  // glowna funkcja wyswietlajaca sekwencje (sklejanie krokow)
+  const formatSequence = (sequence?: KeyPress[]): string => {
     if (!sequence || sequence.length === 0) return 'Empty';
-    let buf = '';
-    // pierwszy klawisz z modyfikatorami (vim like)
-    const first = sequence[0];
-    let mods = '';
-    if (first.modifiers & MODIFIERS.CTRL) mods += 'C';
-    if (first.modifiers & MODIFIERS.SHIFT) mods += 'S';
-    if (first.modifiers & MODIFIERS.ALT) mods += 'A';
-    if (first.modifiers & MODIFIERS.GUI) mods += 'M';
-    if (mods) {
-      buf += `<${mods}-${getKeyName(first.keycode)}>`;
-    } else {
-      buf += getKeyName(first.keycode);
+
+    const parts: string[] = [];
+    let pendingMods = 0;
+
+    for (const step of sequence) {
+      // jesli to modyfikator (0 lub 224-231)
+      if (step.keycode === 0 || (step.keycode >= 224 && step.keycode <= 231)) {
+        // mapowanie z inputa (modifiers ma juz bit, albo keycode to mod)
+        let modBit = step.modifiers;
+        if (step.keycode === 224) modBit |= 1;
+        if (step.keycode === 225) modBit |= 2;
+        if (step.keycode === 226) modBit |= 4;
+        if (step.keycode === 227) modBit |= 8;
+        pendingMods |= modBit;
+      } else {
+        // zwykly klawisz
+        parts.push(formatStepVim({
+          keycode: step.keycode,
+          modifiers: step.modifiers | pendingMods
+        }));
+        pendingMods = 0;
+      }
     }
-    // nastepne klawisze
-    for (let i = 1; i < sequence.length; i++) {
-      buf += '+' + getKeyName(sequence[i].keycode);
+    // wiszacy modyfikator na koncu
+    if (pendingMods !== 0) {
+      parts.push(formatStepVim({ keycode: 0, modifiers: pendingMods }));
     }
-    return buf;
+
+    return parts.join('+');
   };
 
   const analyzeString = (str: string) => {
@@ -199,11 +220,11 @@ export function OLEDDisplay({
       case 2: // LayerToggle
         return { text: `Layer Toggle to Layer ${macro.value + 1}`, alert: null };
       case 3: // Script
-        const platform = macro.scriptPlatform === 0 ? 'Linux' :
+        const platformName = macro.scriptPlatform === 0 ? 'Linux' :
           macro.scriptPlatform === 1 ? 'Windows' : 'macOS';
-        return { text: `Script (${platform})`, alert: null };
+        return { text: `Script (${platformName})`, alert: null };
       case 4: // KeySequence
-        return { text: `Sequence: ${formatSequenceVim(macro.keySequence)}`, alert: null };
+        return { text: `Sequence: ${formatSequence(macro.keySequence)}`, alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }
@@ -244,18 +265,6 @@ export function OLEDDisplay({
                 {details?.text}
               </div>
             </div>
-
-            {/* Script Preview */}
-            {layer.macros[activeButton].type === 3 && (
-              <div className="mt-1 shrink-0">
-                <Label className="text-xs text-gray-400 block mb-2">Script Content (first 50 chars):</Label>
-                <Textarea
-                  value={layer.macros[activeButton].script?.substring(0, 50) || ''}
-                  readOnly
-                  className="text-xs font-mono bg-gray-800 text-white border-gray-600 resize-none h-12"
-                />
-              </div>
-            )}
 
             {details?.alert && (
               <OLEDAlert variant={details.alert} />

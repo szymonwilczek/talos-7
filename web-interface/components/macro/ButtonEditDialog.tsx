@@ -66,7 +66,7 @@ export function ButtonEditDialog({
       setMacroType(macro.type);
       setMacroValue(macro.value);
       setMacroString(macro.macroString);
-      setKeySequence(macro.keySequence || []);
+      setKeySequence(macro.keySequence ? decompileSequence(macro.keySequence) : []);
       setTerminalShortcut(macro.terminalShortcut || []);
     }
   }, [macro]);
@@ -77,6 +77,25 @@ export function ButtonEditDialog({
       setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
     }
   }, [macro]);
+
+  const decompileSequence = (compiled: KeyPress[]): KeyPress[] => {
+    const raw: KeyPress[] = [];
+    compiled.forEach(step => {
+      if (step.modifiers & 1) raw.push({ keycode: 224, modifiers: 0 }); // LCtrl
+      if (step.modifiers & 2) raw.push({ keycode: 225, modifiers: 0 }); // LShift
+      if (step.modifiers & 4) raw.push({ keycode: 226, modifiers: 0 }); // LAlt
+      if (step.modifiers & 8) raw.push({ keycode: 227, modifiers: 0 }); // LGUI
+      if (step.modifiers & 16) raw.push({ keycode: 228, modifiers: 0 }); // RCtrl
+      if (step.modifiers & 32) raw.push({ keycode: 229, modifiers: 0 }); // RShift
+      if (step.modifiers & 64) raw.push({ keycode: 230, modifiers: 0 }); // RAlt
+      if (step.modifiers & 128) raw.push({ keycode: 231, modifiers: 0 }); // RGUI
+
+      if (step.keycode !== 0) {
+        raw.push({ keycode: step.keycode, modifiers: 0 });
+      }
+    });
+    return raw;
+  };
 
   const handleSave = () => {
     if (buttonIndex === null) return;

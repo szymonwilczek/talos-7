@@ -436,7 +436,40 @@ export class SerialService {
       keySequence &&
       keySequence.length > 0
     ) {
-      const steps = keySequence.slice(0, 5);
+      // kompilacja sekwencji: laczenie modyfikatorow z nastepnym klawiszem
+      const compiledSteps: KeyPress[] = [];
+      let pendingMods = 0;
+
+      for (const step of keySequence) {
+        // jesli to sam modyfikator (keycode 0) lub klawisz modyfikatora (224-231)
+        if (
+          step.keycode === 0 ||
+          (step.keycode >= 224 && step.keycode <= 231)
+        ) {
+          let modBit = step.modifiers;
+          if (step.keycode === 224) modBit |= 1; // lctrl
+          if (step.keycode === 225) modBit |= 2; // lshift
+          if (step.keycode === 226) modBit |= 4; // lalt
+          if (step.keycode === 227) modBit |= 8; // lgui
+
+          pendingMods |= modBit;
+        } else {
+          // zwykly klawisz - zuzywa oczekujace modyfikatory
+          compiledSteps.push({
+            keycode: step.keycode,
+            modifiers: step.modifiers | pendingMods,
+          });
+          pendingMods = 0; // reset po uzyciu
+        }
+      }
+
+      // jesli na koncu zostaly wiszace modyfikatory (np samo <M>) -> osobny krok
+      if (pendingMods !== 0) {
+        compiledSteps.push({ keycode: 0, modifiers: pendingMods });
+      }
+
+      // tylko skompilowane kroki
+      const steps = compiledSteps.slice(0, 3); // max 3
       const stepsStr = steps
         .map((s) => `${s.keycode},${s.modifiers}`)
         .join(",");
