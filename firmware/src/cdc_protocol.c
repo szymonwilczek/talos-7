@@ -419,7 +419,8 @@ static void process_command(const char *cmd_input) {
   // nastepnie wyslane sa surowe bajty skryptu
   if (strncmp(cmd_ptr, "SET_MACRO_SCRIPT|", 17) == 0) {
     int layer, button, platform, size, shortcut_len;
-    char terminal_cmd[64] = {0};
+    key_step_t temp_shortcut[MAX_SEQUENCE_STEPS];
+    memset(temp_shortcut, 0, sizeof(temp_shortcut));
 
     char *token = cmd_ptr + 17;
 
@@ -449,7 +450,6 @@ static void process_command(const char *cmd_input) {
 
     size = atoi(token);
     token = strchr(token, '|');
-
     if (!token) {
       cdc_send_response("ERROR|Invalid format");
       return;
@@ -461,36 +461,40 @@ static void process_command(const char *cmd_input) {
     if (shortcut_len > MAX_SEQUENCE_STEPS)
       shortcut_len = MAX_SEQUENCE_STEPS;
 
-    config_data_t *config = config_get();
-    macro_entry_t *macro = &config->macros[layer][button];
-    macro->terminal_shortcut_length = shortcut_len;
-
     // parsowanie krokow skrotu (format: k,m,k,m...)
-    char *step_token = strchr(token, '|'); // szukanie poczatku sekwencji
+    char *step_token = strchr(token, '|');
     if (step_token && shortcut_len > 0) {
-      step_token++; // pomin '|'
+      step_token++;
       for (int i = 0; i < shortcut_len; i++) {
         int k, m;
         if (sscanf(step_token, "%d,%d", &k, &m) == 2) {
-          macro->terminal_shortcut[i].keycode = (uint8_t)k;
-          macro->terminal_shortcut[i].modifiers = (uint8_t)m;
+          temp_shortcut[i].keycode = (uint8_t)k;
+          temp_shortcut[i].modifiers = (uint8_t)m;
 
-          // przesun do nastepnej pary
-          step_token = strchr(step_token, ','); // za k
+          step_token = strchr(step_token, ',');
           if (step_token)
-            step_token =
-                strchr(step_token + 1, ','); // za m (separator kolejnej pary)
+            step_token = strchr(step_token + 1, ',');
           if (step_token)
             step_token++;
         }
       }
     }
 
+    // walidacja i zapis
     if (layer >= 0 && layer < MAX_LAYERS && button >= 0 &&
         button < NUM_BUTTONS && platform >= 0 && platform <= 2 && size > 0 &&
         size <= MAX_SCRIPT_SIZE) {
 
-      cdc_send_response("READY"); // gotowy na odbior bajtow skryptu
+      config_data_t *config = config_get();
+      macro_entry_t *macro = &config->macros[layer][button];
+
+      // aktualizacja struktury
+      macro->terminal_shortcut_length = shortcut_len;
+      for (int i = 0; i < MAX_SEQUENCE_STEPS; i++) {
+        macro->terminal_shortcut[i] = temp_shortcut[i];
+      }
+
+      cdc_send_response("READY");
       cdc_receive_script(layer, button, platform, size);
     } else {
       cdc_send_response("ERROR|Invalid parameters");

@@ -195,7 +195,7 @@ static void press_sequence(uint8_t modifiers, uint8_t keycode) {
   // jesli wsrod modyfikatorow jest GUI (Meta/Command), docisniecie na chwile
   // CTRL system pomysli, ze konczona jest sekwencja "Meta+Ctrl" ktora nie
   // otwiera menu na linuxach
-  if (modifiers & (MODIFIER_LEFT_GUI | MODIFIER_RIGHT_GUI)) {
+  if ((modifiers & (MODIFIER_LEFT_GUI | MODIFIER_RIGHT_GUI)) && keycode == 0) {
     uint8_t safe_mods = modifiers | MODIFIER_LEFT_CTRL;
 
     while (!tud_hid_ready())

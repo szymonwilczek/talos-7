@@ -109,6 +109,34 @@ export class SerialService {
       throw new Error("Not connected");
     }
 
+    // sklejanie modyfikatorow
+    const compiledSteps: KeyPress[] = [];
+    let pendingMods = 0;
+
+    for (const step of terminalShortcut) {
+      if (step.keycode === 0 || (step.keycode >= 224 && step.keycode <= 231)) {
+        let modBit = step.modifiers;
+        if (step.keycode === 224) modBit |= 1;
+        if (step.keycode === 225) modBit |= 2;
+        if (step.keycode === 226) modBit |= 4;
+        if (step.keycode === 227) modBit |= 8;
+        if (step.keycode === 228) modBit |= 16;
+        if (step.keycode === 229) modBit |= 32;
+        if (step.keycode === 230) modBit |= 64;
+        if (step.keycode === 231) modBit |= 128;
+        pendingMods |= modBit;
+      } else {
+        compiledSteps.push({
+          keycode: step.keycode,
+          modifiers: step.modifiers | pendingMods,
+        });
+        pendingMods = 0;
+      }
+    }
+    if (pendingMods !== 0) {
+      compiledSteps.push({ keycode: 0, modifiers: pendingMods });
+    }
+
     const encoder = new TextEncoder();
     const scriptBytes = encoder.encode(scriptContent);
     const scriptSize = scriptBytes.length;
@@ -119,20 +147,21 @@ export class SerialService {
       );
     }
 
-    // format: len|k,m,k,m
-    const shortcutLen = terminalShortcut.length;
-    const shortcutStr = terminalShortcut
+    const shortcutLen = compiledSteps.length;
+    const shortcutStr = compiledSteps
       .map((s) => `${s.keycode},${s.modifiers}`)
       .join(",");
 
-    // SET_MACRO_SCRIPT|l|b|p|size|sc_len|sc_data
     const command = `SET_MACRO_SCRIPT|${layer}|${button}|${platform}|${scriptSize}|${shortcutLen}|${shortcutStr}\n`;
+    console.log(`📤 Sending script command: ${command.trim()}`);
 
     await this.writeCommand(command);
 
     const readyResponse = await this.readLine(2000);
     if (!readyResponse.startsWith("READY")) {
-      throw new Error("Device not ready to receive script");
+      throw new Error(
+        `Device not ready to receive script. Got: ${readyResponse}`,
+      );
     }
 
     await this.writer.write(scriptBytes);
@@ -278,17 +307,29 @@ export class SerialService {
           continue;
         }
 
-        // handle SCRIPT_DATA| (must be right after MACRO|...|3|...)
+        // handle SCRIPT_DATA|
         if (line.startsWith("SCRIPT_DATA|")) {
           if (!pendingScriptMacro) {
             console.warn("⚠️ SCRIPT_DATA without pending macro");
             continue;
           }
 
-          const scriptContent = line.substring(12); // after "SCRIPT_DATA|"
+          // SCRIPT_DATA|layer|button|platform|CONTENT
+          let pipeCount = 0;
+          let contentStartIndex = 0;
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === "|") {
+              pipeCount++;
+              if (pipeCount === 4) {
+                contentStartIndex = i + 1;
+                break;
+              }
+            }
+          }
+
+          const scriptContent = line.substring(contentStartIndex);
           const { layer, button } = pendingScriptMacro;
 
-          // unescape special characters
           config.layers[layer].macros[button].script = scriptContent
             .replace(/\\n/g, "\n")
             .replace(/\\r/g, "\r")
