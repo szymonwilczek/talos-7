@@ -479,21 +479,26 @@ static void process_command(const char *cmd_input) {
     return;
   }
 
-  if (strncmp(cmd_ptr, "SET_CONFIG_MODE|", 15) == 0) {
-    char *token = cmd_ptr + 15;
-    token = strchr(token, '|'); // '|'
-    if (token) {
-      token++; // za '|'
-      config_mode = atoi(token);
-    } else {
-      config_mode = 0; // domyslnie
-    }
-    printf("[CDC] SET_CONFIG_MODE received, mode=%d\n", config_mode);
+  if (strncmp(cmd_ptr, "SET_CONFIG_MODE|", 16) == 0) {
+    char *token = cmd_ptr + 16;
+    uint8_t val = atoi(token);
 
-    uint8_t current_layer = config_get_current_layer();
-    printf("[CDC] Current layer: %d, refreshing OLED for layer 0\n",
-           current_layer);
-    oled_display_layer_info(0);
+    config_mode = val;
+
+    // wybudz ekran i zresetuj timer przy kazdej zmianie trybu
+    // jesli wchodzimy w config -> ekran sie wlacza
+    // jesli wychodzimy -> resetujemy timer, zeby nie zgasl od razu
+    oled_wake_up();
+
+    if (config_mode) {
+      cdc_log("[CDC] Config mode ENABLED\n");
+      oled_display_layer_info(
+          config_get_current_layer()); // odswiez zeby pokazac setup screen
+    } else {
+      cdc_log("[CDC] Config mode DISABLED\n");
+      // powrot do normalnego ekranu
+      oled_display_layer_info(config_get_current_layer());
+    }
 
     cdc_send_response("OK");
     return;

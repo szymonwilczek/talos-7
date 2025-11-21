@@ -303,6 +303,8 @@ void oled_wake_up(void) {
 bool oled_is_active(void) { return g_oled_active; }
 
 void oled_power_save_task(void) {
+  if (config_mode == 1)
+    return; // ignorowanie w trakcie konfiguracji przez interfejs
   if (!g_oled_active)
     return; // juz wylaczony
 
