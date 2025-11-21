@@ -2,6 +2,7 @@
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "macro_executor.h"
+#include "oled_display.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
 #include "tusb.h"
