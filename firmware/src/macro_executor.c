@@ -306,6 +306,42 @@ static void perform_key_repeat(uint8_t keycode, uint16_t count,
   }
 }
 
+static bool is_pure_ascii(const char *str) {
+  while (*str) {
+    if ((unsigned char)*str > 127)
+      return false;
+    str++;
+  }
+  return true;
+}
+
+// Turbo pisanie dla ASCII (minimalne opóźnienia)
+static void type_text_turbo_ascii(const char *text) {
+  const char *p = text;
+  while (*p) {
+    uint8_t keycode, modifiers;
+    if (map_char_to_hid(*p, &keycode, &modifiers)) {
+      // Press
+      while (!tud_hid_ready())
+        tud_task(); // Czekamy tylko jesli bufor pelny
+      uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
+      tud_hid_keyboard_report(1, modifiers, report);
+
+      // Minimalny delay (1-2ms) wystarczy dla wiekszosci systemow przy samym
+      // ASCII
+      sleep_ms(2);
+
+      // Release
+      while (!tud_hid_ready())
+        tud_task();
+      tud_hid_keyboard_report(1, 0, NULL);
+
+      sleep_ms(2);
+    }
+    p++;
+  }
+}
+
 void execute_macro(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
@@ -351,7 +387,21 @@ void execute_macro(uint8_t layer, uint8_t button) {
 
   case MACRO_TYPE_TEXT_STRING: {
     uint8_t detected_os = detect_platform();
-    type_text_content(macro->macro_string, detected_os);
+
+    // Jeśli czyste ASCII -> Turbo Mode
+    if (is_pure_ascii(macro->macro_string)) {
+      cdc_log("[HID] Typing Turbo ASCII\n");
+      type_text_turbo_ascii(macro->macro_string);
+    } else {
+      // Jeśli Unicode -> Standardowa (wolniejsza, ale bezpieczna) metoda
+      cdc_log("[HID] Typing Unicode Text (auto-os: %d)\n", detected_os);
+      type_text_content(macro->macro_string, detected_os);
+    }
+
+    // Finalne czyszczenie
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_keyboard_report(1, 0, NULL);
     break;
   }
 
