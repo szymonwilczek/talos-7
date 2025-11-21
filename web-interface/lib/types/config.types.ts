@@ -29,7 +29,7 @@ export interface MacroEntry {
   emoji: string;
   script?: string;
   scriptPlatform?: number;
-  terminalShortcut?: KeyPress[]; 
+  terminalShortcut?: KeyPress[];
   keySequence?: KeyPress[];
 }
 
@@ -41,6 +41,7 @@ export interface LayerConfig {
 
 export interface GlobalConfig {
   layers: LayerConfig[];
+  oledTimeout: number;
 }
 
 export interface ConnectionError {
@@ -87,6 +88,7 @@ export interface LayerChange {
   layer: number;
   name: string;
   emoji: string;
+  oledTimeout: number;
 }
 
 export interface MacroChange {
@@ -94,6 +96,7 @@ export interface MacroChange {
   layer: number;
   button: number;
   macro: MacroEntry;
+  oledTimeout: number;
 }
 
 export type ConfigChange = LayerChange | MacroChange;

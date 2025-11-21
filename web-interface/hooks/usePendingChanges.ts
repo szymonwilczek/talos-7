@@ -26,6 +26,17 @@ export function usePendingChanges(config: GlobalConfig | null) {
 
     console.log("🔍 Calculating changes...");
 
+    if (config.oledTimeout !== originalConfig.oledTimeout) {
+      console.log(`🔄 OLED timeout changed:`, {
+        from: originalConfig.oledTimeout,
+        to: config.oledTimeout,
+      });
+      changes.set("oledTimeout", {
+        type: "oledTimeout",
+        value: config.oledTimeout,
+      });
+    }
+
     config.layers.forEach((layer, layerIdx) => {
       const origLayer = originalConfig.layers[layerIdx];
 
@@ -55,8 +66,9 @@ export function usePendingChanges(config: GlobalConfig | null) {
           macro.name !== origMacro.name ||
           macro.emoji !== origMacro.emoji ||
           macro.script !== origMacro.script ||
-          macro.scriptPlatform !== origMacro.scriptPlatform || 
-          JSON.stringify(macro.keySequence) !== JSON.stringify(origMacro.keySequence);
+          macro.scriptPlatform !== origMacro.scriptPlatform ||
+          JSON.stringify(macro.keySequence) !==
+            JSON.stringify(origMacro.keySequence);
 
         if (macroChanged) {
           console.log(`🔄 Macro ${layerIdx}-${buttonIdx} changed`);

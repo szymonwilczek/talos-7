@@ -148,6 +148,7 @@ void config_set_factory_defaults(void) {
   g_config.crc32 = config_calculate_crc(&g_config);
   g_config_loaded = true;
   g_config.global_text_platform = detect_platform();
+  g_config.oled_timeout_s = 300; // 5 minut 
 }
 
 // ==================== ODCZYT Z FLASH ====================

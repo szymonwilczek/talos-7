@@ -251,6 +251,7 @@ export class SerialService {
           name: "Empty",
           emoji: "",
         })),
+        oledTimeout: 300,
       })),
     };
 
@@ -267,6 +268,14 @@ export class SerialService {
         if (line === "CONF_END") {
           console.log("✅ Configuration parsing complete");
           break;
+        }
+
+        if (line.startsWith("SETTINGS|")) {
+          const parts = line.split("|");
+          if (parts.length >= 2) {
+            config.oledTimeout = parseInt(parts[1]);
+          }
+          continue;
         }
 
         // handle SCRIPT_DATA| (must be right after MACRO|...|3|...)
@@ -515,6 +524,15 @@ export class SerialService {
     }
 
     console.log("✅ Layer name set successfully");
+  }
+
+  async setOledTimeout(seconds: number): Promise<void> {
+    if (!this.port || !this.writer || !this.reader)
+      throw new Error("Not connected");
+    await this.writeCommand(`SET_OLED_TIMEOUT|${seconds}\n`);
+    const response = await this.readLine();
+    if (response !== "OK")
+      throw new Error(`Failed to set timeout: ${response}`);
   }
 
   /**

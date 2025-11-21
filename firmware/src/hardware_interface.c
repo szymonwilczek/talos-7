@@ -14,6 +14,12 @@
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
 
+static void oled_write_cmd(uint8_t cmd);
+static void oled_write_data(const uint8_t *data, size_t len);
+
+static bool g_oled_active = true;
+static uint32_t g_last_activity_time = 0;
+
 uint8_t config_mode = 0;
 
 // SSD1306 commands
@@ -274,6 +280,45 @@ const char *format_sequence_short(key_step_t *sequence, uint8_t len) {
 
 // ==================== OLED LOW-LEVEL ====================
 
+// ==================== OLED POWER MANAGMENT ====================
+
+void oled_set_power(bool on) {
+  oled_write_cmd(on ? OLED_CMD_DISPLAY_ON : OLED_CMD_DISPLAY_OFF);
+  g_oled_active = on;
+  if (on) {
+    cdc_log("[OLED] Display ON\n");
+  } else {
+    cdc_log("[OLED] Display OFF (Power Save)\n");
+  }
+}
+
+void oled_wake_up(void) {
+  g_last_activity_time = to_ms_since_boot(get_absolute_time());
+  if (!g_oled_active) {
+    oled_set_power(true);
+    oled_update();
+  }
+}
+
+bool oled_is_active(void) { return g_oled_active; }
+
+void oled_power_save_task(void) {
+  if (!g_oled_active)
+    return; // juz wylaczony
+
+  config_data_t *config = config_get();
+  uint32_t timeout_s = config->oled_timeout_s;
+
+  // funkcja jest wylaczona (always on)
+  if (timeout_s == 0)
+    return;
+
+  uint32_t now = to_ms_since_boot(get_absolute_time());
+  if ((now - g_last_activity_time) > (timeout_s * 1000)) {
+    oled_set_power(false);
+  }
+}
+
 static void oled_write_cmd(uint8_t cmd) {
   gpio_put(OLED_DC_PIN, 0); // command mode
   gpio_put(OLED_CS_PIN, 0);
@@ -349,6 +394,10 @@ void oled_init(void) {
 
   oled_clear();
   oled_update();
+
+  g_last_activity_time = to_ms_since_boot(get_absolute_time());
+  g_oled_active = true;
+
   cdc_log("[OLED] Initialized (128x64)\n");
 }
 

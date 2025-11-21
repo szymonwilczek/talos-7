@@ -22,6 +22,7 @@ import { CheckCircle } from 'lucide-react';
 import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Slider } from '../ui/slider';
 
 const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻', '🔫', '⏳', '🌷'];
 
@@ -112,6 +113,14 @@ export function MacroConfigurator() {
     });
   };
 
+  const handleTimeoutChange = (val: number[]) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      oledTimeout: val[0]
+    });
+  };
+
   const handleSaveChanges = async () => {
     if (pendingChanges.size === 0) return;
     setIsSaving(true);
@@ -126,6 +135,11 @@ export function MacroConfigurator() {
 
       for (let i = 0; i < changes.length; i++) {
         const change = changes[i];
+
+        if (change.type === 'setting' && change.settingName === 'oledTimeout') {
+          console.log(`📤 Updating OLED Timeout: ${change.value}s`);
+          await serialService.setOledTimeout(change.value);
+        }
 
         if (change.type === 'layer') {
           console.log(`📤 Processing layer change: ${change.emoji} ${change.name}`);
@@ -305,6 +319,34 @@ export function MacroConfigurator() {
               maxLength={15}
               placeholder="Enter layer name"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Device Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>OLED Sleep Timeout</Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {config.oledTimeout === 0 ? "Always On" : `${Math.floor(config.oledTimeout / 60)}m ${config.oledTimeout % 60}s`}
+              </span>
+            </div>
+
+            <Slider
+              value={[config.oledTimeout]}
+              min={0}
+              max={1800} // max 30 min
+              step={30}  // co 30 sekund
+              onValueChange={handleTimeoutChange}
+              className="w-full"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Set to 0 to disable auto-sleep. Display wakes up on any key press.
+            </p>
           </div>
         </CardContent>
       </Card>

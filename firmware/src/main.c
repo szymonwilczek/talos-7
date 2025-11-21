@@ -91,9 +91,14 @@ int main(void) {
   uint32_t last_button_time[NUM_BUTTONS] = {0};
   const uint32_t DEBOUNCE_MS = 50;
 
+  oled_wake_up();
+
   while (1) {
     tud_task();
     cdc_protocol_task();
+
+    // zarzadzanie wygaszaczem
+    oled_power_save_task();
 
     buttons_scan();
 
@@ -105,8 +110,19 @@ int main(void) {
 
       if (pressed && !button_processed[i] &&
           (now - last_button_time[i] > DEBOUNCE_MS)) {
-        cdc_log("[MAIN] Button %d pressed!\n", i + 1);
-        execute_macro(current_layer, i);
+
+        if (oled_is_active()) {
+          // ekran aktywny -> wykonaj makro
+          cdc_log("[MAIN] Button %d pressed! Executing macro.\n", i + 1);
+          oled_wake_up(); // reset timera bezczynnosci
+          execute_macro(current_layer, i);
+        } else {
+          // ekran wylaczony -> wybudz
+          cdc_log("[MAIN] Button %d pressed! Waking up OLED.\n", i + 1);
+          oled_wake_up();
+          oled_display_layer_info(current_layer);
+        }
+
         last_button_time[i] = now;
         button_processed[i] = true;
       } else if (!pressed) {

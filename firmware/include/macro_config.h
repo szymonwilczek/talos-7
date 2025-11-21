@@ -61,6 +61,7 @@ typedef struct {
   macro_entry_t macros[MAX_LAYERS][NUM_BUTTONS]; // wszystkie makra
   uint32_t crc32;                                // checksum
   uint8_t global_text_platform;                  // domyslna platforma tekstu
+  uint32_t oled_timeout_s;                       // timeout wygaszacza OLED
 } config_data_t;
 
 // ==================== FLASH STORAGE ====================

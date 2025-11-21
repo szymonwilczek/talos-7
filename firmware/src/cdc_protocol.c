@@ -142,6 +142,8 @@ static void process_command(const char *cmd_input) {
     printf("[CDC] Sent CONF_START\n");
     tud_cdc_write_flush();
 
+    cdc_send_response_fmt("SETTINGS|%lu", config->oled_timeout_s);
+
     // nazwy i emotki warstw
     for (int layer = 0; layer < MAX_LAYERS; layer++) {
       cdc_send_response_fmt("LAYER_NAME|%d|%s|%d", layer,
@@ -229,6 +231,18 @@ static void process_command(const char *cmd_input) {
     sleep_ms(10);
     tud_cdc_write_flush();
     printf("[CDC] Configuration sent complete\n");
+    return;
+  }
+
+  // SET_OLED_TIMEOUT|seconds
+  if (strncmp(cmd_ptr, "SET_OLED_TIMEOUT|", 17) == 0) {
+    char *token = cmd_ptr + 17;
+    uint32_t timeout = strtoul(token, NULL, 10);
+
+    config_data_t *config = config_get();
+    config->oled_timeout_s = timeout;
+
+    cdc_send_response("OK");
     return;
   }
 
