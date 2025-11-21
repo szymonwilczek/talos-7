@@ -218,7 +218,7 @@ export function OLEDDisplay({
         }
       }
       case 2: // LayerToggle
-        return { text: `Layer Toggle to Layer ${macro.value + 1}`, alert: null };
+        return { text: `Layer Toggle` };
       case 3: // Script
         const platformName = macro.scriptPlatform === 0 ? 'Linux' :
           macro.scriptPlatform === 1 ? 'Windows' : 'macOS';
@@ -246,7 +246,7 @@ export function OLEDDisplay({
       <CardContent className="h-full p-4 text-[#00ffff] text-sm overflow-hidden relative">
         {activeButton !== null ? (
           <div className="flex flex-col h-full gap-3">
-            <div className="flex items-center justify-between gap-2 -mt-4 shrink-0">
+            <div className="flex items-center justify-center gap-2 -mt-4 shrink-0">
               <div className='flex items-center gap-2'>
                 <EmojiCanvas emojiIndex={getEmojiIndex(layer.macros[activeButton].emoji)} color="#00ffff" size={20} />
                 <span className='max-md:text-sm max-lg:text-md text-xl text-[#00ffff] truncate max-w-[120px]'>
@@ -272,7 +272,7 @@ export function OLEDDisplay({
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 -mt-4">
+            <div className="flex items-center justify-center gap-2 -mt-4">
               <div className='flex items-center gap-2'>
                 <EmojiCanvas emojiIndex={getEmojiIndex(layer.emoji)} color="#00ffff" size={20} />
                 <span className='max-md:text-sm max-lg:text-md text-xl'>{layer.name || `Layer ${layerIndex + 1}/${totalLayers}`}</span>
