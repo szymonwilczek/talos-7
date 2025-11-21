@@ -167,6 +167,7 @@ export function MacroConfigurator() {
                 macro.terminalShortcut || []
               );
             } else {
+              if (!macro) return;
               await serialService.setMacro(
                 change.layer,
                 change.button,
@@ -175,7 +176,11 @@ export function MacroConfigurator() {
                 macro.macroString,
                 macro.name,
                 macro.emoji,
-                macro.keySequence
+                macro.keySequence,
+                macro.repeatCount,
+                macro.repeatInterval,
+                macro.moveX,
+                macro.moveY
               );
             }
           }

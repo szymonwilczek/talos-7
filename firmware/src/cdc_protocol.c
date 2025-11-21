@@ -210,14 +210,17 @@ static void process_command(const char *cmd_input) {
                                 macro->sequence_length);
 
           for (int i = 0; i < macro->sequence_length; i++) {
-            cdc_send_response_fmt("SEQ_STEP|%d|%d|%d|%d|%d", layer, btn, i,
+            cdc_send_response_fmt("SEQ_STEP|%d|%d|%d|%d|%d|%d", layer, btn, i,
                                   macro->sequence[i].keycode,
-                                  macro->sequence[i].modifiers);
+                                  macro->sequence[i].modifiers,
+                                  macro->sequence[i].duration);
           }
         } else {
-          cdc_send_response_fmt("MACRO|%d|%d|%d|%d|%s|%s|%d", layer, btn,
-                                macro->type, macro->value, macro->macro_string,
-                                macro->name, macro->emoji_index);
+          cdc_send_response_fmt(
+              "MACRO|%d|%d|%d|%d|%s|%s|%d|%d|%d|%d|%d", layer, btn, macro->type,
+              macro->value, macro->macro_string, macro->name,
+              macro->emoji_index, macro->repeat_count, macro->repeat_interval,
+              macro->move_x, macro->move_y);
         }
       }
     }
@@ -249,6 +252,7 @@ static void process_command(const char *cmd_input) {
   // SET_MACRO|layer|button|type|value|string|name|emoji_index
   if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
     int layer, button, type, value;
+    int rep_cnt = 1, rep_int = 0, mx = 0, my = 0; // domyslnie
     char macro_string[MACRO_STRING_LEN] = {0};
     char name[MAX_NAME_LEN] = {0};
     uint8_t emoji_index = 0;
@@ -320,6 +324,27 @@ static void process_command(const char *cmd_input) {
       emoji_index = 0; // domyslny
     }
 
+    token = strchr(token, '|');
+    if (token) {
+      token++;
+      rep_cnt = atoi(token);
+      token = strchr(token, '|');
+      if (token) {
+        token++;
+        rep_int = atoi(token);
+        token = strchr(token, '|');
+        if (token) {
+          token++;
+          mx = atoi(token);
+          token = strchr(token, '|');
+          if (token) {
+            token++;
+            my = atoi(token);
+          }
+        }
+      }
+    }
+
     // walidacja
     if (layer >= 0 && layer < MAX_LAYERS && button >= 0 &&
         button < NUM_BUTTONS) {
@@ -330,6 +355,10 @@ static void process_command(const char *cmd_input) {
       strncpy(macro->macro_string, macro_string, MACRO_STRING_LEN - 1);
       strncpy(macro->name, name, MAX_NAME_LEN - 1);
       macro->emoji_index = emoji_index;
+      macro->repeat_count = (uint16_t)rep_cnt;
+      macro->repeat_interval = (uint16_t)rep_int;
+      macro->move_x = (int16_t)mx;
+      macro->move_y = (int16_t)my;
 
       cdc_send_response("OK");
       printf("[CDC] Macro set: L%d B%d '%s' %d\n", layer, button, name,
@@ -580,11 +609,13 @@ static void process_command(const char *cmd_input) {
     cmd_ptr = token; // cmd_ptr na poczatek steps
 
     for (int i = 0; i < step_count; i++) {
-      int keycode, mods;
+      int keycode, mods, duration = 0;
       if (sscanf(cmd_ptr, "%d,%d", &keycode, &mods) == 2) {
         macro->sequence[i].keycode = (uint8_t)keycode;
         macro->sequence[i].modifiers = (uint8_t)mods;
-        printf("[CDC] Step %d: keycode=%d mods=0x%02X\n", i, keycode, mods);
+        macro->sequence[i].duration = (uint16_t)duration;
+        printf("[CDC] Step %d: keycode=%d mods=0x%02X\n", i, keycode, mods,
+               duration);
 
         // nastepny krok
         cmd_ptr = strchr(cmd_ptr, ',');

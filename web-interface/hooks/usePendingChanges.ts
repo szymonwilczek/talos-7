@@ -73,7 +73,11 @@ export function usePendingChanges(config: GlobalConfig | null) {
           JSON.stringify(macro.keySequence) !==
             JSON.stringify(origMacro.keySequence) ||
           JSON.stringify(macro.terminalShortcut) !==
-            JSON.stringify(origMacro.terminalShortcut);
+            JSON.stringify(origMacro.terminalShortcut) ||
+          macro.repeatCount !== origMacro.repeatCount ||
+          macro.repeatInterval !== origMacro.repeatInterval ||
+          macro.moveX !== origMacro.moveX ||
+          macro.moveY !== origMacro.moveY;
 
         if (macroChanged) {
           const changeKey = `macro_${layerIdx}_${buttonIdx}`;

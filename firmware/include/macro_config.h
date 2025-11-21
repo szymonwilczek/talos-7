@@ -18,6 +18,7 @@
 typedef struct {
   uint8_t keycode;   // HID keycode
   uint8_t modifiers; // modyfikatory (bitmask)
+  uint16_t duration; // czas trzymania (ms) lub ilosc powtorzen
 } key_step_t;
 
 #define MAX_SEQUENCE_STEPS 5
@@ -36,13 +37,20 @@ typedef enum {
   MACRO_TYPE_TEXT_STRING = 1,  // tekst do wpisania
   MACRO_TYPE_LAYER_TOGGLE = 2, // przelaczanie warstw
   MACRO_TYPE_SCRIPT = 3,       // skrypt do wykonania
-  MACRO_TYPE_KEY_SEQUENCE = 4  // sekwencja klawiszy
+  MACRO_TYPE_KEY_SEQUENCE = 4, // sekwencja klawiszy
+  MACRO_TYPE_MOUSE_BUTTON = 5, // klikniecie (LPM, PPM, Middle)
+  MACRO_TYPE_MOUSE_MOVE = 6,   // ruch (X, Y)
+  MACRO_TYPE_MOUSE_WHEEL = 7   // scroll
 } macro_type_t;
 
 // ==================== STRUKTURA MAKRA ====================
 typedef struct {
   macro_type_t type;
-  uint16_t value;                                   // keycode lub target layer
+  uint16_t value;        // keycode lub target layer
+  int16_t move_x;        // ruch myszy X
+  int16_t move_y;        // ruch myszy move_y
+  uint16_t repeat_count; // ilosc powtorzen
+  uint16_t repeat_interval;
   char macro_string[MACRO_STRING_LEN];              // tekst makra
   char name[MAX_NAME_LEN];                          // nazwa makra
   uint8_t emoji_index;                              // indeks emoji

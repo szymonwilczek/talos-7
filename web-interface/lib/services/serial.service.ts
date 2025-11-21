@@ -396,6 +396,10 @@ export class SerialService {
               macroString,
               name,
               emoji,
+              repeatCount: parseInt(parts[8]) || 1,
+              repeatInterval: parseInt(parts[9]) || 0,
+              moveX: parseInt(parts[10]) || 0,
+              moveY: parseInt(parts[11]) || 0,
             };
 
             if (type === 3 && parts.length >= 9) {
@@ -434,6 +438,10 @@ export class SerialService {
     name: string,
     emoji: string,
     keySequence?: KeyPress[],
+    repeatCount?: number,
+    repeatInterval?: number,
+    moveX?: number,
+    moveY?: number,
   ): Promise<void> {
     const emojiIndex = emoji_strings.indexOf(emoji);
     console.log(
@@ -480,10 +488,9 @@ export class SerialService {
       // tylko skompilowane kroki
       const steps = compiledSteps.slice(0, 3); // max 3
       const stepsStr = steps
-        .map((s) => `${s.keycode},${s.modifiers}`)
+        .map((s) => `${s.keycode},${s.modifiers},${s.duration || 50}`)
         .join(",");
       const command = `SET_MACRO_SEQ|${layer}|${button}|${name}|${emojiIndex}|${steps.length}|${stepsStr}`;
-
       console.log(`  Sending sequence with ${steps.length} steps`);
       const response = await this.sendCommand(command);
 
@@ -495,7 +502,7 @@ export class SerialService {
       return;
     }
 
-    const command = `SET_MACRO|${layer}|${button}|${type}|${value}|${macroString}|${name}|${emojiIndex}`;
+    const command = `SET_MACRO|${layer}|${button}|${type}|${value}|${macroString}|${name}|${emojiIndex}|${repeatCount || 1}|${repeatInterval || 0}|${moveX || 0}|${moveY || 0}`;
     const response = await this.sendCommand(command);
 
     if (response !== "OK") {

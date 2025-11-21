@@ -222,6 +222,47 @@ static void type_text_content(const char *text, uint8_t platform) {
   }
 }
 
+// Helper do obslugi myszy
+static void perform_mouse_click(uint8_t buttons, uint16_t count,
+                                uint16_t interval) {
+  if (count == 0)
+    count = 1; // Zawsze przynajmniej raz
+
+  for (uint16_t i = 0; i < count; i++) {
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_mouse_report(2, buttons, 0, 0, 0, 0); // Press
+    sleep_ms(interval > 0 ? interval : 20);       // Hold/Interval
+
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_mouse_report(2, 0, 0, 0, 0, 0); // Release
+
+    if (i < count - 1) {
+      sleep_ms(interval > 0 ? interval : 20); // Wait before next
+    }
+
+    // WAZNE: Utrzymanie USB przy dlugich seriach
+    tud_task();
+  }
+}
+
+// Helper do klawiatury (Auto-Clicker)
+static void perform_key_repeat(uint8_t keycode, uint16_t count,
+                               uint16_t interval) {
+  if (count == 0)
+    count = 1;
+
+  for (uint16_t i = 0; i < count; i++) {
+    press_sequence(0, keycode); // Uzywamy naszej funkcji "Atomowej"
+
+    if (i < count - 1) {
+      sleep_ms(interval > 0 ? interval : 20);
+    }
+    tud_task(); // Keep-alive
+  }
+}
+
 void execute_macro(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
@@ -236,25 +277,33 @@ void execute_macro(uint8_t layer, uint8_t button) {
 
   switch (macro->type) {
   case MACRO_TYPE_KEY_PRESS: {
-    cdc_log("[HID] Sending key: 0x%02X\n", macro->value);
+    // Obsluga powtorzen (Macro Builder)
+    perform_key_repeat((uint8_t)macro->value, macro->repeat_count,
+                       macro->repeat_interval);
+    break;
+  }
 
-    // czekanie na gotowosc HID
-    while (!tud_hid_ready()) {
-      tud_task();
-      sleep_ms(1);
+  case MACRO_TYPE_MOUSE_BUTTON: {
+    // value to maska (1=L, 2=R, 4=M)
+    perform_mouse_click((uint8_t)macro->value, macro->repeat_count,
+                        macro->repeat_interval);
+    break;
+  }
+
+  case MACRO_TYPE_MOUSE_MOVE: {
+    // value uzywane opcjonalnie, ale glownie move_x/move_y
+    if (tud_hid_ready()) {
+      tud_hid_mouse_report(2, 0, (int8_t)macro->move_x, (int8_t)macro->move_y,
+                           0, 0);
     }
+    break;
+  }
 
-    uint8_t keycode[6] = {0};
-    keycode[0] = macro->value;
-    tud_hid_keyboard_report(1, 0, keycode);
-    sleep_ms(50);
-
-    // release
-    while (!tud_hid_ready()) {
-      tud_task();
-      sleep_ms(1);
+  case MACRO_TYPE_MOUSE_WHEEL: {
+    // value to scroll amount (int8)
+    if (tud_hid_ready()) {
+      tud_hid_mouse_report(2, 0, 0, 0, (int8_t)macro->value, 0);
     }
-    tud_hid_keyboard_report(1, 0, NULL);
     break;
   }
 
@@ -379,10 +428,26 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_KEY_SEQUENCE: {
-    cdc_log("[HID] Executing key sequence (%d steps)\n",
-            macro->sequence_length);
+    // Obsluga 'duration' jako czasu trzymania lub opoznienia
     for (int i = 0; i < macro->sequence_length; i++) {
-      press_sequence(macro->sequence[i].modifiers, macro->sequence[i].keycode);
+      key_step_t *step = &macro->sequence[i];
+
+      // Wcisnij
+      while (!tud_hid_ready())
+        tud_task();
+      uint8_t report[6] = {step->keycode, 0, 0, 0, 0, 0};
+      tud_hid_keyboard_report(1, step->modifiers, report);
+
+      // Trzymaj przez zdefiniowany czas (domyslnie 50ms)
+      uint32_t hold = step->duration > 0 ? step->duration : 50;
+      sleep_ms(hold);
+
+      // Pusc
+      while (!tud_hid_ready())
+        tud_task();
+      tud_hid_keyboard_report(1, 0, NULL);
+
+      sleep_ms(20); // maly odstep miedzy krokami
     }
     break;
   }

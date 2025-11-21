@@ -6,6 +6,9 @@ export enum MacroType {
   LAYER_TOGGLE = 2,
   SCRIPT = 3,
   KEY_SEQUENCE = 4,
+  MOUSE_BUTTON = 5,
+  MOUSE_MOVE = 6,
+  MOUSE_WHEEL = 7,
 }
 
 export type ConnectionStatus =
@@ -19,6 +22,7 @@ export type ConnectionStatus =
 export interface KeyPress {
   keycode: number;
   modifiers: number; // bitmaska modyfikatorów
+  duration?: number; // czas trzymania w ms
 }
 
 export interface MacroEntry {
@@ -27,6 +31,10 @@ export interface MacroEntry {
   macroString: string;
   name: string;
   emoji: string;
+  repeatCount?: number;
+  repeatInterval?: number;
+  moveX?: number;
+  moveY?: number;
   script?: string;
   scriptPlatform?: number;
   terminalShortcut?: KeyPress[];

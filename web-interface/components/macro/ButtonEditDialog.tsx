@@ -54,6 +54,10 @@ export function ButtonEditDialog({
   const [scriptFile, setScriptFile] = useState<File | null>(null);
   const [keySequence, setKeySequence] = useState<KeyPress[]>([]);
   const [terminalShortcut, setTerminalShortcut] = useState<KeyPress[]>([]);
+  const [macroRepeatCount, setMacroRepeatCount] = useState(1);
+  const [macroRepeatInterval, setMacroRepeatInterval] = useState(0);
+  const [moveX, setMoveX] = useState(0);
+  const [moveY, setMoveY] = useState(0);
 
   const canSelectLayerToggle = !layerMacros?.some(
     (m, idx) => m.type === MacroType.LAYER_TOGGLE && idx !== buttonIndex
@@ -194,6 +198,65 @@ export function ButtonEditDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {(macroType === MacroType.KEY_PRESS || macroType === MacroType.MOUSE_BUTTON) && (
+            <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-md border">
+              <div className="space-y-2">
+                <Label>Repetitions</Label>
+                <Input
+                  type="number"
+                  min={1} max={10000}
+                  value={macroRepeatCount}
+                  onChange={e => setMacroRepeatCount(parseInt(e.target.value))}
+                />
+                <p className="text-[10px] text-muted-foreground">How many times to click</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Interval (ms)</Label>
+                <Input
+                  type="number"
+                  min={0} max={5000}
+                  value={macroRepeatInterval}
+                  onChange={e => setMacroRepeatInterval(parseInt(e.target.value))}
+                />
+                <p className="text-[10px] text-muted-foreground">Delay between clicks</p>
+              </div>
+            </div>
+          )}
+
+          {macroType === MacroType.MOUSE_BUTTON && (
+            <div className="space-y-2">
+              <Label>Mouse Button</Label>
+              <Select onValueChange={v => setMacroValue(parseInt(v))} value={macroValue.toString()}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Left Click</SelectItem>
+                  <SelectItem value="2">Right Click</SelectItem>
+                  <SelectItem value="4">Middle Click</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {macroType === MacroType.MOUSE_MOVE && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Move X</Label>
+                <Input type="number" value={moveX} onChange={e => setMoveX(parseInt(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Move Y</Label>
+                <Input type="number" value={moveY} onChange={e => setMoveY(parseInt(e.target.value))} />
+              </div>
+            </div>
+          )}
+
+          {macroType === MacroType.MOUSE_WHEEL && (
+            <div className="space-y-2">
+              <Label>Scroll Amount</Label>
+              <Input type="number" value={macroValue} onChange={e => setMacroValue(parseInt(e.target.value))} placeholder="Positive=Up, Negative=Down" />
+            </div>
+          )}
 
           {macroType === MacroType.KEY_PRESS && (
             <div className="space-y-2">
