@@ -654,10 +654,27 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
     snprintf(details, sizeof(details), "Sequence: %s",
              format_sequence_short(macro->sequence, macro->sequence_length));
     break;
+  case MACRO_TYPE_MOUSE_BUTTON:
+    snprintf(details, sizeof(details), "Mouse Button: %s",
+             macro->value == 1   ? "Left"
+             : macro->value == 2 ? "Right"
+             : macro->value == 4 ? "Middle"
+                                 : "Other");
+    break;
+  case MACRO_TYPE_MOUSE_MOVE:
+    snprintf(details, sizeof(details), "Mouse Move: X=%d Y=%d", macro->move_x,
+             macro->move_y);
+    break;
+
+  case MACRO_TYPE_MOUSE_WHEEL:
+    snprintf(details, sizeof(details), "Mouse Wheel (x%d)",
+             macro->value);
+    break;
   default:
     snprintf(details, sizeof(details), "Unknown Action");
     break;
   }
+
   // wycentrowane szczegoly
   int len = strlen(details);
   int x = (OLED_WIDTH - len * 6) / 2;

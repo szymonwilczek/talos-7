@@ -193,6 +193,15 @@ export function OLEDDisplay({
     return { hasUnicode, hasVisibleAscii, truncated };
   };
 
+  const mapMouseButton = (buttonCode: number): string => {
+    const buttonMap: Record<number, string> = {
+      1: 'Left',
+      2: 'Right',
+      4: 'Middle',
+    }
+    return buttonMap[buttonCode] || `Button ${buttonCode}`;
+  };
+
   const getActionDetails = (macro: any) => {
     switch (macro.type) {
       case 0: // KeyPress
@@ -225,6 +234,12 @@ export function OLEDDisplay({
         return { text: `Script (${platformName})`, alert: null };
       case 4: // KeySequence
         return { text: `Sequence: ${formatSequence(macro.keySequence)}`, alert: null };
+      case 5: // Mouse Button
+        return { text: `Mouse Button: ${mapMouseButton(macro.value)}`, alert: null };
+      case 6: // Mouse Move
+        return { text: `Mouse Move: X=${macro.moveX}, Y=${macro.moveY}`, alert: null };
+      case 7: // Mouse Wheel
+        return { text: `Mouse Wheel (x${Math.abs(macro.value)})`, alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }
