@@ -2,9 +2,30 @@
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "pico/stdlib.h"
+#include "pin_definitions.h"
 #include "tusb.h"
 #include <stdio.h>
 #include <string.h>
+
+static bool check_cancel(uint8_t btn_index, bool *wait_for_release) {
+  // Odczyt fizycznego stanu pinu (zakladamy pull-up: 0 = wcisniety)
+  bool currently_pressed = !gpio_get(BUTTON_PINS[btn_index]);
+
+  if (*wait_for_release) {
+    // Faza 1: Czekamy az uzytkownik pusci przycisk po uruchomieniu makra
+    if (!currently_pressed) {
+      *wait_for_release = false; // Puscil, teraz nasluchujemy wcisniecia
+    }
+    return false;
+  } else {
+    // Faza 2: Nasluchujemy ponownego wcisniecia
+    if (currently_pressed) {
+      cdc_log("[EXECUTOR] Loop cancelled by user!\n");
+      return true; // PRZERWIJ
+    }
+  }
+  return false;
+}
 
 void send_key_with_modifiers(uint8_t modifiers, uint8_t keycode,
                              uint16_t press_ms) {
@@ -258,30 +279,73 @@ static void type_text_content(const char *text, uint8_t platform) {
 
 // Helper do obslugi myszy
 static void perform_mouse_click(uint8_t buttons, uint16_t count,
-                                uint16_t interval) {
+                                uint16_t interval, uint8_t trigger_btn) {
   if (count == 0)
     count = 1;
-  uint32_t hold_time = (interval < 10) ? 5 : 30; // Mysz potrzebuje min 5ms
+  uint32_t hold_time = (interval < 10) ? 5 : 30;
   uint32_t wait_time = (interval > 0) ? interval : 30;
+  bool wait_for_release = true; // Flaga do logiki przerywania
+
+  // === INITIAL CLICK (Wake Up) ===
+  if (buttons & 1) {
+    int retry = 50;
+    while (retry-- > 0) {
+      if (tud_hid_mouse_report(2, buttons, 0, 0, 0, 0))
+        break;
+      tud_task();
+      sleep_ms(1);
+    }
+    sleep_ms(50);
+
+    retry = 50;
+    while (retry-- > 0) {
+      if (tud_hid_mouse_report(2, 0, 0, 0, 0, 0))
+        break;
+      tud_task();
+      sleep_ms(1);
+    }
+    sleep_ms(50);
+  }
+  // =================================
 
   for (uint16_t i = 0; i < count; i++) {
+    // SPRAWDZENIE PRZERWANIA (Emergency Stop)
+    if (check_cancel(trigger_btn, &wait_for_release))
+      break;
+
     // Press
-    while (!tud_hid_ready())
+    int retry = 50;
+    bool sent = false;
+    while (retry-- > 0) {
+      if (tud_hid_mouse_report(2, buttons, 0, 0, 0, 0)) {
+        sent = true;
+        break;
+      }
       tud_task();
-    // Report ID 2 = Mouse
-    // Petla retry, jesli bufor jest zajety
-    int retry = 10;
-    while (!tud_hid_mouse_report(2, buttons, 0, 0, 0, 0) && retry-- > 0) {
       sleep_ms(1);
-      tud_task();
     }
+
+    if (!sent)
+      cdc_log("[MOUSE] Drop Press\n");
 
     sleep_ms(hold_time);
 
     // Release
-    while (!tud_hid_ready())
+    retry = 50;
+    sent = false;
+    while (retry-- > 0) {
+      if (tud_hid_mouse_report(2, 0, 0, 0, 0, 0)) {
+        sent = true;
+        break;
+      }
       tud_task();
-    tud_hid_mouse_report(2, 0, 0, 0, 0, 0);
+      sleep_ms(1);
+    }
+
+    if (!sent)
+      cdc_log("[MOUSE] Drop Release\n");
+
+    cdc_log("[MOUSE] Click %d/%d done\n", i + 1, count);
 
     if (i < count - 1) {
       sleep_ms(wait_time);
@@ -362,14 +426,13 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_MOUSE_BUTTON: {
-    // value to maska (1=L, 2=R, 4=M)
+    // Przekazujemy button index do obslugi przerwania
     perform_mouse_click((uint8_t)macro->value, macro->repeat_count,
-                        macro->repeat_interval);
+                        macro->repeat_interval, button);
     break;
   }
 
   case MACRO_TYPE_MOUSE_MOVE: {
-    // value uzywane opcjonalnie, ale glownie move_x/move_y
     if (tud_hid_ready()) {
       tud_hid_mouse_report(2, 0, (int8_t)macro->move_x, (int8_t)macro->move_y,
                            0, 0);
@@ -378,7 +441,6 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_MOUSE_WHEEL: {
-    // value to scroll amount (int8)
     if (tud_hid_ready()) {
       tud_hid_mouse_report(2, 0, 0, 0, (int8_t)macro->value, 0);
     }
