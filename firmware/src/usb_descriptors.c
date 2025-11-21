@@ -1,3 +1,4 @@
+#include "pico/unique_id.h"
 #include "pin_definitions.h"
 #include "tusb.h"
 
@@ -84,9 +85,9 @@ char const *string_desc_arr[] = {
     (const char[]){0x09, 0x04}, // 0: supported language is English (0x0409)
     "Raspberry Pi",             // 1: Manufacturer
     "Macro Keyboard",           // 2: Product
-    "123456",                   // 3: Serial (TODO: replace with unique ID)
-    "Macro Config Interface",   // 4: CDC Interface
-    "Macro Keyboard HID"        // 5: HID Interface
+    "123456", // 3: Serial (placeholder, nadpisywany przez Unique ID)
+    "Macro Config Interface", // 4: CDC Interface
+    "Macro Keyboard HID"      // 5: HID Interface
 };
 
 static uint16_t _desc_str[32];
@@ -112,7 +113,16 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
       return NULL;
 
-    const char *str = string_desc_arr[index];
+    const char *str;
+    char serial_buf[33]; // bufor na unique id (max 16 bajtow hex + null)
+
+    // obsluga unique id dla numeru seryjnego (index 3)
+    if (index == 3) {
+      pico_get_unique_board_id_string(serial_buf, sizeof(serial_buf));
+      str = serial_buf;
+    } else {
+      str = string_desc_arr[index];
+    }
 
     // cap at max char
     chr_count = strlen(str);
