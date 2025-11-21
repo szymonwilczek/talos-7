@@ -17,6 +17,7 @@ add_executable(macrokeyboard
     src/mock_hardware.c
     src/hardware_interface.c
     src/macro_executor.c
+    src/oled_display.c
 )
 
 target_include_directories(macrokeyboard PRIVATE
@@ -36,7 +37,7 @@ target_link_libraries(macrokeyboard
 )
 
 # USB output
-pico_enable_stdio_usb(macrokeyboard 1)
+pico_enable_stdio_usb(macrokeyboard 0)
 pico_enable_stdio_uart(macrokeyboard 0)
 
 pico_add_extra_outputs(macrokeyboard)
