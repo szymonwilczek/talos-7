@@ -160,7 +160,7 @@ static void press_sequence(uint8_t modifiers, uint8_t keycode) {
   tud_hid_keyboard_report(1, modifiers, report);
 
   // solidne przytrzymanie, zeby system zarejestrowal skrot
-  sleep_ms(100);
+  sleep_ms(60);
 
   // 2. pusc klawisz (zostaw modyfikatory)
   if (keycode != 0) {
@@ -189,6 +189,40 @@ static void press_sequence(uint8_t modifiers, uint8_t keycode) {
   tud_hid_keyboard_report(1, 0, NULL);
 
   sleep_ms(50);
+}
+
+// SZYBKA wersja do spammowania klawiszy (Turbo Mode)
+// Omija hacki systemowe, stawia na predkosc
+static void perform_key_repeat_fast(uint8_t keycode, uint16_t count,
+                                    uint16_t interval) {
+  if (count == 0)
+    count = 1;
+
+  // Jesli interval < 10ms, uznajemy ze uzytkownik chce "MAX SPEED"
+  // Skracamy czas trzymania do minimum (1-2ms)
+  uint32_t hold_time = (interval < 10) ? 2 : 20;
+  uint32_t wait_time = (interval > 0) ? interval : 2;
+
+  for (uint16_t i = 0; i < count; i++) {
+    // Press
+    while (!tud_hid_ready())
+      tud_task();
+    uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
+    tud_hid_keyboard_report(1, 0, report);
+
+    sleep_ms(hold_time);
+
+    // Release
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_keyboard_report(1, 0, NULL);
+
+    // Delay
+    if (i < count - 1) {
+      sleep_ms(wait_time);
+    }
+    tud_task(); // Keep USB alive
+  }
 }
 
 // wpisuje tekst znak po znaku (obsluguje unicode i ascii)
@@ -226,23 +260,32 @@ static void type_text_content(const char *text, uint8_t platform) {
 static void perform_mouse_click(uint8_t buttons, uint16_t count,
                                 uint16_t interval) {
   if (count == 0)
-    count = 1; // Zawsze przynajmniej raz
+    count = 1;
+  uint32_t hold_time = (interval < 10) ? 5 : 30; // Mysz potrzebuje min 5ms
+  uint32_t wait_time = (interval > 0) ? interval : 30;
 
   for (uint16_t i = 0; i < count; i++) {
+    // Press
     while (!tud_hid_ready())
       tud_task();
-    tud_hid_mouse_report(2, buttons, 0, 0, 0, 0); // Press
-    sleep_ms(interval > 0 ? interval : 20);       // Hold/Interval
-
-    while (!tud_hid_ready())
+    // Report ID 2 = Mouse
+    // Petla retry, jesli bufor jest zajety
+    int retry = 10;
+    while (!tud_hid_mouse_report(2, buttons, 0, 0, 0, 0) && retry-- > 0) {
+      sleep_ms(1);
       tud_task();
-    tud_hid_mouse_report(2, 0, 0, 0, 0, 0); // Release
-
-    if (i < count - 1) {
-      sleep_ms(interval > 0 ? interval : 20); // Wait before next
     }
 
-    // WAZNE: Utrzymanie USB przy dlugich seriach
+    sleep_ms(hold_time);
+
+    // Release
+    while (!tud_hid_ready())
+      tud_task();
+    tud_hid_mouse_report(2, 0, 0, 0, 0, 0);
+
+    if (i < count - 1) {
+      sleep_ms(wait_time);
+    }
     tud_task();
   }
 }
@@ -277,9 +320,8 @@ void execute_macro(uint8_t layer, uint8_t button) {
 
   switch (macro->type) {
   case MACRO_TYPE_KEY_PRESS: {
-    // Obsluga powtorzen (Macro Builder)
-    perform_key_repeat((uint8_t)macro->value, macro->repeat_count,
-                       macro->repeat_interval);
+    perform_key_repeat_fast((uint8_t)macro->value, macro->repeat_count,
+                            macro->repeat_interval);
     break;
   }
 
@@ -308,49 +350,8 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_TEXT_STRING: {
-    cdc_log("[HID] Typing text: '%s'\n", macro->macro_string);
     uint8_t detected_os = detect_platform();
-    const char *p = macro->macro_string;
-    while (*p) {
-      uint32_t code = utf8_to_codepoint(&p);
-      if (code == 0) {
-        cdc_log("[HID] Invalid UTF-8\n");
-        continue;
-      }
-      cdc_log("[HID] Codepoint: %u (0x%X)\n", code, code);
-      if (code < 128) {
-        // ASCII
-        uint8_t keycode, modifiers;
-        if (map_char_to_hid((char)code, &keycode, &modifiers)) {
-          cdc_log("[HID] ASCII: key=%d mods=%d\n", keycode, modifiers);
-
-          while (!tud_hid_ready())
-            tud_task();
-
-          uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
-          tud_hid_keyboard_report(1, modifiers, report);
-
-          cdc_log("[HID] Sent ASCII press\n");
-
-          sleep_ms(2);
-
-          while (!tud_hid_ready())
-            tud_task();
-
-          tud_hid_keyboard_report(1, 0, NULL);
-          cdc_log("[HID] Sent ASCII release\n");
-          sleep_ms(10);
-        }
-      } else {
-        // Unicode
-        cdc_log("[HID] Unicode for platform %d\n", detected_os);
-        send_unicode(detected_os, code);
-      }
-    }
-    while (!tud_hid_ready())
-      tud_task();
-    tud_hid_keyboard_report(1, 0, NULL);
-    cdc_log("[EXECUTOR] Macro finished\n");
+    type_text_content(macro->macro_string, detected_os);
     break;
   }
 
@@ -428,26 +429,15 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_KEY_SEQUENCE: {
-    // Obsluga 'duration' jako czasu trzymania lub opoznienia
+    cdc_log("[HID] Seq steps: %d\n", macro->sequence_length);
     for (int i = 0; i < macro->sequence_length; i++) {
-      key_step_t *step = &macro->sequence[i];
+      // Uzywamy bezpiecznej sekwencji (z Anti-Spotlight), bo to skroty
+      press_sequence(macro->sequence[i].modifiers, macro->sequence[i].keycode);
 
-      // Wcisnij
-      while (!tud_hid_ready())
-        tud_task();
-      uint8_t report[6] = {step->keycode, 0, 0, 0, 0, 0};
-      tud_hid_keyboard_report(1, step->modifiers, report);
-
-      // Trzymaj przez zdefiniowany czas (domyslnie 50ms)
-      uint32_t hold = step->duration > 0 ? step->duration : 50;
-      sleep_ms(hold);
-
-      // Pusc
-      while (!tud_hid_ready())
-        tud_task();
-      tud_hid_keyboard_report(1, 0, NULL);
-
-      sleep_ms(20); // maly odstep miedzy krokami
+      // Opcjonalny dodatkowy delay z duration
+      if (macro->sequence[i].duration > 0) {
+        sleep_ms(macro->sequence[i].duration);
+      }
     }
     break;
   }
@@ -457,5 +447,8 @@ void execute_macro(uint8_t layer, uint8_t button) {
   sleep_ms(100);
   led_toggle(button);
 
-  tud_hid_keyboard_report(1, 0, NULL);
+  if (tud_hid_ready()) {
+    tud_hid_keyboard_report(1, 0, NULL);
+    tud_hid_mouse_report(2, 0, 0, 0, 0, 0);
+  }
 }

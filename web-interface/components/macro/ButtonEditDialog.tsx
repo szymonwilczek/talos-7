@@ -72,15 +72,24 @@ export function ButtonEditDialog({
       setMacroString(macro.macroString);
       setKeySequence(macro.keySequence ? decompileSequence(macro.keySequence) : []);
       setTerminalShortcut(macro.terminalShortcut || []);
+      setMacroRepeatCount(macro.repeatCount || 1);
+      setMacroRepeatInterval(macro.repeatInterval || 0);
+      setMoveX(macro.moveX || 0);
+      setMoveY(macro.moveY || 0);
+
+      if (macro.type === MacroType.SCRIPT) {
+        setScriptContent(macro.script || '');
+        setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
+      }
     }
   }, [macro]);
 
-  useEffect(() => {
-    if (macro && macro.type === MacroType.SCRIPT) {
-      setScriptContent(macro.script || '');
-      setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
-    }
-  }, [macro]);
+  // useEffect(() => {
+  //   if (macro && macro.type === MacroType.SCRIPT) {
+  //     setScriptContent(macro.script || '');
+  //     setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
+  //   }
+  // }, [macro]);
 
   const decompileSequence = (compiled: KeyPress[]): KeyPress[] => {
     const raw: KeyPress[] = [];
@@ -111,6 +120,10 @@ export function ButtonEditDialog({
       name: macroName,
       emoji: macroEmoji,
       keySequence: macroType === MacroType.KEY_SEQUENCE ? keySequence : undefined,
+      repeatCount: macroRepeatCount,
+      repeatInterval: macroRepeatInterval,
+      moveX: moveX,
+      moveY: moveY,
     };
 
     if (macroType === MacroType.SCRIPT) {
@@ -195,6 +208,9 @@ export function ButtonEditDialog({
                 )}
                 <SelectItem value="3">Script Execution</SelectItem>
                 <SelectItem value="4">Key Sequence</SelectItem>
+                <SelectItem value="5">Mouse Button</SelectItem>
+                <SelectItem value="6">Mouse Move</SelectItem>
+                <SelectItem value="7">Mouse Scroll</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -209,7 +225,7 @@ export function ButtonEditDialog({
                   value={macroRepeatCount}
                   onChange={e => setMacroRepeatCount(parseInt(e.target.value))}
                 />
-                <p className="text-[10px] text-muted-foreground">How many times to click</p>
+                <p className="text-[10px] text-muted-foreground">Count</p>
               </div>
               <div className="space-y-2">
                 <Label>Interval (ms)</Label>
@@ -219,8 +235,26 @@ export function ButtonEditDialog({
                   value={macroRepeatInterval}
                   onChange={e => setMacroRepeatInterval(parseInt(e.target.value))}
                 />
-                <p className="text-[10px] text-muted-foreground">Delay between clicks</p>
+                <p className="text-[10px] text-muted-foreground">Delay</p>
               </div>
+            </div>
+          )}
+
+          {macroType === MacroType.KEY_PRESS && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="keycode">HID Keycode</Label>
+                <KeycodeDialog />
+              </div>
+              <Input
+                id="keycode"
+                type="number"
+                value={macroValue}
+                onChange={(e) => setMacroValue(parseInt(e.target.value) || 0)}
+                min={0}
+                max={255}
+                placeholder="e.g. 4 for 'A'"
+              />
             </div>
           )}
 
@@ -255,24 +289,6 @@ export function ButtonEditDialog({
             <div className="space-y-2">
               <Label>Scroll Amount</Label>
               <Input type="number" value={macroValue} onChange={e => setMacroValue(parseInt(e.target.value))} placeholder="Positive=Up, Negative=Down" />
-            </div>
-          )}
-
-          {macroType === MacroType.KEY_PRESS && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="keycode">HID Keycode</Label>
-                <KeycodeDialog />
-              </div>
-              <Input
-                id="keycode"
-                type="number"
-                value={macroValue}
-                onChange={(e) => setMacroValue(parseInt(e.target.value) || 0)}
-                min={0}
-                max={255}
-                placeholder="e.g. 4 for 'A'"
-              />
             </div>
           )}
 

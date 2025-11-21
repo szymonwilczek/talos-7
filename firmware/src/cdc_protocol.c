@@ -586,18 +586,10 @@ static void process_command(const char *cmd_input) {
     // step_count
     step_count = atoi(token);
     token = strchr(token, '|');
-    if (!token) {
-      cdc_send_response("ERROR|Invalid SET_MACRO_SEQ format");
+    if (!token)
       return;
-    }
     token++;
 
-    if (step_count < 0 || step_count > MAX_SEQUENCE_STEPS) {
-      cdc_send_response("ERROR|Invalid step count");
-      return;
-    }
-
-    // kroki
     config_data_t *config = config_get();
     macro_entry_t *macro = &config->macros[layer][button];
 
@@ -606,27 +598,29 @@ static void process_command(const char *cmd_input) {
     strncpy(macro->name, name, MAX_NAME_LEN - 1);
     macro->emoji_index = emoji_index;
 
-    cmd_ptr = token; // cmd_ptr na poczatek steps
+    cmd_ptr = token; // poczatek danych krokow
 
     for (int i = 0; i < step_count; i++) {
-      int keycode, mods, duration = 0;
-      if (sscanf(cmd_ptr, "%d,%d", &keycode, &mods) == 2) {
+      int keycode = 0, mods = 0, duration = 0;
+      int chars_read = 0;
+
+      // Uzywamy %n zeby wiedziec ile znakow przesunac
+      if (sscanf(cmd_ptr, "%d,%d,%d%n", &keycode, &mods, &duration,
+                 &chars_read) >= 2) {
         macro->sequence[i].keycode = (uint8_t)keycode;
         macro->sequence[i].modifiers = (uint8_t)mods;
         macro->sequence[i].duration = (uint16_t)duration;
-        printf("[CDC] Step %d: keycode=%d mods=0x%02X\n", i, keycode, mods,
-               duration);
 
-        // nastepny krok
-        cmd_ptr = strchr(cmd_ptr, ',');
-        if (cmd_ptr)
-          cmd_ptr++;
-        cmd_ptr = strchr(cmd_ptr, ',');
-        if (cmd_ptr)
+        printf("[CDC] Step %d: k=%d m=%d d=%d\n", i, keycode, mods, duration);
+
+        // Przesuwamy wskaznik o tyle, ile przeczytalismy + 1 (przecinek)
+        cmd_ptr += chars_read;
+        if (*cmd_ptr == ',')
           cmd_ptr++;
       } else {
-        cdc_send_response("ERROR|Invalid step format");
-        return;
+        // Jesli nie udalo sie przeczytac, przerywamy zeby nie wpisac glupot
+        printf("[CDC] Error parsing step %d\n", i);
+        break;
       }
     }
 
