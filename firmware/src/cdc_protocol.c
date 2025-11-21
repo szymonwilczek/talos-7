@@ -1,6 +1,7 @@
 #include "cdc_protocol.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
+#include "oled_display.h"
 #include "tusb.h"
 #include <stdarg.h>
 #include <stdio.h>
