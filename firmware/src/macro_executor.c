@@ -406,6 +406,51 @@ static void type_text_turbo_ascii(const char *text) {
   }
 }
 
+static void perform_mouse_move_smooth(int16_t total_x, int16_t total_y,
+                                      uint16_t count, uint16_t interval,
+                                      uint8_t trigger_btn) {
+  bool wait_for_release = true;
+  bool infinite = (count == 0);
+  uint32_t i = 0;
+
+  // parametry wygladzania
+  const int8_t MAX_STEP = 5;    // max 5 pikseli na raport (dla plynnosci)
+  const uint8_t STEP_DELAY = 8; // 8ms miedzy krokami (ok 125Hz)
+
+  while (infinite || i < count) {
+    if (check_cancel(trigger_btn, &wait_for_release))
+      break;
+
+    int16_t x = total_x;
+    int16_t y = total_y;
+
+    // petla interpolacji ruchu
+    while (x != 0 || y != 0) {
+      // uzytkownik anuluje w trakcie dlugiego przejazdu
+      if (check_cancel(trigger_btn, &wait_for_release))
+        goto end_move;
+
+      int8_t dx = (x > MAX_STEP) ? MAX_STEP : (x < -MAX_STEP) ? -MAX_STEP : x;
+      int8_t dy = (y > MAX_STEP) ? MAX_STEP : (y < -MAX_STEP) ? -MAX_STEP : y;
+
+      x -= dx;
+      y -= dy;
+
+      if (tud_hid_ready()) {
+        tud_hid_mouse_report(2, 0, dx, dy, 0, 0);
+      }
+      sleep_ms(STEP_DELAY);
+      tud_task();
+    }
+
+    if (infinite || i < count - 1)
+      sleep_ms(interval > 0 ? interval : 20);
+    if (!infinite)
+      i++;
+  }
+end_move:;
+}
+
 void execute_macro(uint8_t layer, uint8_t button) {
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
@@ -433,10 +478,9 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   case MACRO_TYPE_MOUSE_MOVE: {
-    if (tud_hid_ready()) {
-      tud_hid_mouse_report(2, 0, (int8_t)macro->move_x, (int8_t)macro->move_y,
-                           0, 0);
-    }
+    // Uzywamy nowej funkcji wygładzania z obsługa pętli
+    perform_mouse_move_smooth(macro->move_x, macro->move_y, macro->repeat_count,
+                              macro->repeat_interval, button);
     break;
   }
 
