@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { GlobalConfig } from "@/lib/types/config.types";
+import { ConfigChange, GlobalConfig } from "@/lib/types/config.types";
 
 export function usePendingChanges(config: GlobalConfig | null) {
   const originalConfigRef = useRef<GlobalConfig | null>(null);
-  const [pendingChanges, setPendingChanges] = useState(new Map<string, any>());
+  const [pendingChanges, setPendingChanges] = useState(
+    new Map<string, ConfigChange>(),
+  );
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
   // aktualizuj originalConfig przy zmianie config
@@ -21,31 +23,32 @@ export function usePendingChanges(config: GlobalConfig | null) {
       return;
     }
 
-    const changes = new Map<string, any>();
+    const changes = new Map<string, ConfigChange>();
     const originalConfig = originalConfigRef.current;
 
     console.log("🔍 Calculating changes...");
 
-    if (config.oledTimeout !== originalConfig.oledTimeout) {
-      console.log(`🔄 OLED timeout changed:`, {
-        from: originalConfig.oledTimeout,
-        to: config.oledTimeout,
-      });
-      changes.set("oledTimeout", {
-        type: "oledTimeout",
-        value: config.oledTimeout,
+    // ustawienia globalne (OLED Timeout)
+    const currentTimeout = config.oledTimeout ?? 300;
+    const originalTimeout = originalConfig.oledTimeout ?? 300;
+
+    if (currentTimeout !== originalTimeout) {
+      console.log(
+        `🔄 OLED timeout changed: {from: ${originalTimeout}, to: ${currentTimeout}}`,
+      );
+      changes.set("setting-oled", {
+        type: "setting",
+        settingName: "oledTimeout",
+        value: currentTimeout,
       });
     }
 
+    // warstwy i makra
     config.layers.forEach((layer, layerIdx) => {
       const origLayer = originalConfig.layers[layerIdx];
 
       // zmiany w nazwie/emoji warstwy
       if (layer.name !== origLayer.name || layer.emoji !== origLayer.emoji) {
-        console.log(`🔄 Layer ${layerIdx} changed:`, {
-          from: { name: origLayer.name, emoji: origLayer.emoji },
-          to: { name: layer.name, emoji: layer.emoji },
-        });
         const changeKey = `layer_${layerIdx}`;
         changes.set(changeKey, {
           type: "layer",
@@ -68,10 +71,11 @@ export function usePendingChanges(config: GlobalConfig | null) {
           macro.script !== origMacro.script ||
           macro.scriptPlatform !== origMacro.scriptPlatform ||
           JSON.stringify(macro.keySequence) !==
-            JSON.stringify(origMacro.keySequence);
+            JSON.stringify(origMacro.keySequence) ||
+          JSON.stringify(macro.terminalShortcut) !==
+            JSON.stringify(origMacro.terminalShortcut);
 
         if (macroChanged) {
-          console.log(`🔄 Macro ${layerIdx}-${buttonIdx} changed`);
           const changeKey = `macro_${layerIdx}_${buttonIdx}`;
           changes.set(changeKey, {
             type: "macro",

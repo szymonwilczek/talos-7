@@ -53,6 +53,7 @@ export interface MacroEntry {
  */
 export interface GlobalConfig {
   layers: LayerConfig[];
+  oledTimeout: number;
 }
 
 export interface LayerConfig {

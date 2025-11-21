@@ -99,7 +99,16 @@ export interface MacroChange {
   oledTimeout: number;
 }
 
-export type ConfigChange = LayerChange | MacroChange;
+export interface ConfigChange {
+  type: "layer" | "macro" | "setting";
+  layer?: number;
+  button?: number;
+  settingName?: string;
+  value?: any;
+  name?: string;
+  emoji?: string;
+  macro?: MacroEntry;
+}
 
 // ==================== VALIDATORS ====================
 

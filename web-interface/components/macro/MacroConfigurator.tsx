@@ -136,39 +136,48 @@ export function MacroConfigurator() {
       for (let i = 0; i < changes.length; i++) {
         const change = changes[i];
 
-        if (change.type === 'setting' && change.settingName === 'oledTimeout') {
-          console.log(`📤 Updating OLED Timeout: ${change.value}s`);
-          await serialService.setOledTimeout(change.value);
+        // OBSLUGA USTAWIEN GLOBALNYCH (OLED Timeout)
+        if (change.type === 'setting') {
+          if (change.settingName === 'oledTimeout') {
+            console.log(`📤 Updating OLED Timeout: ${change.value}s`);
+            await serialService.setOledTimeout(change.value);
+          }
+          console.log(`✅ Setting change processed`);
         }
-
-        if (change.type === 'layer') {
+        // OBSLUGA ZMIAN WARSTWY
+        else if (change.type === 'layer') {
           console.log(`📤 Processing layer change: ${change.emoji} ${change.name}`);
-          await serialService.setLayerName(change.layer, change.name, change.emoji);
+          if (change.layer !== undefined && change.name !== undefined && change.emoji !== undefined) {
+            await serialService.setLayerName(change.layer, change.name, change.emoji);
+          }
           console.log(`✅ Layer change processed`);
         }
+        // OBSLUGA ZMIAN MAKRA
         else if (change.type === 'macro') {
           const macro = change.macro;
           console.log(`📤 Processing macro change: ${macro.emoji} ${macro.name}`);
 
-          if (macro.type === MacroType.SCRIPT && macro.script) {
-            await serialService.setScript(
-              change.layer,
-              change.button,
-              macro.scriptPlatform || ScriptPlatform.LINUX,
-              macro.script,
-              macro.terminalShortcut || []
-            );
-          } else {
-            await serialService.setMacro(
-              change.layer,
-              change.button,
-              macro.type,
-              macro.value,
-              macro.macroString,
-              macro.name,
-              macro.emoji,
-              macro.keySequence
-            );
+          if (change.layer !== undefined && change.button !== undefined) {
+            if (macro.type === MacroType.SCRIPT && macro.script) {
+              await serialService.setScript(
+                change.layer,
+                change.button,
+                macro.scriptPlatform || ScriptPlatform.LINUX,
+                macro.script,
+                macro.terminalShortcut || []
+              );
+            } else {
+              await serialService.setMacro(
+                change.layer,
+                change.button,
+                macro.type,
+                macro.value,
+                macro.macroString,
+                macro.name,
+                macro.emoji,
+                macro.keySequence
+              );
+            }
           }
           console.log(`✅ Macro change processed`);
         }
