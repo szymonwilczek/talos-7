@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Pico SDK
 include(pico_sdk_import.cmake)
 
@@ -15,7 +16,11 @@ add_executable(macrokeyboard
     src/usb_descriptors.c
     src/mock_hardware.c
     src/hardware_interface.c
-    src/macro_executor.c
+    src/executor/macro_executor.c
+    src/executor/actions/exec_hid_core.c
+    src/executor/actions/exec_mouse.c
+    src/executor/actions/exec_script.c
+    src/executor/actions/exec_text.c
     src/oled_display.c
     src/cdc/commands/cdc_cmd_read.c
     src/cdc/commands/cdc_cmd_write.c
