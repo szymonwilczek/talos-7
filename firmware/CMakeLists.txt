@@ -12,12 +12,16 @@ pico_sdk_init()
 add_executable(macrokeyboard
     src/main.c
     src/macro_config.c
-    src/cdc_protocol.c
     src/usb_descriptors.c
     src/mock_hardware.c
     src/hardware_interface.c
     src/macro_executor.c
     src/oled_display.c
+    src/cdc/commands/cdc_cmd_read.c
+    src/cdc/commands/cdc_cmd_write.c
+    src/cdc/commands/cdc_cmd_system.c
+    src/cdc/cdc_dispatcher.c
+    src/cdc/cdc_transport.c
 )
 
 target_include_directories(macrokeyboard PRIVATE
