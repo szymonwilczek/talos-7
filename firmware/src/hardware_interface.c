@@ -1,9 +1,9 @@
 #include "hardware_interface.h"
-#include "cdc_protocol.h"
 #include "macro_config.h"
 #include "oled_display.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
+#include "cdc/cdc_transport.h"
 #include <stdio.h>
 #include <string.h>
 

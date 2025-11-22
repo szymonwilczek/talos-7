@@ -1,6 +1,6 @@
 #include "oled_display.h"
 
-#include "cdc_protocol.h"
+#include "cdc/cdc_transport.h"
 #include "emoji.h"
 #include "font.h"
 #include "hardware_interface.h"

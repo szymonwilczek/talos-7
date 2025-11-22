@@ -1,5 +1,4 @@
 #include "mock_hardware.h"
-#include "cdc_protocol.h"
 #include "pin_definitions.h"
 #include <stdio.h>
 

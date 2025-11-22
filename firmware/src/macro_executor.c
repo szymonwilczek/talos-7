@@ -1,4 +1,4 @@
-#include "cdc_protocol.h"
+#include "cdc/cdc_transport.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "oled_display.h"
