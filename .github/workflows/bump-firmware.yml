@@ -1,0 +1,44 @@
+name: Auto Bump Firmware Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'firmware/**'
+      - '!firmware/include/firmware_version.h'
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Increment Patch Version
+        run: |
+          FILE="firmware/include/firmware_version.h"
+          
+          CURRENT_PATCH=$(grep "#define FW_VERSION_PATCH" $FILE | awk '{print $3}')
+          
+          NEW_PATCH=$((CURRENT_PATCH + 1))
+          
+          echo "Bumping version from patch $CURRENT_PATCH to $NEW_PATCH"
+          
+          sed -i "s/#define FW_VERSION_PATCH $CURRENT_PATCH/#define FW_VERSION_PATCH $NEW_PATCH/" $FILE
+          
+          sed -i "s/#define FW_BUILD_DATE.*/#define FW_BUILD_DATE \"$(date +'%Y-%m-%d')\"/" $FILE
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'Hephaestus'
+          git config --global user.email 'forge@olympus.local'
+          
+          git add firmware/include/firmware_version.h
+          git commit -m "chore(firmware): Hephaestus forged patch version bump [skip ci]"
+          git push
