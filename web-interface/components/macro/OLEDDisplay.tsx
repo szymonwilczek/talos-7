@@ -268,9 +268,6 @@ export function OLEDDisplay({
                   {layer.macros[activeButton].name || `Button ${activeButton + 1}`}
                 </span>
               </div>
-              <Badge variant={selectedButton !== null ? 'default' : 'outline'} className="shrink-0">
-                {selectedButton !== null ? 'Editing' : 'Preview'}
-              </Badge>
             </div>
 
             <Separator className="bg-[#00ffff] shrink-0" />
@@ -292,9 +289,6 @@ export function OLEDDisplay({
                 <EmojiCanvas emojiIndex={getEmojiIndex(layer.emoji)} color="#00ffff" size={20} />
                 <span className='max-md:text-sm max-lg:text-md text-xl'>{layer.name || `Layer ${layerIndex + 1}/${totalLayers}`}</span>
               </div>
-              <Badge variant={selectedButton !== null ? 'default' : 'outline'}>
-                {selectedButton !== null ? 'Editing' : 'Preview'}
-              </Badge>
             </div>
             <Separator className="bg-[#00ffff]" />
             <div className="grid grid-cols-3 gap-2 text-start">
@@ -332,6 +326,11 @@ export function OLEDDisplay({
           </div>
         )}
       </CardContent>
+      <div className="absolute top-2 right-1">
+        <Badge className="opacity-80" variant={selectedButton !== null ? 'default' : 'outline'}>
+          {selectedButton !== null ? 'Editing' : 'Preview'}
+        </Badge>
+      </div>
     </Card >
   );
 }
