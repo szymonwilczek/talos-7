@@ -5,6 +5,6 @@
 #define FW_VERSION_MINOR 1
 #define FW_VERSION_PATCH 1
 
-#define FW_BUILD_DATE __DATE__
+#define FW_BUILD_DATE "2025-11-23"
 
 #endif // FIRMWARE_VERSION_H
