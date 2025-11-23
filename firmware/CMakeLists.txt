@@ -4,13 +4,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Pico SDK
 include(pico_sdk_import.cmake)
 
-project(macrokeyboard C CXX ASM)
+project(talos7 C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-add_executable(macrokeyboard
+add_executable(talos7
     src/main.c
     src/macro_config.c
     src/usb_descriptors.c
@@ -30,11 +30,11 @@ add_executable(macrokeyboard
     src/cdc/cdc_transport.c
 )
 
-target_include_directories(macrokeyboard PRIVATE
+target_include_directories(talos7 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-target_link_libraries(macrokeyboard
+target_link_libraries(talos7
     pico_stdlib
     pico_unique_id
     hardware_flash
@@ -47,7 +47,7 @@ target_link_libraries(macrokeyboard
 )
 
 # USB output
-pico_enable_stdio_usb(macrokeyboard 0)
-pico_enable_stdio_uart(macrokeyboard 0)
+pico_enable_stdio_usb(talos7 0)
+pico_enable_stdio_uart(talos7 0)
 
-pico_add_extra_outputs(macrokeyboard)
+pico_add_extra_outputs(talos7)
