@@ -1,4 +1,4 @@
-name: Firmware Version Bump
+name: Hephaestus Forge (Bump, Build & Release)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - '!firmware/include/firmware_version.h'
 
 jobs:
-  bump-version:
+  forge-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,7 +40,7 @@ jobs:
           echo "Detected bump type: $TYPE"
           echo "type=$TYPE" >> $GITHUB_OUTPUT
 
-      - name: Execute Hephaestus Forge (Update Version)
+      - name: Update Version Header
         if: steps.bump_type.outputs.type != 'none'
         run: |
           FILE="firmware/include/firmware_version.h"
@@ -50,15 +50,12 @@ jobs:
           MINOR=$(grep "#define FW_VERSION_MINOR" $FILE | awk '{print $3}')
           PATCH=$(grep "#define FW_VERSION_PATCH" $FILE | awk '{print $3}')
           
-          echo "Current version: $MAJOR.$MINOR.$PATCH"
+          echo "Old version: $MAJOR.$MINOR.$PATCH"
           
           if [ "$BUMP_TYPE" == "major" ]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
           elif [ "$BUMP_TYPE" == "minor" ]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
+            MINOR=$((MINOR + 1)); PATCH=0
           elif [ "$BUMP_TYPE" == "patch" ]; then
             PATCH=$((PATCH + 1))
           fi
@@ -72,14 +69,69 @@ jobs:
           
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-      - name: Commit and Push by Hephaestus
+      - name: Commit Version Bump
         if: steps.bump_type.outputs.type != 'none'
         run: |
           git config --global user.name 'Hephaestus'
           git config --global user.email 'forge@olympus.local'
           
           git add firmware/include/firmware_version.h
-          
           git commit -m "chore(firmware): Hephaestus forged v${{ env.NEW_VERSION }} [skip ci]"
-          
           git push
+
+      # ========================================================
+      # (BUILD)
+      # ========================================================
+
+      # ARM GCC + CMake
+      - name: Install Arm Toolchain
+        if: steps.bump_type.outputs.type != 'none'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential cmake
+
+      # Pico SDK
+      - name: Checkout Pico SDK
+        if: steps.bump_type.outputs.type != 'none'
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/pico-sdk
+          path: pico-sdk
+          submodules: true
+
+      # Firmware
+      - name: Compile Firmware
+        if: steps.bump_type.outputs.type != 'none'
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+        run: |
+          cd firmware
+          mkdir build
+          cd build
+          cmake ..
+          make -j4
+          
+          # for debugging
+          ls -la
+
+      # Release
+      - name: Create GitHub Release
+        if: steps.bump_type.outputs.type != 'none'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          name: Talos 7 Firmware v${{ env.NEW_VERSION }}
+          body: |
+            Automated release forged by Hephaestus.
+            
+            **Changes in this version:**
+            ${{ github.event.head_commit.message }}
+          files: |
+            firmware/build/talos7.uf2
+            firmware/build/talos7.bin
+            firmware/build/talos7.hex
+            firmware/build/talos7.elf
+            firmware/build/talos7.dis
+            firmware/build/talos7.elf.map
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
