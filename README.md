@@ -6,14 +6,13 @@
   <br/>
   
   [![Hephaestus Forge](https://github.com/szymonwilczek/talos-7/actions/workflows/bump-firmware.yml/badge.svg)](https://github.com/szymonwilczek/talos-7/actions)
-  [![Firmware](https://img.shields.io/badge/firmware-v1.1.0-00599C)](https://github.com/szymonwilczek/talos-7/releases)
+  [![Firmware](https://img.shields.io/github/v/release/szymonwilczek/talos-7?label=firmware&color=00599C)](https://github.com/szymonwilczek/talos-7/releases)
   ![License](https://img.shields.io/badge/license-MIT-green)
   ![Platform](https://img.shields.io/badge/platform-RP2040-C51A4A)
 
   <p>
     <b>Professional. Driverless. Infinite Possibilities.</b><br/>
-    Designed for Streamers, Developers, and Creatives.
-
+    Designed for Streamers, Developers, and Creatives. <br/>
     Forged to automate.
   </p>
 </div>
@@ -22,7 +21,7 @@
 
 ## 📖 Overview
 
-**Talos 7** is not just a keypad; it's a hardware productivity platform. I've name this functionality: SudoPad. Unlike traditional macro pads that rely on heavy background software (like Synapse or iCUE), **Talos 7 runs everything on the device itself**.
+**Talos 7** is not just a keypad; it's a hardware productivity platform. I've name this functionality as SudoPad. Unlike traditional macro pads that rely on heavy background software (like Synapse or iCUE), **Talos 7 runs everything on the device itself**.
 
 Once configured via the web interface, you can plug it into **any computer** (Windows, macOS, Linux, iPadOS), and it will work instantly. No drivers. No background agents. Just pure hardware emulation.
 
@@ -145,9 +144,9 @@ Sends a generic MIDI value (Potentiometer/Fader simulation).
 
 ---
 
-## 🤖 DevOps: Project Hephaestus
+## 🤖 DevOps: Hephaestus
 
-This repository is managed by an automated guardian named **Hephaestus**.
+This repository is managed by an automated github workflow named **Hephaestus**.
 
 ### Automated Versioning
 I use **Semantic Versioning**. Hephaestus parses every commit message:
@@ -188,6 +187,6 @@ If you "bricked" the configuration or the device is unresponsive:
 
 * **Core Logic:** Szymon Wilczek
 * **Project Link:** [github.com/szymonwilczek/talos-7](https://github.com/szymonwilczek/talos-7)
-* **License:** MIT License.
+* **License:** [MIT License](./LICENSE.md) 
 
 Built with ❤️ using **Raspberry Pi Pico SDK** and **TinyUSB**.
