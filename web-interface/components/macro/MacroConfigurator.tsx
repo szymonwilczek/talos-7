@@ -23,6 +23,7 @@ import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Slider } from '../ui/slider';
+import { Badge } from '../ui/badge';
 
 const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻', '🔫', '⏳', '🌷'];
 
@@ -289,6 +290,11 @@ export function MacroConfigurator() {
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span>Connected</span>
           </div>
+          {config.firmwareVersion && (
+            <Badge variant="outline" className="font-mono text-xs border-green-500/30 text-green-600 dark:text-green-400">
+              v{config.firmwareVersion}
+            </Badge>
+          )}
           <Button variant="outline" size="sm" onClick={handleDisconnect}>
             Disconnect
           </Button>

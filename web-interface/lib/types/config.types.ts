@@ -50,6 +50,7 @@ export interface LayerConfig {
 export interface GlobalConfig {
   layers: LayerConfig[];
   oledTimeout: number;
+  firmwareVersion?: string;
 }
 
 export interface ConnectionError {

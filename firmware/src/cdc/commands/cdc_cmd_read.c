@@ -1,5 +1,7 @@
 #include "cdc/commands/cdc_cmd_read.h"
+
 #include "cdc/cdc_transport.h"
+#include "firmware_version.h"
 #include "macro_config.h"
 #include "tusb.h"
 #include <stddef.h>
@@ -12,6 +14,8 @@ void cmd_handle_get_conf(void) {
   cdc_log("[CDC] GET_CONF command received\n");
 
   cdc_send_response("CONF_START");
+  cdc_send_response_fmt("VERSION|%d.%d.%d", FW_VERSION_MAJOR, FW_VERSION_MINOR,
+                        FW_VERSION_PATCH);
   tud_cdc_write_flush();
 
   // global settings

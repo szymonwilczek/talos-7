@@ -281,6 +281,7 @@ export class SerialService {
           emoji: "",
         })),
         oledTimeout: 300,
+        firmwareVersion: "unknown",
       })),
     };
 
@@ -297,6 +298,16 @@ export class SerialService {
         if (line === "CONF_END") {
           console.log("✅ Configuration parsing complete");
           break;
+        }
+
+        if (line.startsWith("VERSION|")) {
+          // format: VERSION|1.0.0
+          const parts = line.split("|");
+          if (parts.length >= 2) {
+            config.firmwareVersion = parts[1];
+            console.log(`Firmware Version: ${config.firmwareVersion}`);
+          }
+          continue;
         }
 
         if (line.startsWith("SETTINGS|")) {
