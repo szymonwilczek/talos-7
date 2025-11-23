@@ -454,13 +454,19 @@ export class SerialService {
               moveY: parseInt(parts[11]) || 0,
             };
 
+            if (type === MacroType.MIDI_NOTE) {
+              macro.midiNote = value;
+              macro.midiVelocity = macro.moveX;
+              macro.midiChannel = macro.moveY;
+            }
+
             if (type === 3 && parts.length >= 9) {
               macro.scriptPlatform = parseInt(parts[8]);
               pendingScriptMacro = { layer, button };
             }
 
             config.layers[layer].macros[button] = macro;
-            console.log(`  ➜ Button ${button}: ${name} (type ${type})`);
+            console.log(`Button ${button}: ${name} (type ${type})`);
           }
           continue;
         }

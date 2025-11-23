@@ -2,6 +2,7 @@
 
 #include "cdc/cdc_transport.h"
 #include "executor/actions/exec_hid_core.h"
+#include "executor/actions/exec_midi_core.h"
 #include "executor/actions/exec_mouse.h"
 #include "executor/actions/exec_script.h"
 #include "executor/actions/exec_text.h"
@@ -73,6 +74,19 @@ void execute_macro(uint8_t layer, uint8_t button) {
 
   case MACRO_TYPE_KEY_SEQUENCE: {
     exec_key_sequence(macro->sequence, macro->sequence_length);
+    break;
+  }
+
+  case MACRO_TYPE_MIDI_NOTE: {
+    // value  -> Note
+    // move_x -> Velocity (default is 127)
+    // move_y -> Channel (default is 1)
+
+    uint8_t note = (uint8_t)macro->value;
+    uint8_t velocity = (macro->move_x > 0) ? (uint8_t)macro->move_x : 127;
+    uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y : 1;
+
+    exec_midi_note(note, velocity, channel);
     break;
   }
   }

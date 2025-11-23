@@ -9,6 +9,7 @@ export enum MacroType {
   MOUSE_BUTTON = 5,
   MOUSE_MOVE = 6,
   MOUSE_WHEEL = 7,
+  MIDI_NOTE = 8,
 }
 
 export type ConnectionStatus =
@@ -39,6 +40,9 @@ export interface MacroEntry {
   scriptPlatform?: number;
   terminalShortcut?: KeyPress[];
   keySequence?: KeyPress[];
+  midiNote?: number; // 0-127
+  midiVelocity?: number; // 0-127
+  midiChannel?: number; // 1-16
 }
 
 export interface LayerConfig {

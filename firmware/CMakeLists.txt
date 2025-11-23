@@ -18,6 +18,7 @@ add_executable(macrokeyboard
     src/hardware_interface.c
     src/executor/macro_executor.c
     src/executor/actions/exec_hid_core.c
+    src/executor/actions/exec_midi_core.c
     src/executor/actions/exec_mouse.c
     src/executor/actions/exec_script.c
     src/executor/actions/exec_text.c

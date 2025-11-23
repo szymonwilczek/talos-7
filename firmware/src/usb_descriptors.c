@@ -48,15 +48,24 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
 //--------------------------------------------------------------------+
 // Configuration Descriptor
 //--------------------------------------------------------------------+
-enum { ITF_NUM_CDC = 0, ITF_NUM_CDC_DATA, ITF_NUM_HID, ITF_NUM_TOTAL };
+enum {
+  ITF_NUM_CDC = 0,
+  ITF_NUM_CDC_DATA,
+  ITF_NUM_HID,
+  ITF_NUM_MIDI,
+  ITF_NUM_TOTAL
+};
 
 #define CONFIG_TOTAL_LEN                                                       \
-  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN)
+  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN +                 \
+   TUD_MIDI_DESC_LEN)
 
 #define EPNUM_CDC_NOTIF 0x81
 #define EPNUM_CDC_OUT 0x02
 #define EPNUM_CDC_IN 0x82
 #define EPNUM_HID 0x83
+#define EPNUM_MIDI_OUT 0x03
+#define EPNUM_MIDI_IN 0x84
 
 uint8_t const desc_configuration[] = {
     // config number, interface count, string index, total length, attribute,
@@ -72,7 +81,10 @@ uint8_t const desc_configuration[] = {
     // address, size & polling interval
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report), EPNUM_HID,
-                       CFG_TUD_HID_EP_BUFSIZE, 10)};
+                       CFG_TUD_HID_EP_BUFSIZE, 10),
+
+    // interface number, string index, EP Out & In address, size
+    TUD_MIDI_DESCRIPTOR(ITF_NUM_MIDI, 6, EPNUM_MIDI_OUT, EPNUM_MIDI_IN, 64)};
 
 // invoked when received GET CONFIGURATION DESCRIPTOR
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
@@ -89,7 +101,8 @@ char const *string_desc_arr[] = {
     "Talos 7",                  // 2: Product
     "123456",                   // 3: Serial
     "Talos Config Interface",   // 4: CDC Interface
-    "Talos 7 HID"               // 5: HID Interface
+    "Talos 7 HID",              // 5: HID Interface
+    "Talos 7 MIDI"              // 6: MIDI Interface
 };
 
 static uint16_t _desc_str[32];
