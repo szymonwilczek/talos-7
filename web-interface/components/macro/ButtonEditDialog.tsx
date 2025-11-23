@@ -61,6 +61,8 @@ export function ButtonEditDialog({
   const [midiNote, setMidiNote] = useState(60);
   const [midiVelocity, setMidiVelocity] = useState(127);
   const [midiChannel, setMidiChannel] = useState(1);
+  const [midiCCNumber, setMidiCCNumber] = useState(1);
+  const [midiCCValue, setMidiCCValue] = useState(127);
 
   const canSelectLayerToggle = !layerMacros?.some(
     (m, idx) => m.type === MacroType.LAYER_TOGGLE && idx !== buttonIndex
@@ -94,6 +96,12 @@ export function ButtonEditDialog({
         setMidiNote(60);
         setMidiVelocity(127);
         setMidiChannel(1);
+      }
+
+      if (macro.type === MacroType.MIDI_CC) {
+        setMidiCCNumber(macro.value || 1);
+        setMidiCCValue(macro.moveX || 127);
+        setMidiChannel(macro.moveY || 1);
       }
     }
   }, [macro]);
@@ -135,9 +143,15 @@ export function ButtonEditDialog({
       keySequence: macroType === MacroType.KEY_SEQUENCE ? keySequence : undefined,
       repeatCount: macroRepeatCount,
       repeatInterval: macroRepeatInterval,
-      value: macroType === MacroType.MIDI_NOTE ? midiNote : macroValue,
-      moveX: macroType === MacroType.MIDI_NOTE ? midiVelocity : moveX,
-      moveY: macroType === MacroType.MIDI_NOTE ? midiChannel : moveY,
+      value:
+        macroType === MacroType.MIDI_NOTE ? midiNote :
+          macroType === MacroType.MIDI_CC ? midiCCNumber :
+            macroValue,
+      moveX:
+        macroType === MacroType.MIDI_NOTE ? midiVelocity :
+          macroType === MacroType.MIDI_CC ? midiCCValue :
+            moveX,
+      moveY: (macroType === MacroType.MIDI_NOTE || macroType === MacroType.MIDI_CC) ? midiChannel : moveY,
     };
 
     if (macroType === MacroType.SCRIPT) {
@@ -226,6 +240,7 @@ export function ButtonEditDialog({
                 <SelectItem value="6">Mouse Move</SelectItem>
                 <SelectItem value="7">Mouse Scroll</SelectItem>
                 <SelectItem value="8">MIDI Note</SelectItem>
+                <SelectItem value="9">MIDI Control Change (CC)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -251,6 +266,40 @@ export function ButtonEditDialog({
                   min={0} max={127}
                   value={midiVelocity}
                   onChange={e => setMidiVelocity(parseInt(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Channel (1-16)</Label>
+                <Input
+                  type="number"
+                  min={1} max={16}
+                  value={midiChannel}
+                  onChange={e => setMidiChannel(parseInt(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
+
+          {macroType === MacroType.MIDI_CC && (
+            <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-md border">
+              <div className="col-span-2 space-y-2">
+                <Label>Controller Number (CC#)</Label>
+                <Input
+                  type="number"
+                  min={0} max={119}
+                  value={midiCCNumber}
+                  onChange={e => setMidiCCNumber(parseInt(e.target.value))}
+                  placeholder="e.g. 1 (Mod Wheel), 7 (Volume)"
+                />
+                <p className="text-[10px] text-muted-foreground">Standard: 1=Mod, 7=Vol, 10=Pan, 11=Expr</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Value (0-127)</Label>
+                <Input
+                  type="number"
+                  min={0} max={127}
+                  value={midiCCValue}
+                  onChange={e => setMidiCCValue(parseInt(e.target.value))}
                 />
               </div>
               <div className="space-y-2">

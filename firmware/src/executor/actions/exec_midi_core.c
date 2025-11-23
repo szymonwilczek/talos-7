@@ -41,3 +41,27 @@ void exec_midi_note(uint8_t note, uint8_t velocity, uint8_t channel) {
     cdc_log("[MIDI] Note OFF\n");
   }
 }
+
+void exec_midi_cc(uint8_t controller, uint8_t value, uint8_t channel) {
+  uint8_t midi_channel = (channel > 0) ? channel - 1 : 0;
+
+  // safety clamps
+  if (controller > 119)
+    controller = 119; // standard MIDI CC range
+  if (value > 127)
+    value = 127;
+  if (midi_channel > 15)
+    midi_channel = 0;
+
+  uint8_t msg[3];
+  // status byte 0xB0 = Control Change
+  msg[0] = 0xB0 | midi_channel;
+  msg[1] = controller;
+  msg[2] = value;
+
+  if (tud_midi_mounted()) {
+    tud_midi_stream_write(0, msg, 3);
+    cdc_log("[MIDI] CC: %d Val: %d Ch: %d\n", controller, value,
+            midi_channel + 1);
+  }
+}

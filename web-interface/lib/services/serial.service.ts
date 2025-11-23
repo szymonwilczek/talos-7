@@ -460,6 +460,12 @@ export class SerialService {
               macro.midiChannel = macro.moveY;
             }
 
+            if (type === MacroType.MIDI_CC) {
+              macro.midiCCNumber = value;
+              macro.midiCCValue = macro.moveX;
+              macro.midiChannel = macro.moveY;
+            }
+
             if (type === 3 && parts.length >= 9) {
               macro.scriptPlatform = parseInt(parts[8]);
               pendingScriptMacro = { layer, button };

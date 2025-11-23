@@ -89,6 +89,14 @@ void execute_macro(uint8_t layer, uint8_t button) {
     exec_midi_note(note, velocity, channel);
     break;
   }
+  case MACRO_TYPE_MIDI_CC: {
+    uint8_t cc_num = (uint8_t)macro->value;
+    uint8_t cc_val = (macro->move_x >= 0) ? (uint8_t)macro->move_x : 127;
+    uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y : 1;
+
+    exec_midi_cc(cc_num, cc_val, channel);
+    break;
+  }
   }
 
   led_toggle(button);

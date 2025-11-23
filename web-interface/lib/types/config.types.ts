@@ -10,6 +10,7 @@ export enum MacroType {
   MOUSE_MOVE = 6,
   MOUSE_WHEEL = 7,
   MIDI_NOTE = 8,
+  MIDI_CC = 9,
 }
 
 export type ConnectionStatus =
@@ -43,6 +44,8 @@ export interface MacroEntry {
   midiNote?: number; // 0-127
   midiVelocity?: number; // 0-127
   midiChannel?: number; // 1-16
+  midiCCNumber?: number;
+  midiCCValue?: number;
 }
 
 export interface LayerConfig {
