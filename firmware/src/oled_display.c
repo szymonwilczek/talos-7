@@ -1,5 +1,6 @@
 #include "oled_display.h"
 
+#include "assets_graphics.h"
 #include "cdc/cdc_transport.h"
 #include "emoji.h"
 #include "font.h"
@@ -170,6 +171,12 @@ void oled_init(void) {
   oled_write_cmd(OLED_CMD_DISPLAY_ON);
 
   oled_clear();
+  oled_draw_icon_raw(48, 2, 32, 4, talos_boot_logo_32x32);
+  oled_update();
+
+  sleep_ms(2000);
+
+  oled_clear();
   oled_update();
 
   g_last_activity_time = to_ms_since_boot(get_absolute_time());
@@ -203,7 +210,7 @@ static void oled_draw_char(uint8_t x, uint8_t y, char c) {
   }
 }
 
-static void oled_draw_string(uint8_t x, uint8_t y, const char *str) {
+void oled_draw_string(uint8_t x, uint8_t y, const char *str) {
   while (*str) {
     oled_draw_char(x, y, *str);
     x += 6; // 5 pixels + 1 space
@@ -455,4 +462,24 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   oled_draw_string(x, 40, details);
 
   oled_update();
+}
+
+void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
+                        uint8_t height_pages, const uint8_t *icon_data) {
+  // zabezpieczenie przed wyjsciem poza ekran
+  if (x + width_px > OLED_WIDTH ||
+      start_page + height_pages > OLED_HEIGHT / 8) {
+    return;
+  }
+
+  for (uint8_t i = 0; i < height_pages; i++) {
+    // indeks dla biezacej strony
+    uint16_t buf_offset = (start_page + i) * OLED_WIDTH + x;
+
+    // offest w danych ikony
+    uint16_t data_offset = i * width_px;
+
+    // kopiowanie jednego wiersza danych ikony do bufora
+    memcpy(&oled_buffer[buf_offset], icon_data + data_offset, width_px);
+  }
 }

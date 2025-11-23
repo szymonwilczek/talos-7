@@ -16,5 +16,8 @@ void oled_power_save_task(void);          // w petli glownej
 void oled_wake_up(void);                  // wybudzenie
 bool oled_is_active(void);                // getter stanu aktywnosci
 void oled_set_contrast(uint8_t contrast); // do przygaszania
+void oled_draw_string(uint8_t x, uint8_t y, const char *str);
+void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
+                        uint8_t height_pages, const uint8_t *icon_data);
 
 #endif // OLED_DISPLAY_H
