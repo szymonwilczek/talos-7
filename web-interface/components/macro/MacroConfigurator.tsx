@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Download, Upload } from 'lucide-react';
 import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -85,6 +85,44 @@ export function MacroConfigurator() {
     setSelectedButton(null);
   };
 
+  const handleExportConfig = () => {
+    if (!config) return;
+
+    // JSON
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "talos_config.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportConfig = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+
+        if (json.layers && Array.isArray(json.layers) && json.layers.length > 0) {
+          setConfig(json as GlobalConfig);
+          setSelectedButton(null);
+          console.log("✅ Config imported successfully");
+        } else {
+          alert("Invalid config file format: Missing layers data.");
+        }
+      } catch (err) {
+        console.error("Error parsing JSON", err);
+        alert("Error parsing JSON file");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
   const handleLayerNameChange = (name: string, emoji: string) => {
     if (!config) return;
     setConfig({
@@ -136,27 +174,20 @@ export function MacroConfigurator() {
       for (let i = 0; i < changes.length; i++) {
         const change = changes[i];
 
-        // OBSLUGA USTAWIEN GLOBALNYCH (OLED Timeout)
         if (change.type === 'setting') {
           if (change.settingName === 'oledTimeout') {
             console.log(`📤 Updating OLED Timeout: ${change.value}s`);
             await serialService.setOledTimeout(change.value);
           }
-          console.log(`✅ Setting change processed`);
         }
-        // OBSLUGA ZMIAN WARSTWY
         else if (change.type === 'layer') {
           console.log(`📤 Processing layer change: ${change.emoji} ${change.name}`);
           if (change.layer !== undefined && change.name !== undefined && change.emoji !== undefined) {
             await serialService.setLayerName(change.layer, change.name, change.emoji);
           }
-          console.log(`✅ Layer change processed`);
         }
-        // OBSLUGA ZMIAN MAKRA
         else if (change.type === 'macro') {
           const macro = change.macro;
-          console.log(`📤 Processing macro change: ${macro.emoji} ${macro.name}`);
-
           if (change.layer !== undefined && change.button !== undefined) {
             if (macro.type === MacroType.SCRIPT && macro.script) {
               await serialService.setScript(
@@ -184,7 +215,6 @@ export function MacroConfigurator() {
               );
             }
           }
-          console.log(`✅ Macro change processed`);
         }
 
         await new Promise(resolve => setTimeout(resolve, 150));
@@ -200,7 +230,6 @@ export function MacroConfigurator() {
 
       console.log('🔄 Updating local state after save...');
       updateOriginalConfig();
-      console.log('✅ Local state updated - changes should be cleared');
 
       await new Promise(resolve => setTimeout(resolve, 400));
       setSaveSuccess(true);
@@ -232,29 +261,50 @@ export function MacroConfigurator() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header with Connection & Save */}
-      <div className="flex items-center justify-between">
+      {/* Header with Connection & Save & Import/Export */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span>Connected</span>
           </div>
-          <Button variant="outline" onClick={handleDisconnect}>
+          <Button variant="outline" size="sm" onClick={handleDisconnect}>
             Disconnect
           </Button>
         </div>
-        <Button
-          onClick={handleSaveChanges}
-          disabled={pendingChanges.size === 0 || isSaving}
-        >
-          {isSaving ? (
-            <>Saving... {Math.round(saveProgress)}%</>
-          ) : pendingChanges.size === 0 ? (
-            'No changes'
-          ) : (
-            <>Save {pendingChanges.size} changes</>
-          )}
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportConfig}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              title="Import JSON Config"
+            />
+            <Button variant="outline" size="sm">
+              <Upload className="mr-2 h-4 w-4" /> Upload Config
+            </Button>
+          </div>
+
+          <Button variant="outline" size="sm" onClick={handleExportConfig}>
+            <Download className="mr-2 h-4 w-4" /> Download Config
+          </Button>
+
+          <Button
+            onClick={handleSaveChanges}
+            disabled={pendingChanges.size === 0 || isSaving}
+            variant="default"
+          >
+            {isSaving ? (
+              <>Saving... {Math.round(saveProgress)}%</>
+            ) : pendingChanges.size === 0 ? (
+              'No changes'
+            ) : (
+              <>Save {pendingChanges.size} changes</>
+            )}
+          </Button>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
