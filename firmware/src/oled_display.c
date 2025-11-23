@@ -14,102 +14,10 @@
 // SSD1306 OLED SPI
 #include "hardware/spi.h"
 
-// ==================== OLED SSD1306 CONSTANTS ====================
-#define OLED_SPI spi0
-#define OLED_WIDTH 128
-#define OLED_HEIGHT 64
-
-// SSD1306 commands
-#define OLED_CMD_SET_CONTRAST 0x81
-#define OLED_CMD_DISPLAY_ALL_ON_RESUME 0xA4
-#define OLED_CMD_DISPLAY_ALL_ON 0xA5
-#define OLED_CMD_NORMAL_DISPLAY 0xA6
-#define OLED_CMD_INVERT_DISPLAY 0xA7
-#define OLED_CMD_DISPLAY_OFF 0xAE
-#define OLED_CMD_DISPLAY_ON 0xAF
-#define OLED_CMD_SET_DISPLAY_OFFSET 0xD3
-#define OLED_CMD_SET_COM_PINS 0xDA
-#define OLED_CMD_SET_VCOM_DETECT 0xDB
-#define OLED_CMD_SET_DISPLAY_CLOCK_DIV 0xD5
-#define OLED_CMD_SET_PRECHARGE 0xD9
-#define OLED_CMD_SET_MULTIPLEX 0xA8
-#define OLED_CMD_SET_LOW_COLUMN 0x00
-#define OLED_CMD_SET_HIGH_COLUMN 0x10
-#define OLED_CMD_SET_START_LINE 0x40
-#define OLED_CMD_MEMORY_MODE 0x20
-#define OLED_CMD_COLUMN_ADDR 0x21
-#define OLED_CMD_PAGE_ADDR 0x22
-#define OLED_CMD_COM_SCAN_INC 0xC0
-#define OLED_CMD_COM_SCAN_DEC 0xC8
-#define OLED_CMD_SEG_REMAP 0xA0
-#define OLED_CMD_CHARGE_PUMP 0x8D
-#define OLED_CMD_EXTERNAL_VCC 0x01
-#define OLED_CMD_SWITCH_CAP_VCC 0x02
-
-static void oled_write_cmd(uint8_t cmd);
-static void oled_write_data(const uint8_t *data, size_t len);
 static bool g_oled_active = true;
 static uint32_t g_last_activity_time = 0;
 static uint8_t oled_buffer[OLED_WIDTH * OLED_HEIGHT / 8];
-
 uint8_t config_mode = 0;
-
-// ==================== OLED LOW-LEVEL ====================
-
-// ==================== OLED POWER MANAGMENT ====================
-
-void oled_set_power(bool on) {
-  oled_write_cmd(on ? OLED_CMD_DISPLAY_ON : OLED_CMD_DISPLAY_OFF);
-  g_oled_active = on;
-  if (on) {
-    cdc_log("[OLED] Display ON\n");
-  } else {
-    cdc_log("[OLED] Display OFF (Power Save)\n");
-  }
-}
-
-void oled_wake_up(void) {
-  g_last_activity_time = to_ms_since_boot(get_absolute_time());
-  if (!g_oled_active) {
-    oled_set_power(true);
-    oled_update();
-  }
-}
-
-bool oled_is_active(void) { return g_oled_active; }
-
-void oled_power_save_task(void) {
-  if (config_mode == 1)
-    return; // ignorowanie w trakcie konfiguracji przez interfejs
-  if (!g_oled_active)
-    return; // juz wylaczony
-
-  config_data_t *config = config_get();
-  uint32_t timeout_s = config->oled_timeout_s;
-
-  // funkcja jest wylaczona (always on)
-  if (timeout_s == 0)
-    return;
-
-  uint32_t now = to_ms_since_boot(get_absolute_time());
-  if ((now - g_last_activity_time) > (timeout_s * 1000)) {
-    oled_set_power(false);
-  }
-}
-
-static void oled_write_cmd(uint8_t cmd) {
-  gpio_put(OLED_DC_PIN, 0); // command mode
-  gpio_put(OLED_CS_PIN, 0);
-  spi_write_blocking(OLED_SPI, &cmd, 1);
-  gpio_put(OLED_CS_PIN, 1);
-}
-
-static void oled_write_data(const uint8_t *data, size_t len) {
-  gpio_put(OLED_DC_PIN, 1); // data mode
-  gpio_put(OLED_CS_PIN, 0);
-  spi_write_blocking(OLED_SPI, data, len);
-  gpio_put(OLED_CS_PIN, 1);
-}
 
 void oled_init(void) {
   // SPI init
@@ -187,70 +95,6 @@ void oled_init(void) {
 
 void oled_clear(void) { memset(oled_buffer, 0, sizeof(oled_buffer)); }
 
-static void oled_draw_char(uint8_t x, uint8_t y, char c) {
-  const uint8_t *glyph = font5x7[0]; // default space
-  if (c >= ' ' && c <= '~') {
-    glyph = font5x7[c - ' '];
-  }
-
-  for (int i = 0; i < 5; i++) {
-    if (x + i >= OLED_WIDTH)
-      break;
-    for (int j = 0; j < 8; j++) {
-      if (y + j >= OLED_HEIGHT)
-        break;
-      if (glyph[i] & (1 << j)) {
-        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
-        int bit_idx = y % 8 + j;
-        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
-          oled_buffer[byte_idx] |= (1 << bit_idx);
-        }
-      }
-    }
-  }
-}
-
-void oled_draw_string(uint8_t x, uint8_t y, const char *str) {
-  while (*str) {
-    oled_draw_char(x, y, *str);
-    x += 6; // 5 pixels + 1 space
-    if (x >= OLED_WIDTH - 6)
-      break; // prevent overflow
-    str++;
-  }
-}
-
-static void oled_draw_line(uint8_t y) {
-  for (int x = 0; x < OLED_WIDTH; x++) {
-    int byte_idx = (y / 8) * OLED_WIDTH + x;
-    int bit_idx = y % 8;
-    if (byte_idx < sizeof(oled_buffer)) {
-      oled_buffer[byte_idx] |= (1 << bit_idx);
-    }
-  }
-}
-
-void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
-                      const uint8_t *bitmap) {
-  for (uint8_t i = 0; i < width; i++) {
-    for (uint8_t j = 0; j < height; j++) {
-      if (bitmap[i] & (1 << j)) {
-        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
-        int bit_idx = y % 8 + j;
-        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
-          oled_buffer[byte_idx] |= (1 << bit_idx);
-        }
-      }
-    }
-  }
-}
-
-void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index) {
-  if (emoji_index >= 21)
-    emoji_index = 0; // fallback
-  oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
-}
-
 void oled_update(void) {
   oled_write_cmd(OLED_CMD_COLUMN_ADDR);
   oled_write_cmd(0);
@@ -265,6 +109,20 @@ void oled_update(void) {
         (i + 16 > sizeof(oled_buffer)) ? sizeof(oled_buffer) - i : 16;
     oled_write_data(&oled_buffer[i], chunk_size);
   }
+}
+
+void oled_write_cmd(uint8_t cmd) {
+  gpio_put(OLED_DC_PIN, 0); // command mode
+  gpio_put(OLED_CS_PIN, 0);
+  spi_write_blocking(OLED_SPI, &cmd, 1);
+  gpio_put(OLED_CS_PIN, 1);
+}
+
+void oled_write_data(const uint8_t *data, size_t len) {
+  gpio_put(OLED_DC_PIN, 1); // data mode
+  gpio_put(OLED_CS_PIN, 0);
+  spi_write_blocking(OLED_SPI, data, len);
+  gpio_put(OLED_CS_PIN, 1);
 }
 
 void oled_display_layer_info(uint8_t layer) {
@@ -464,6 +322,70 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   oled_update();
 }
 
+void oled_draw_char(uint8_t x, uint8_t y, char c) {
+  const uint8_t *glyph = font5x7[0]; // default space
+  if (c >= ' ' && c <= '~') {
+    glyph = font5x7[c - ' '];
+  }
+
+  for (int i = 0; i < 5; i++) {
+    if (x + i >= OLED_WIDTH)
+      break;
+    for (int j = 0; j < 8; j++) {
+      if (y + j >= OLED_HEIGHT)
+        break;
+      if (glyph[i] & (1 << j)) {
+        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
+        int bit_idx = y % 8 + j;
+        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
+          oled_buffer[byte_idx] |= (1 << bit_idx);
+        }
+      }
+    }
+  }
+}
+
+void oled_draw_string(uint8_t x, uint8_t y, const char *str) {
+  while (*str) {
+    oled_draw_char(x, y, *str);
+    x += 6; // 5 pixels + 1 space
+    if (x >= OLED_WIDTH - 6)
+      break; // prevent overflow
+    str++;
+  }
+}
+
+void oled_draw_line(uint8_t y) {
+  for (int x = 0; x < OLED_WIDTH; x++) {
+    int byte_idx = (y / 8) * OLED_WIDTH + x;
+    int bit_idx = y % 8;
+    if (byte_idx < sizeof(oled_buffer)) {
+      oled_buffer[byte_idx] |= (1 << bit_idx);
+    }
+  }
+}
+
+void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
+                      const uint8_t *bitmap) {
+  for (uint8_t i = 0; i < width; i++) {
+    for (uint8_t j = 0; j < height; j++) {
+      if (bitmap[i] & (1 << j)) {
+        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
+        int bit_idx = y % 8 + j;
+        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
+          oled_buffer[byte_idx] |= (1 << bit_idx);
+        }
+      }
+    }
+  }
+}
+
+void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index) {
+  if (emoji_index >= 21)
+    emoji_index = 0; // fallback
+  oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
+}
+
 void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
                         uint8_t height_pages, const uint8_t *icon_data) {
   // zabezpieczenie przed wyjsciem poza ekran
@@ -483,3 +405,42 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
     memcpy(&oled_buffer[buf_offset], icon_data + data_offset, width_px);
   }
 }
+
+void oled_power_save_task(void) {
+  if (config_mode == 1)
+    return; // ignorowanie w trakcie konfiguracji przez interfejs
+  if (!g_oled_active)
+    return; // juz wylaczony
+
+  config_data_t *config = config_get();
+  uint32_t timeout_s = config->oled_timeout_s;
+
+  // funkcja jest wylaczona (always on)
+  if (timeout_s == 0)
+    return;
+
+  uint32_t now = to_ms_since_boot(get_absolute_time());
+  if ((now - g_last_activity_time) > (timeout_s * 1000)) {
+    oled_set_power(false);
+  }
+}
+
+void oled_set_power(bool on) {
+  oled_write_cmd(on ? OLED_CMD_DISPLAY_ON : OLED_CMD_DISPLAY_OFF);
+  g_oled_active = on;
+  if (on) {
+    cdc_log("[OLED] Display ON\n");
+  } else {
+    cdc_log("[OLED] Display OFF (Power Save)\n");
+  }
+}
+
+void oled_wake_up(void) {
+  g_last_activity_time = to_ms_since_boot(get_absolute_time());
+  if (!g_oled_active) {
+    oled_set_power(true);
+    oled_update();
+  }
+}
+
+bool oled_is_active(void) { return g_oled_active; }
