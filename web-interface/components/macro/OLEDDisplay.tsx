@@ -240,6 +240,10 @@ export function OLEDDisplay({
         return { text: `Mouse Move: X=${macro.moveX}, Y=${macro.moveY}`, alert: null };
       case 7: // Mouse Wheel
         return { text: `Mouse Wheel (x${Math.abs(macro.value)})`, alert: null };
+      case 8: // MIDI Note
+        return { text: `Note: ${macro.midiNote}, Vel: ${macro.midiVelocity}, Ch: ${macro.midiChannel}`, alert: null };
+      case 9: // MIDI CC
+        return { text: `CC: ${macro.midiCCNumber}, Value: ${macro.midiCCValue}, Ch: ${macro.midiChannel}`, alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }

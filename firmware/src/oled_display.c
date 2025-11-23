@@ -309,6 +309,20 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
   case MACRO_TYPE_MOUSE_WHEEL:
     snprintf(details, sizeof(details), "Mouse Wheel (x%d)", macro->value);
     break;
+
+  case MACRO_TYPE_MIDI_NOTE:
+    snprintf(details, sizeof(details), "Note: %d Vel: %d Ch: %d",
+             (uint8_t)macro->value,
+             (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
+             (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
+    break;
+  case MACRO_TYPE_MIDI_CC:
+    snprintf(details, sizeof(details), "CC: %d Val: %d Ch: %d",
+             (uint8_t)macro->value,
+             (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
+             (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
+    break;
+
   default:
     snprintf(details, sizeof(details), "Unknown Action");
     break;
