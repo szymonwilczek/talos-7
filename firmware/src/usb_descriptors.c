@@ -84,12 +84,12 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 // String Descriptors
 //--------------------------------------------------------------------+
 char const *string_desc_arr[] = {
-    (const char[]){0x09, 0x04}, // 0: supported language is English (0x0409)
-    "Raspberry Pi",             // 1: Manufacturer
-    "Macro Keyboard",           // 2: Product
-    "123456", // 3: Serial (placeholder, nadpisywany przez Unique ID)
-    "Macro Config Interface", // 4: CDC Interface
-    "Macro Keyboard HID"      // 5: HID Interface
+    (const char[]){0x09, 0x04}, // 0: English (0x0409)
+    "Szymon Wilczek",           // 1: Manufacturer
+    "Talos 7",                  // 2: Product
+    "123456",                   // 3: Serial
+    "Talos Config Interface",   // 4: CDC Interface
+    "Talos 7 HID"               // 5: HID Interface
 };
 
 static uint16_t _desc_str[32];
