@@ -97,6 +97,11 @@ void process_command(const char *cmd_input) {
     return;
   }
 
+  if (strncmp(cmd_ptr, "BOOTSEL", 7) == 0) {
+    cmd_handle_bootsel();
+    return;
+  }
+
   printf("[CDC] Unknown command: '%s'\n", cmd_ptr);
   cdc_send_response("ERROR|Unknown command");
 }

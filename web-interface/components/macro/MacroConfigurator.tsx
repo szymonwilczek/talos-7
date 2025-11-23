@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, Download, Upload } from 'lucide-react';
+import { CheckCircle, Download, HardDrive, Upload } from 'lucide-react';
 import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -159,6 +159,27 @@ export function MacroConfigurator() {
     });
   };
 
+  const handleEnterBootloader = async () => {
+    const confirmed = window.confirm(
+      "This will restart your Talos device into Firmware Update mode.\n\n" +
+      "1. The device will disconnect from this app.\n" +
+      "2. A folder named 'RPI-RP2' will open on your computer.\n" +
+      "3. Drag and drop the new .uf2 firmware file into that folder."
+    );
+
+    if (confirmed) {
+      try {
+        await serialService.enterBootloader();
+        setStatus('DISCONNECTED');
+        setConfig(null);
+        alert("Device is now in update mode. Go into your file explorer and open the 'RPI-RP2' drive to copy the firmware file (.uf2).");
+      } catch (err) {
+        console.error("Failed to enter bootloader:", err);
+        setError({ type: 'PROTOCOL_ERROR', message: 'Failed to restart device' });
+      }
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (pendingChanges.size === 0) return;
     setIsSaving(true);
@@ -274,6 +295,14 @@ export function MacroConfigurator() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="bg-green-500 hover:bg-green-600 cursor-pointer"
+            onClick={handleEnterBootloader}
+            title="Restart device to upload new firmware"
+          >
+            <HardDrive className="mr-2 h-4 w-4" /> Update Firmware
+          </Button>
           <div className="relative">
             <input
               type="file"

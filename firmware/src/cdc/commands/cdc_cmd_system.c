@@ -1,9 +1,12 @@
 #include "cdc/commands/cdc_cmd_system.h"
+
 #include "cdc/cdc_transport.h"
 #include "cdc/commands/cdc_cmd_write.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "oled_display.h"
+#include "pico/bootrom.h"
+#include "pico/stdlib.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -54,4 +57,18 @@ void cmd_handle_set_oled_timeout(const char *args) {
   config_data_t *config = config_get();
   config->oled_timeout_s = timeout;
   cdc_send_response("OK");
+}
+
+void cmd_handle_bootsel(void) {
+  cdc_log("[SYSTEM] Entering BOOTSEL mode...\n");
+
+  oled_clear();
+  oled_draw_string(10, 20, "FIRMWARE UPDATE");
+  oled_draw_string(10, 36, "Drop .uf2 file");
+  oled_update();
+
+  cdc_send_response("OK");
+  sleep_ms(50);
+
+  reset_usb_boot(0, 0);
 }

@@ -31,4 +31,11 @@ void cmd_handle_set_config_mode(const char *args);
  */
 void cmd_handle_set_oled_timeout(const char *args);
 
+/**
+ * @brief Handles the BOOTSEL command.
+ * @note Usage: BOOTSEL
+ * Resets the device into USB Mass Storage Bootloader mode.
+ */
+void cmd_handle_bootsel(void);
+
 #endif // CDC_CMD_SYSTEM_H

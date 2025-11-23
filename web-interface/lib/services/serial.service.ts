@@ -623,4 +623,26 @@ export class SerialService {
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+
+  /**
+   * Resets the device into BOOTSEL mode for firmware update.
+   * Note: This will cause the device to disconnect.
+   */
+  async enterBootloader(): Promise<void> {
+    console.log("📤 Sending BOOTSEL command...");
+
+    try {
+      await this.writeCommand("BOOTSEL\n");
+      try {
+        const response = await this.readLine(500);
+        console.log("📥 Response:", response);
+      } catch (e) {
+        console.log("Create disconnect expected due to reset.");
+      }
+    } catch (error) {
+      console.warn("Error during bootloader entry (expected):", error);
+    }
+
+    await this.disconnect();
+  }
 }
