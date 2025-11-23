@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Macro Keyboard Configurator',
-  description: 'Configure your Raspberry Pi Pico macro keyboard',
+  title: 'Talos Configurator',
+  description: 'Configure your Talos device',
 };
 
 export default function RootLayout({
