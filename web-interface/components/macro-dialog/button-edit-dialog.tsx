@@ -19,11 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { KeycodeDialog } from './KeycodeDialog';
-import { MAX_SCRIPT_SIZE, ScriptPlatform, ScriptPlatformLabels } from '@/lib/types/macro.types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { KeySequenceInput } from './KeySequenceInput';
+import { MAX_SCRIPT_SIZE, ScriptPlatform } from '@/lib/types/macro.types';
+import { KeySequenceInput } from '@/components/macro-dialog/key-sequence-input';
+import { MacroFormMidi } from '@/components/macro-dialog/forms/macro-form-midi';
+import { MacroFormKeyPress } from '@/components/macro-dialog/forms/macro-form-key-press';
+import { MacroFormMouse } from '@/components/macro-dialog/forms/macro-form-mouse';
+import { MacroFormText } from '@/components/macro-dialog/forms/macro-form-text';
+import { MacroFormScript } from '@/components/macro-dialog/forms/macro-form-script';
 
 interface ButtonEditDialogProps {
   open: boolean;
@@ -105,13 +107,6 @@ export function ButtonEditDialog({
       }
     }
   }, [macro]);
-
-  // useEffect(() => {
-  //   if (macro && macro.type === MacroType.SCRIPT) {
-  //     setScriptContent(macro.script || '');
-  //     setScriptPlatform(macro.scriptPlatform || ScriptPlatform.LINUX);
-  //   }
-  // }, [macro]);
 
   const decompileSequence = (compiled: KeyPress[]): KeyPress[] => {
     const raw: KeyPress[] = [];
@@ -245,73 +240,20 @@ export function ButtonEditDialog({
             </Select>
           </div>
 
-          {macroType === MacroType.MIDI_NOTE && (
-            <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-md border">
-              <div className="col-span-2 space-y-2">
-                <div className="flex justify-between">
-                  <Label>Note (0-127)</Label>
-                  <span className="text-xs text-muted-foreground">60 = C4 (Middle C)</span>
-                </div>
-                <Input
-                  type="number"
-                  min={0} max={127}
-                  value={midiNote}
-                  onChange={e => setMidiNote(parseInt(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Velocity</Label>
-                <Input
-                  type="number"
-                  min={0} max={127}
-                  value={midiVelocity}
-                  onChange={e => setMidiVelocity(parseInt(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Channel (1-16)</Label>
-                <Input
-                  type="number"
-                  min={1} max={16}
-                  value={midiChannel}
-                  onChange={e => setMidiChannel(parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-          )}
-
-          {macroType === MacroType.MIDI_CC && (
-            <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-md border">
-              <div className="col-span-2 space-y-2">
-                <Label>Controller Number (CC#)</Label>
-                <Input
-                  type="number"
-                  min={0} max={119}
-                  value={midiCCNumber}
-                  onChange={e => setMidiCCNumber(parseInt(e.target.value))}
-                  placeholder="e.g. 1 (Mod Wheel), 7 (Volume)"
-                />
-                <p className="text-[10px] text-muted-foreground">Standard: 1=Mod, 7=Vol, 10=Pan, 11=Expr</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Value (0-127)</Label>
-                <Input
-                  type="number"
-                  min={0} max={127}
-                  value={midiCCValue}
-                  onChange={e => setMidiCCValue(parseInt(e.target.value))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Channel (1-16)</Label>
-                <Input
-                  type="number"
-                  min={1} max={16}
-                  value={midiChannel}
-                  onChange={e => setMidiChannel(parseInt(e.target.value))}
-                />
-              </div>
-            </div>
+          {(macroType === MacroType.MIDI_NOTE || macroType === MacroType.MIDI_CC) && (
+            <MacroFormMidi
+              type={macroType === MacroType.MIDI_NOTE ? 'NOTE' : 'CC'}
+              note={midiNote}
+              velocity={midiVelocity}
+              channel={midiChannel}
+              ccNumber={midiCCNumber}
+              ccValue={midiCCValue}
+              onNoteChange={setMidiNote}
+              onVelocityChange={setMidiVelocity}
+              onChannelChange={setMidiChannel}
+              onCCNumberChange={setMidiCCNumber}
+              onCCValueChange={setMidiCCValue}
+            />
           )}
 
           {(macroType === MacroType.KEY_PRESS || macroType === MacroType.MOUSE_BUTTON) && (
@@ -340,57 +282,45 @@ export function ButtonEditDialog({
           )}
 
           {macroType === MacroType.KEY_PRESS && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="keycode">HID Keycode</Label>
-                <KeycodeDialog />
-              </div>
-              <Input
-                id="keycode"
-                type="number"
-                value={macroValue}
-                onChange={(e) => setMacroValue(parseInt(e.target.value) || 0)}
-                min={0}
-                max={255}
-                placeholder="e.g. 4 for 'A'"
-              />
-            </div>
+            <MacroFormKeyPress
+              value={macroValue}
+              repeatCount={macroRepeatCount}
+              repeatInterval={macroRepeatInterval}
+              onValueChange={setMacroValue}
+              onRepeatCountChange={setMacroRepeatCount}
+              onRepeatIntervalChange={setMacroRepeatInterval}
+            />
           )}
 
           {macroType === MacroType.MOUSE_BUTTON && (
-            <div className="space-y-2">
-              <Label>Mouse Button</Label>
-              <Select onValueChange={v => setMacroValue(parseInt(v))} value={macroValue.toString()}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Left Click</SelectItem>
-                  <SelectItem value="2">Right Click</SelectItem>
-                  <SelectItem value="4">Middle Click</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <MacroFormMouse
+              type="BUTTON"
+              value={macroValue} moveX={0} moveY={0}
+              repeatCount={macroRepeatCount} repeatInterval={macroRepeatInterval}
+              onValueChange={setMacroValue}
+              onMoveChange={() => { }}
+              onRepeatCountChange={setMacroRepeatCount}
+              onRepeatIntervalChange={setMacroRepeatInterval}
+            />
           )}
 
           {macroType === MacroType.MOUSE_MOVE && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Move X</Label>
-                <Input type="number" value={moveX} onChange={e => setMoveX(parseInt(e.target.value))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Move Y</Label>
-                <Input type="number" value={moveY} onChange={e => setMoveY(parseInt(e.target.value))} />
-              </div>
-            </div>
+            <MacroFormMouse
+              type="MOVE"
+              value={0} moveX={moveX} moveY={moveY}
+              onValueChange={() => { }}
+              onMoveChange={(x, y) => { setMoveX(x); setMoveY(y); }}
+            />
           )}
 
           {macroType === MacroType.MOUSE_WHEEL && (
-            <div className="space-y-2">
-              <Label>Scroll Amount</Label>
-              <Input type="number" value={macroValue} onChange={e => setMacroValue(parseInt(e.target.value))} placeholder="Positive=Up, Negative=Down" />
-            </div>
+            <MacroFormMouse
+              type="WHEEL"
+              value={macroValue} moveX={0} moveY={0}
+              onValueChange={setMacroValue}
+              onMoveChange={() => { }}
+            />
           )}
-
           {macroType === MacroType.KEY_SEQUENCE && (
             <KeySequenceInput
               sequence={keySequence}
@@ -399,90 +329,20 @@ export function ButtonEditDialog({
           )}
 
           {macroType === MacroType.TEXT_STRING && (
-            <div className="space-y-2">
-              <Label htmlFor="macro-text">Text to Type</Label>
-              <Textarea
-                id="macro-text"
-                value={macroString}
-                onChange={(e) => setMacroString(e.target.value.slice(0, 32))}
-                maxLength={32}
-                rows={3}
-                placeholder="Enter text to type"
-              />
-            </div>
+            <MacroFormText value={macroString} onChange={setMacroString} />
           )}
 
           {macroType === MacroType.SCRIPT && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="script-platform">Target Platform</Label>
-                <Select
-                  value={scriptPlatform.toString()}
-                  onValueChange={(v) => setScriptPlatform(parseInt(v) as ScriptPlatform)}
-                >
-                  <SelectTrigger id="script-platform">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">{ScriptPlatformLabels[ScriptPlatform.LINUX]}</SelectItem>
-                    <SelectItem value="1">{ScriptPlatformLabels[ScriptPlatform.WINDOWS]}</SelectItem>
-                    <SelectItem value="2">{ScriptPlatformLabels[ScriptPlatform.MACOS]}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {scriptPlatform === ScriptPlatform.LINUX && (
-                <div className="space-y-2">
-                  <Label>Terminal Shortcut</Label>
-                  <div className="p-2 border rounded-md bg-muted/20">
-                    <KeySequenceInput
-                      sequence={terminalShortcut}
-                      onChange={setTerminalShortcut}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Record the keyboard shortcut that opens your terminal (e.g. Ctrl+Alt+T).
-                  </p>
-                </div>
-              )}
-
-              <Tabs defaultValue="editor" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="editor">Write Code</TabsTrigger>
-                  <TabsTrigger value="upload">Upload File</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="editor" className="space-y-2">
-                  <Label htmlFor="script-editor">Script Content</Label>
-                  <Textarea
-                    id="script-editor"
-                    value={scriptContent}
-                    onChange={(e) => setScriptContent(e.target.value.slice(0, MAX_SCRIPT_SIZE))}
-                    rows={12}
-                    className="font-mono text-xs"
-                    placeholder="#!/bin/bash&#10;echo 'Hello World'"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {scriptContent.length} / {MAX_SCRIPT_SIZE} bytes
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="upload" className="space-y-2">
-                  <Label htmlFor="script-file">Upload Script File</Label>
-                  <Input
-                    id="script-file"
-                    type="file"
-                    accept=".sh,.bash,.bat,.ps1,.zsh"
-                    onChange={handleFileUpload}
-                  />
-                  {scriptFile && (
-                    <p className="text-sm text-muted-foreground">
-                      Loaded: {scriptFile.name} ({scriptContent.length} bytes)
-                    </p>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </div>
+            <MacroFormScript
+              content={scriptContent}
+              platform={scriptPlatform}
+              terminalShortcut={terminalShortcut}
+              file={scriptFile}
+              onContentChange={setScriptContent}
+              onPlatformChange={setScriptPlatform}
+              onShortcutChange={setTerminalShortcut}
+              onFileUpload={handleFileUpload}
+            />
           )}
 
           {macroType === MacroType.LAYER_TOGGLE && (
