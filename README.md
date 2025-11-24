@@ -76,7 +76,7 @@ You don't need to compile anything manually.
 5.  The device will reboot. You should see the Talos Logo on the OLED.
 
 ### 2. Configure via Web
-1.  Open the **[Talos Configurator](https://your-url-here.com)** in a Chromium-based browser (Chrome, Edge, Opera).
+1.  Open the **[Talos Configurator](https://talos-7.vercel.app)** in a Chromium-based browser (Chrome, Edge, Opera).
 2.  Click **Connect Device** and select *Talos 7*.
 3.  **Customize** your layers and buttons.
 4.  Click **Save Changes** to flash your config to the onboard memory.
