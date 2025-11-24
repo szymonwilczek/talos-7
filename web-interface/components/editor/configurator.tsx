@@ -8,26 +8,18 @@ import {
   ConnectionError,
   MacroEntry,
 } from '@/lib/types/config.types';
-import { ConnectionPanel } from './ConnectionPanel';
-import { LayerTabs } from './LayerTabs';
-import { PCBVisualization } from './PCBVisualization';
-import { ButtonEditDialog } from './ButtonEditDialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, Download, HardDrive, Upload } from 'lucide-react';
+import { ConnectionPanel } from '@/components/device/connection-panel';
+import { LayerTabs } from '@/components/layout/LayerTabs';
+import { PCBVisualization } from './pcb-visualization';
+import { ButtonEditDialog } from '@/components/macro-dialog/button-edit-dialog';
 import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Slider } from '../ui/slider';
-import { Badge } from '../ui/badge';
+import { Header } from '../layout/header';
+import { SaveFeedback } from '../layout/save-feedback';
+import { LayerSettingsCard } from './layer-settings-card';
+import { DeviceSettingsCard } from './device-settings-card';
 
-const SUGGESTED_LAYER_EMOJIS = ['🎮', '💼', '🏠', '🔧', '⚡', '📧', '💻', '🎵', '📝', '☕', '🗡️', '❤️', '🔔', '🧪', '🔒', '☂️', '🦕', '👻', '🔫', '⏳', '🌷'];
-
-export function MacroConfigurator() {
+export function Configurator() {
   const [serialService] = useState(() => new SerialService());
   const [status, setStatus] = useState<ConnectionStatus>('DISCONNECTED');
   const [error, setError] = useState<ConnectionError | null>(null);
@@ -211,6 +203,7 @@ export function MacroConfigurator() {
         else if (change.type === 'macro') {
           const macro = change.macro;
           if (change.layer !== undefined && change.button !== undefined) {
+            if (!macro) return;
             if (macro.type === MacroType.SCRIPT && macro.script) {
               await serialService.setScript(
                 change.layer,
@@ -283,95 +276,25 @@ export function MacroConfigurator() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header with Connection & Save & Import/Export */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span>Connected</span>
-          </div>
-          {config.firmwareVersion && (
-            <Badge variant="outline" className="font-mono text-xs border-green-500/30 text-green-600 dark:text-green-400">
-              v{config.firmwareVersion}
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={handleDisconnect}>
-            Disconnect
-          </Button>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 cursor-pointer"
-            onClick={handleEnterBootloader}
-            title="Restart device to upload new firmware"
-          >
-            <HardDrive className="mr-2 h-4 w-4" /> Update Firmware
-          </Button>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportConfig}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              title="Import JSON Config"
-            />
-            <Button variant="outline" size="sm">
-              <Upload className="mr-2 h-4 w-4" /> Upload Config
-            </Button>
-          </div>
+      <Header
+        firmwareVersion={config.firmwareVersion}
+        pendingChangesCount={pendingChanges.size}
+        isSaving={isSaving}
+        saveProgress={saveProgress}
+        onDisconnect={handleDisconnect}
+        onEnterBootloader={handleEnterBootloader}
+        onImport={handleImportConfig}
+        onExport={handleExportConfig}
+        onSave={handleSaveChanges}
+      />
 
-          <Button variant="outline" size="sm" onClick={handleExportConfig}>
-            <Download className="mr-2 h-4 w-4" /> Download Config
-          </Button>
+      <SaveFeedback
+        isSaving={isSaving}
+        saveProgress={saveProgress}
+        saveSuccess={saveSuccess}
+      />
 
-          <Button
-            onClick={handleSaveChanges}
-            disabled={pendingChanges.size === 0 || isSaving}
-            variant="default"
-          >
-            {isSaving ? (
-              <>Saving... {Math.round(saveProgress)}%</>
-            ) : pendingChanges.size === 0 ? (
-              'No changes'
-            ) : (
-              <>Save {pendingChanges.size} changes</>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {isSaving && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            key="saving"
-          >
-            <Progress value={saveProgress} />
-          </motion.div>
-        )}
-
-        {saveSuccess && !isSaving && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            key="success"
-          >
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>Configuration saved successfully!</AlertDescription>
-            </Alert>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Layer Tabs */}
       <LayerTabs
         activeLayer={activeLayer}
         layerNames={config.layers.map((l) => `${l.emoji} ${l.name}`)}
@@ -381,76 +304,17 @@ export function MacroConfigurator() {
         }}
       />
 
-      {/* Layer Settings Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Layer Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Layer Emoji</Label>
-            <div className="flex gap-2 flex-wrap">
-              {SUGGESTED_LAYER_EMOJIS.map((emoji) => (
-                <Button
-                  key={emoji}
-                  variant={currentLayer.emoji === emoji ? 'default' : 'outline'}
-                  onClick={() =>
-                    handleLayerNameChange(currentLayer.name, emoji)
-                  }
-                  className="text-xl w-12 h-12 p-0"
-                >
-                  {emoji}
-                </Button>
-              ))}
-            </div>
-          </div>
+      <LayerSettingsCard
+        layerName={currentLayer.name}
+        layerEmoji={currentLayer.emoji}
+        onUpdate={handleLayerNameChange}
+      />
 
-          <div className="space-y-2">
-            <Label htmlFor="layer-name">Layer Name</Label>
-            <Input
-              id="layer-name"
-              value={currentLayer.name}
-              onChange={(e) =>
-                handleLayerNameChange(e.target.value
-                  .replace(/[^a-zA-Z0-9 ]/g, '')
-                  .slice(0, 15), currentLayer.emoji)
-              }
-              maxLength={15}
-              placeholder="Enter layer name"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <DeviceSettingsCard
+        oledTimeout={config.oledTimeout}
+        onTimeoutChange={handleTimeoutChange}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Device Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>OLED Sleep Timeout</Label>
-              <span className="text-sm text-muted-foreground font-mono">
-                {config.oledTimeout === 0 ? "Always On" : `${Math.floor(config.oledTimeout / 60)}m ${config.oledTimeout % 60}s`}
-              </span>
-            </div>
-
-            <Slider
-              value={[config.oledTimeout]}
-              min={0}
-              max={1800} // max 30 min
-              step={30}  // co 30 sekund
-              onValueChange={handleTimeoutChange}
-              className="w-full"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Set to 0 to disable auto-sleep. Display wakes up on any key press.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Button Visualization */}
       <PCBVisualization
         config={config}
         activeLayer={activeLayer}
@@ -460,7 +324,6 @@ export function MacroConfigurator() {
         onButtonHover={setHoveredButton}
       />
 
-      {/* Button Edit Dialog */}
       <ButtonEditDialog
         open={selectedButton !== null}
         buttonIndex={selectedButton}

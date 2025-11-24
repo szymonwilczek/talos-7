@@ -1,4 +1,4 @@
-import { MacroConfigurator } from '@/components/macro/MacroConfigurator';
+import { Configurator } from '@/components/editor/configurator';
 import Image from 'next/image';
 
 export default function Home() {
@@ -19,7 +19,7 @@ export default function Home() {
           Configure your Talos SudoPad macros with 4 layers and 7 programmable buttons
         </p>
       </div>
-      <MacroConfigurator />
+      <Configurator />
     </div>
   );
 }
