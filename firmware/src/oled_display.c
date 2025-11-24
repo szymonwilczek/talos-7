@@ -9,6 +9,7 @@
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // SSD1306 OLED SPI
@@ -18,6 +19,10 @@ static bool g_oled_active = true;
 static uint32_t g_last_activity_time = 0;
 static uint8_t oled_buffer[OLED_WIDTH * OLED_HEIGHT / 8];
 uint8_t config_mode = 0;
+
+// matrix effect
+static RainColumn rain_cols[MATRIX_COLS];
+static bool matrix_initialized = false;
 
 void oled_init(void) {
   // SPI init
@@ -422,20 +427,56 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
 
 void oled_power_save_task(void) {
   if (config_mode == 1)
-    return; // ignorowanie w trakcie konfiguracji przez interfejs
-  if (!g_oled_active)
-    return; // juz wylaczony
+    return; // Ignoruj w trybie config
 
   config_data_t *config = config_get();
   uint32_t timeout_s = config->oled_timeout_s;
 
-  // funkcja jest wylaczona (always on)
-  if (timeout_s == 0)
+  // Jeśli timeout = 0 (Always On), upewnij się, że ekran świeci i wyjdź
+  if (timeout_s == 0) {
+    if (!g_oled_active)
+      oled_set_power(true);
     return;
+  }
 
   uint32_t now = to_ms_since_boot(get_absolute_time());
-  if ((now - g_last_activity_time) > (timeout_s * 1000)) {
-    oled_set_power(false);
+  uint32_t time_since_activity = now - g_last_activity_time;
+  uint32_t timeout_ms = timeout_s * 1000;
+
+  // STAN 1: Czas na wygaszacz (Matrix Rain)
+  if (time_since_activity > timeout_ms &&
+      time_since_activity < (timeout_ms + SCREENSAVER_DURATION_MS)) {
+
+    // Jeśli ekran był wyłączony (np. wybudzenie czymś innym niż klawisz), włącz
+    // go
+    if (!g_oled_active) {
+      oled_set_power(true);
+    }
+
+    // Renderuj animację (ogranicz FPS do ~20, czyli co 50ms)
+    static uint32_t last_frame_time = 0;
+    if (now - last_frame_time > 50) {
+      oled_effect_matrix_rain();
+      last_frame_time = now;
+    }
+  }
+  // STAN 2: Czas na głęboki sen (Wyłączenie ekranu)
+  else if (time_since_activity >= (timeout_ms + SCREENSAVER_DURATION_MS)) {
+    if (g_oled_active) {
+      oled_clear();
+      oled_update();         // Wyczyść buffor przed wyłączeniem
+      oled_set_power(false); // Wyślij komendę DISPLAY_OFF
+    }
+  }
+  // STAN 3: Normalna aktywność
+  else {
+    // Jeśli ekran był wyłączony, włącz go
+    if (!g_oled_active) {
+      oled_set_power(true);
+      // Wymuś odświeżenie interfejsu po wybudzeniu
+      uint8_t current_layer = config_get_current_layer();
+      oled_display_layer_info(current_layer);
+    }
   }
 }
 
@@ -451,6 +492,7 @@ void oled_set_power(bool on) {
 
 void oled_wake_up(void) {
   g_last_activity_time = to_ms_since_boot(get_absolute_time());
+  matrix_initialized = false;
   if (!g_oled_active) {
     oled_set_power(true);
     oled_update();
@@ -458,3 +500,69 @@ void oled_wake_up(void) {
 }
 
 bool oled_is_active(void) { return g_oled_active; }
+
+int count_active_drops(void) {
+  int count = 0;
+  for (int i = 0; i < MATRIX_COLS; i++) {
+    if (rain_cols[i].active)
+      count++;
+  }
+  return count;
+}
+
+void oled_effect_matrix_reset(void) {
+  for (int i = 0; i < MATRIX_COLS; i++) {
+    rain_cols[i].y = -100;
+    rain_cols[i].active = false;
+  }
+  oled_clear();
+  matrix_initialized = true;
+}
+
+void oled_effect_matrix_rain(void) {
+  if (!matrix_initialized) {
+    oled_effect_matrix_reset();
+  }
+
+  if (count_active_drops() < MATRIX_MAX_ACTIVE_DROPS) {
+    if (rand() % 3 == 0) {
+      int col = rand() % MATRIX_COLS;
+
+      if (!rain_cols[col].active) {
+        rain_cols[col].active = true;
+        rain_cols[col].y = -1;
+      }
+    }
+  }
+
+  for (int i = 0; i < MATRIX_COLS; i++) {
+    if (!rain_cols[i].active)
+      continue;
+
+    int x = i * MATRIX_COL_WIDTH;
+    int y_char_pos = rain_cols[i].y;
+
+    // head
+    if (y_char_pos >= 0 && y_char_pos < 8) {
+      char random_char = (rand() % (122 - 33 + 1)) + 33;
+      oled_draw_char(x, y_char_pos * 8, random_char);
+    }
+
+    // clear tail
+    int y_erase_pos = y_char_pos - MATRIX_TRAIL_LEN;
+    if (y_erase_pos >= 0 && y_erase_pos < 8) {
+      oled_draw_char(x, y_erase_pos * 8, ' ');
+    }
+
+    // move down
+    rain_cols[i].y++;
+
+    // deactivate if off screen
+    if (rain_cols[i].y - MATRIX_TRAIL_LEN > 8) {
+      rain_cols[i].active = false;
+      rain_cols[i].y = -100;
+    }
+  }
+
+  oled_update();
+}

@@ -37,6 +37,22 @@
 #define OLED_CMD_EXTERNAL_VCC 0x01
 #define OLED_CMD_SWITCH_CAP_VCC 0x02
 
+// Matrix Rain Effect
+#define MATRIX_COL_WIDTH 6        // pixels per column
+#define MATRIX_MAX_ACTIVE_DROPS 8 // max simultaneous drops
+#define MATRIX_COLS (OLED_WIDTH / MATRIX_COL_WIDTH)
+#define MATRIX_TRAIL_LEN 3            // length of the trail in rows
+#define SCREENSAVER_DURATION_MS 10000 // 10 seconds
+
+/**
+ * @brief Structure to hold the state of a rain column
+ */
+typedef struct {
+  int16_t y;     // Current vertical position of the drop (in character rows)
+  uint8_t speed; // Speed of the drop (rows per frame)
+  bool active;   // Is the drop currently active
+} RainColumn;
+
 /**
  * @brief OLED initialization
  * @param
@@ -159,5 +175,22 @@ void oled_wake_up(void);
  * @return true if active, false if in power save mode
  */
 bool oled_is_active(void);
+
+/**
+ * @brief Renders one frame of the Matrix Rain effect.
+ * Should be called periodically (e.g., every 50-100ms) when idle.
+ */
+void oled_effect_matrix_rain(void);
+
+/**
+ * @brief Resets the Matrix Rain state (clears drops).
+ * Call this when entering the screensaver mode.
+ */
+void oled_effect_matrix_reset(void);
+
+/**
+ * @brief Count the number of active drops in the Matrix Rain effect
+ */
+int count_active_drops(void);
 
 #endif // OLED_DISPLAY_H
