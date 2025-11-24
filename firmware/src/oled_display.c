@@ -19,6 +19,10 @@ static uint32_t g_last_activity_time = 0;
 static uint8_t oled_buffer[OLED_WIDTH * OLED_HEIGHT / 8];
 uint8_t config_mode = 0;
 
+static uint32_t preview_end_time = 0;
+static bool is_preview_active = false;
+#define PREVIEW_DURATION_MS 2000
+
 // matrix effect
 static RainColumn rain_cols[MATRIX_COLS];
 static bool matrix_initialized = false;
@@ -579,4 +583,30 @@ void oled_effect_matrix_rain(void) {
   }
 
   oled_update();
+}
+
+void oled_trigger_preview(uint8_t layer, uint8_t button) {
+  oled_display_button_preview(layer, button);
+
+  preview_end_time =
+      to_ms_since_boot(get_absolute_time()) + PREVIEW_DURATION_MS;
+  is_preview_active = true;
+
+  oled_wake_up();
+}
+
+void oled_ui_task(void) {
+  if (config_mode == 1)
+    return;
+
+  if (is_preview_active) {
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+
+    if (now > preview_end_time) {
+      is_preview_active = false;
+
+      uint8_t current = config_get_current_layer();
+      oled_display_layer_info(current);
+    }
+  }
 }

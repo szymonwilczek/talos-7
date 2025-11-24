@@ -89,6 +89,18 @@ void oled_write_cmd(uint8_t cmd);
 void oled_write_data(const uint8_t *data, size_t len);
 
 /**
+ * @brief Triggers a temporary preview of the macro on the screen.
+ * Does NOT block execution. Sets a timer to revert to layer info automatically.
+ */
+void oled_trigger_preview(uint8_t layer, uint8_t button);
+
+/**
+ * @brief Handles UI timeouts (like reverting preview to layer info).
+ * Should be called in the main loop.
+ */
+void oled_ui_task(void);
+
+/**
  * @brief Display layer information on OLED
  * @param layer Layer index to display
  */

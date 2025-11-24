@@ -22,9 +22,7 @@ void execute_macro(uint8_t layer, uint8_t button) {
   cdc_log("[EXECUTOR] Executing macro: L%d B%d '%s'\n", layer, button,
           macro->name);
 
-  oled_display_button_preview(layer, button);
-  sleep_ms(1000);
-  oled_display_layer_info(layer);
+  oled_trigger_preview(layer, button);
 
   switch (macro->type) {
   case MACRO_TYPE_KEY_PRESS: {
@@ -100,7 +98,7 @@ void execute_macro(uint8_t layer, uint8_t button) {
   }
 
   led_toggle(button);
-  sleep_ms(100);
+  sleep_ms(10);
   led_toggle(button);
 
   if (tud_hid_ready()) {
