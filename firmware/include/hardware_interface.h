@@ -13,7 +13,6 @@ void hardware_init(void);
 // obsluga przyciskow
 void buttons_init(void);
 bool button_is_pressed(uint8_t button_index);
-void buttons_scan(void);
 
 // obsluga LED
 void leds_init(void);

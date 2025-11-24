@@ -91,7 +91,7 @@ int main(void) {
 
   // button debounce
   uint32_t last_button_time[NUM_BUTTONS] = {0};
-  const uint32_t DEBOUNCE_MS = 50;
+  const uint32_t DEBOUNCE_MS = 5;
 
   oled_wake_up();
 
@@ -102,7 +102,7 @@ int main(void) {
     // zarzadzanie wygaszaczem
     oled_power_save_task();
 
-    buttons_scan();
+    oled_ui_task();
 
     uint32_t now = to_ms_since_boot(get_absolute_time());
     current_layer = config_get_current_layer();

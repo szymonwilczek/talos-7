@@ -1,18 +1,38 @@
 #include "hardware_interface.h"
+
+#include "cdc/cdc_transport.h"
+#include "hardware/timer.h"
 #include "macro_config.h"
 #include "oled_display.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
-#include "cdc/cdc_transport.h"
 #include <stdio.h>
 #include <string.h>
 
 // button states
-static bool button_states[NUM_BUTTONS] = {false};
+static volatile bool button_states[NUM_BUTTONS] = {false};
 static bool button_prev_states[NUM_BUTTONS] = {false};
 
 // LED states
 static bool led_states[NUM_BUTTONS] = {false};
+
+// Timer structure
+static struct repeating_timer buttons_timer;
+
+// BUTTON SCANNING CALLBACK (ISR)
+static bool buttons_timer_callback(struct repeating_timer *t) {
+  (void)t;
+
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    button_prev_states[i] = button_states[i];
+
+    bool raw_state = !gpio_get(BUTTON_PINS[i]);
+
+    button_states[i] = raw_state;
+  }
+
+  return true;
+}
 
 const char *get_key_name(uint8_t keycode) {
   static const char *key_names[] = {
@@ -92,6 +112,9 @@ void buttons_init(void) {
     gpio_set_dir(BUTTON_PINS[i], GPIO_IN);
     gpio_pull_up(BUTTON_PINS[i]); // pull-up (button connects to GND)
   }
+
+  add_repeating_timer_ms(5, buttons_timer_callback, NULL, &buttons_timer);
+
   cdc_log("[BUTTONS] Initialized (%d buttons)\n", NUM_BUTTONS);
 }
 
@@ -99,13 +122,6 @@ bool button_is_pressed(uint8_t button_index) {
   if (button_index >= NUM_BUTTONS)
     return false;
   return button_states[button_index];
-}
-
-void buttons_scan(void) {
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    button_prev_states[i] = button_states[i];
-    button_states[i] = !gpio_get(BUTTON_PINS[i]); // inverted (pull-up)
-  }
 }
 
 // ==================== LED ====================
