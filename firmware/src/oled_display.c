@@ -4,6 +4,8 @@
 #include "cdc/cdc_transport.h"
 #include "emoji.h"
 #include "font.h"
+#include "hardware/spi.h"
+#include "hardware/timer.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "pico/stdlib.h"
@@ -11,9 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-// SSD1306 OLED SPI
-#include "hardware/spi.h"
 
 static bool g_oled_active = true;
 static uint32_t g_last_activity_time = 0;
@@ -23,6 +22,14 @@ uint8_t config_mode = 0;
 // matrix effect
 static RainColumn rain_cols[MATRIX_COLS];
 static bool matrix_initialized = false;
+static struct repeating_timer matrix_timer;
+static volatile bool matrix_tick_flag = false;
+static bool timer_running = false;
+
+static bool matrix_timer_callback(struct repeating_timer *t) {
+  matrix_tick_flag = true;
+  return true;
+}
 
 void oled_init(void) {
   // SPI init
@@ -427,12 +434,11 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
 
 void oled_power_save_task(void) {
   if (config_mode == 1)
-    return; // Ignoruj w trybie config
+    return;
 
   config_data_t *config = config_get();
   uint32_t timeout_s = config->oled_timeout_s;
 
-  // Jeśli timeout = 0 (Always On), upewnij się, że ekran świeci i wyjdź
   if (timeout_s == 0) {
     if (!g_oled_active)
       oled_set_power(true);
@@ -443,37 +449,40 @@ void oled_power_save_task(void) {
   uint32_t time_since_activity = now - g_last_activity_time;
   uint32_t timeout_ms = timeout_s * 1000;
 
-  // STAN 1: Czas na wygaszacz (Matrix Rain)
   if (time_since_activity > timeout_ms &&
       time_since_activity < (timeout_ms + SCREENSAVER_DURATION_MS)) {
 
-    // Jeśli ekran był wyłączony (np. wybudzenie czymś innym niż klawisz), włącz
-    // go
-    if (!g_oled_active) {
+    if (!g_oled_active)
       oled_set_power(true);
+
+    if (!timer_running) {
+      add_repeating_timer_ms(50, matrix_timer_callback, NULL, &matrix_timer);
+      timer_running = true;
     }
 
-    // Renderuj animację (ogranicz FPS do ~20, czyli co 50ms)
-    static uint32_t last_frame_time = 0;
-    if (now - last_frame_time > 50) {
+    if (matrix_tick_flag) {
       oled_effect_matrix_rain();
-      last_frame_time = now;
+      matrix_tick_flag = false;
     }
-  }
-  // STAN 2: Czas na głęboki sen (Wyłączenie ekranu)
-  else if (time_since_activity >= (timeout_ms + SCREENSAVER_DURATION_MS)) {
+  } else if (time_since_activity >= (timeout_ms + SCREENSAVER_DURATION_MS)) {
+    if (timer_running) {
+      cancel_repeating_timer(&matrix_timer);
+      timer_running = false;
+    }
+
     if (g_oled_active) {
       oled_clear();
-      oled_update();         // Wyczyść buffor przed wyłączeniem
-      oled_set_power(false); // Wyślij komendę DISPLAY_OFF
+      oled_update();
+      oled_set_power(false);
     }
-  }
-  // STAN 3: Normalna aktywność
-  else {
-    // Jeśli ekran był wyłączony, włącz go
+  } else {
+    if (timer_running) {
+      cancel_repeating_timer(&matrix_timer);
+      timer_running = false;
+    }
+
     if (!g_oled_active) {
       oled_set_power(true);
-      // Wymuś odświeżenie interfejsu po wybudzeniu
       uint8_t current_layer = config_get_current_layer();
       oled_display_layer_info(current_layer);
     }
@@ -493,9 +502,14 @@ void oled_set_power(bool on) {
 void oled_wake_up(void) {
   g_last_activity_time = to_ms_since_boot(get_absolute_time());
   matrix_initialized = false;
+
+  if (timer_running) {
+    cancel_repeating_timer(&matrix_timer);
+    timer_running = false;
+  }
+
   if (!g_oled_active) {
     oled_set_power(true);
-    oled_update();
   }
 }
 
