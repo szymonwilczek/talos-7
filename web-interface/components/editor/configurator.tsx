@@ -7,12 +7,12 @@ import {
   ConnectionStatus,
   ConnectionError,
   MacroEntry,
+  MacroType, ScriptPlatform
 } from '@/lib/types/config.types';
 import { ConnectionPanel } from '@/components/device/connection-panel';
 import { LayerTabs } from '@/components/layout/LayerTabs';
 import { PCBVisualization } from './pcb-visualization';
 import { ButtonEditDialog } from '@/components/macro-dialog/button-edit-dialog';
-import { MacroType, ScriptPlatform } from '@/lib/types/macro.types';
 import { usePendingChanges } from '@/hooks/usePendingChanges';
 import { Header } from '../layout/header';
 import { SaveFeedback } from '../layout/save-feedback';

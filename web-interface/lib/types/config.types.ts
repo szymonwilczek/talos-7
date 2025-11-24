@@ -1,5 +1,7 @@
 // ==================== ENUMS ====================
 
+import { getEmojiString } from "../services/serial.utils";
+
 export enum MacroType {
   KEY_PRESS = 0,
   TEXT_STRING = 1,
@@ -18,6 +20,18 @@ export type ConnectionStatus =
   | "CONNECTING"
   | "CONNECTED"
   | "ERROR";
+
+export enum ScriptPlatform {
+  LINUX = 0,
+  WINDOWS = 1,
+  MACOS = 2,
+}
+
+export const ScriptPlatformLabels: Record<ScriptPlatform, string> = {
+  [ScriptPlatform.LINUX]: "Linux (bash)",
+  [ScriptPlatform.WINDOWS]: "Windows (batch/PowerShell)",
+  [ScriptPlatform.MACOS]: "macOS (bash/zsh)",
+};
 
 // ==================== INTERFACES ====================
 
@@ -74,6 +88,7 @@ export interface ConnectionError {
 export const DEFAULT_LAYER_EMOJIS = [0, 1, 2, 7];
 export const DEFAULT_BUTTON_EMOJI = 0;
 export const LAYER_SWITCH_EMOJI = 4;
+export const MAX_SCRIPT_SIZE = 2048; // 2KB
 
 export const FIRMWARE_CONSTANTS = {
   MAX_LAYERS: 4,
@@ -177,14 +192,14 @@ export function createLayerSwitchMacro(targetLayer: number): MacroEntry {
     value: targetLayer,
     macroString: "",
     name: "LayerSwitch",
-    emoji: LAYER_SWITCH_EMOJI,
+    emoji: getEmojiString(LAYER_SWITCH_EMOJI),
   };
 }
 
 export function createDefaultLayer(index: number): LayerConfig {
   return {
     name: `Layer ${index + 1}`,
-    emoji: DEFAULT_LAYER_EMOJIS[index] || "⚙️",
+    emoji: getEmojiString(DEFAULT_LAYER_EMOJIS[index] ?? 0),
     macros: Array.from(
       { length: FIRMWARE_CONSTANTS.NUM_BUTTONS },
       (_, btnIdx) => {
@@ -205,6 +220,7 @@ export function createDefaultConfig(): GlobalConfig {
     layers: Array.from({ length: FIRMWARE_CONSTANTS.MAX_LAYERS }, (_, i) =>
       createDefaultLayer(i),
     ),
+    oledTimeout: 300,
   };
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FIRMWARE_CONSTANTS } from '@/lib/types/macro.types';
+import { FIRMWARE_CONSTANTS } from '@/lib/types/config.types';
 
 interface LayerTabsProps {
   activeLayer: number;

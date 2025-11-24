@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ConnectionStatus, ConnectionError } from '@/lib/types/macro.types';
+import { ConnectionStatus, ConnectionError } from '@/lib/types/config.types';
 import { AlertCircle, CheckCircle, Loader2, Unplug, Usb } from 'lucide-react';
 
 interface ConnectionPanelProps {

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MAX_SCRIPT_SIZE, ScriptPlatform } from '@/lib/types/macro.types';
+import { MAX_SCRIPT_SIZE, ScriptPlatform } from '@/lib/types/config.types';
 import { KeySequenceInput } from '@/components/macro-dialog/key-sequence-input';
 import { MacroFormMidi } from '@/components/macro-dialog/forms/macro-form-midi';
 import { MacroFormKeyPress } from '@/components/macro-dialog/forms/macro-form-key-press';

@@ -1,4 +1,4 @@
-import { GlobalConfig, MacroEntry } from '../types/macro.types';
+import { GlobalConfig, MacroEntry } from "../types/config.types";
 
 /**
  * porownuje dwa marka i zwraca czy sa rozne
@@ -17,7 +17,7 @@ export function areMacrosDifferent(a: MacroEntry, b: MacroEntry): boolean {
  * zwraca liste zmian do wyslania
  */
 export interface ConfigChange {
-  type: 'MACRO' | 'LAYER_NAME';
+  type: "MACRO" | "LAYER_NAME";
   layer: number;
   button?: number; // tylko dla MACRO
   data: MacroEntry | string; // MacroEntry dla MACRO, string dla LAYER_NAME
@@ -25,7 +25,7 @@ export interface ConfigChange {
 
 export function findConfigChanges(
   original: GlobalConfig,
-  edited: GlobalConfig
+  edited: GlobalConfig,
 ): ConfigChange[] {
   const changes: ConfigChange[] = [];
 
@@ -37,7 +37,7 @@ export function findConfigChanges(
     // sprawdz nazwe warstwy
     if (originalLayer.name !== editedLayer.name) {
       changes.push({
-        type: 'LAYER_NAME',
+        type: "LAYER_NAME",
         layer,
         data: editedLayer.name,
       });
@@ -50,7 +50,7 @@ export function findConfigChanges(
 
       if (areMacrosDifferent(originalMacro, editedMacro)) {
         changes.push({
-          type: 'MACRO',
+          type: "MACRO",
           layer,
           button,
           data: editedMacro,
@@ -67,9 +67,11 @@ export function findConfigChanges(
  */
 export function cloneConfig(config: GlobalConfig): GlobalConfig {
   return {
-    layers: config.layers.map(layer => ({
+    layers: config.layers.map((layer) => ({
+      emoji: layer.emoji,
       name: layer.name,
-      macros: layer.macros.map(macro => ({ ...macro })),
+      macros: layer.macros.map((macro) => ({ ...macro })),
     })),
+    oledTimeout: config.oledTimeout,
   };
 }

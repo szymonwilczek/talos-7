@@ -1,5 +1,5 @@
 import { KeyPress } from "@/lib/types/config.types";
-import { MAX_SCRIPT_SIZE, ScriptPlatform, ScriptPlatformLabels } from "@/lib/types/macro.types";
+import { MAX_SCRIPT_SIZE, ScriptPlatform, ScriptPlatformLabels } from "@/lib/types/config.types";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KeySequenceInput } from "@/components/macro-dialog/key-sequence-input";

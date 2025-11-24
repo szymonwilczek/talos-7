@@ -2,11 +2,11 @@ import {
   GlobalConfig,
   MacroEntry,
   MacroType,
+  ScriptPlatform,
   KeyPress,
   FIRMWARE_CONSTANTS,
   DEFAULT_LAYER_EMOJIS,
 } from "../types/config.types";
-import { ScriptPlatform } from "../types/macro.types";
 import { SerialTransport } from "./serial.transport";
 import { SerialProtocol } from "./serial.protocol";
 import {
@@ -264,7 +264,7 @@ export class SerialService {
     return {
       layers: Array.from({ length: FIRMWARE_CONSTANTS.MAX_LAYERS }, (_, i) => ({
         name: `Layer ${i + 1}`,
-        emoji: DEFAULT_LAYER_EMOJIS[i] || "⚙️",
+        emoji: getEmojiString(DEFAULT_LAYER_EMOJIS[i] ?? 0),
         macros: Array.from({ length: FIRMWARE_CONSTANTS.NUM_BUTTONS }, () => ({
           type: MacroType.KEY_PRESS,
           value: 0,
@@ -272,9 +272,9 @@ export class SerialService {
           name: "Empty",
           emoji: "",
         })),
-        oledTimeout: 300,
-        firmwareVersion: "unknown",
       })),
+      oledTimeout: 300,
+      firmwareVersion: "unknown",
     };
   }
 
