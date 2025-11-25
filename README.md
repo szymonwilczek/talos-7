@@ -187,6 +187,8 @@ If you "bricked" the configuration or the device is unresponsive:
 
 * **Core Logic:** Szymon Wilczek
 * **Project Link:** [github.com/szymonwilczek/talos-7](https://github.com/szymonwilczek/talos-7)
-* **License:** [MIT License](./LICENSE.md) 
+* **License:** [MIT License](./LICENSE.md)
+
+Thanks for interest in my project!
 
 Built with ❤️ using **Raspberry Pi Pico SDK** and **TinyUSB**.
