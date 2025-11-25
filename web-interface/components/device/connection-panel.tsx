@@ -53,7 +53,7 @@ export function ConnectionPanel({
             <AlertTitle>Connection Error</AlertTitle>
             <AlertDescription>
               {error.type === 'BROWSER_NOT_SUPPORTED' && (
-                <>
+                <p>
                   Your browser doesn't support Web Serial API. Please use{' '}
                   <strong>Chrome</strong>, <strong>Edge</strong>, or{' '}
                   <strong>Opera</strong>.
@@ -61,7 +61,7 @@ export function ConnectionPanel({
                   <span className="text-sm mt-2 block">
                     ❌ Firefox is not supported
                   </span>
-                </>
+                </p>
               )}
               {error.type !== 'BROWSER_NOT_SUPPORTED' && error.message}
             </AlertDescription>
