@@ -19,7 +19,6 @@ tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
                                         .idVendor = USB_VID,
                                         .idProduct = USB_PID,
                                         .bcdDevice = 0x0103,
-
                                         .iManufacturer = 0x01,
                                         .iProduct = 0x02,
                                         .iSerialNumber = 0x03,
