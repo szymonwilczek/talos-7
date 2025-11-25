@@ -59,7 +59,7 @@ export function ConnectionPanel({
                   <strong>Opera</strong>.
                   <br />
                   <span className="text-sm mt-2 block">
-                    ❌ Firefox is not supported
+                    ❌ Firefox is not currently supported
                   </span>
                 </p>
               )}
