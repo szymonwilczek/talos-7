@@ -23,7 +23,7 @@
 
 **Talos 7** is not just a keypad; it's a hardware productivity platform. I've name this functionality as SudoPad. Unlike traditional macro pads that rely on heavy background software (like Synapse or iCUE), **Talos 7 runs everything on the device itself**.
 
-Once configured via the web interface, you can plug it into **any computer** (Windows, macOS, Linux, iPadOS), and it will work instantly. No drivers. No background agents. Just pure hardware emulation.
+Once configured via the web interface, you can plug it into **any computer** (Windows, macOS, Linux), and it will work instantly. No drivers. No background agents. Just pure hardware emulation.
 
 ### Why Talos?
 * **Hybrid Device:** Simultaneously acts as a Keyboard, Mouse, MIDI Controller, and Serial Device.
