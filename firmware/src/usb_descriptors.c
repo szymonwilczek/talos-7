@@ -4,6 +4,15 @@
 
 extern volatile uint8_t g_detected_platform;
 
+#ifndef TUD_ASSOC_DESC_LEN
+#define TUD_ASSOC_DESC_LEN 8
+#endif
+
+#ifndef TUD_ASSOCIATION_DESCRIPTOR
+#define TUD_ASSOCIATION_DESCRIPTOR(_firstitf, _nitfs, _fclass, _fsubclass, _fproto, _istr) \
+  8, TUSB_DESC_INTERFACE_ASSOCIATION, _firstitf, _nitfs, _fclass, _fsubclass, _fproto, _istr
+#endif
+
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
