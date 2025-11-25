@@ -10,15 +10,15 @@ extern volatile uint8_t g_detected_platform;
 tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
                                         .bDescriptorType = TUSB_DESC_DEVICE,
                                         .bcdUSB = 0x0200,
-                                        .bDeviceClass = 0x00,
-                                        .bDeviceSubClass = 0x00,
-                                        .bDeviceProtocol = 0x00,
+                                        .bDeviceClass = TUSB_CLASS_MISC,
+                                        .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+                                        .bDeviceProtocol = MISC_PROTOCOL_IAD,
                                         .bMaxPacketSize0 =
                                             CFG_TUD_ENDPOINT0_SIZE,
 
                                         .idVendor = USB_VID,
                                         .idProduct = USB_PID,
-                                        .bcdDevice = 0x0100,
+                                        .bcdDevice = 0x0101,
                                         .iManufacturer = 0x01,
                                         .iProduct = 0x02,
                                         .iSerialNumber = 0x03,
@@ -55,8 +55,8 @@ enum {
   ITF_NUM_TOTAL
 };
 
-#define CONFIG_TOTAL_LEN                                                       \
-  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN +                 \
+#define CONFIG_TOTAL_LEN                                                            \
+  (TUD_CONFIG_DESC_LEN + TUD_ASSOC_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN + \
    TUD_MIDI_DESC_LEN)
 
 #define EPNUM_CDC_NOTIF 0x81
@@ -70,6 +70,9 @@ uint8_t const desc_configuration[] = {
     // config number, interface count, string index, total length, attribute,
     // power in mA
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
+    // it connects CDC interfaces into one group for Windows
+    TUD_ASSOCIATION_DESCRIPTOR(ITF_NUM_CDC, 2, TUSB_CLASS_CDC, CDC_COMM_SUBCLASS_ABSTRACT_CONTROL_MODEL, CDC_COMM_PROTOCOL_ATCOMMAND, 0),
 
     // interface number, string index, EP notification address and size, EP data
     // address (out, in) and size
