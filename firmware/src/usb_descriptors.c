@@ -10,15 +10,15 @@ extern volatile uint8_t g_detected_platform;
 tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
                                         .bDescriptorType = TUSB_DESC_DEVICE,
                                         .bcdUSB = 0x0200,
-                                        .bDeviceClass = 0x00,
-                                        .bDeviceSubClass = 0x00,
-                                        .bDeviceProtocol = 0x00,
+                                        .bDeviceClass = TUSB_CLASS_MISC,
+                                        .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+                                        .bDeviceProtocol = MISC_PROTOCOL_IAD,
                                         .bMaxPacketSize0 =
                                             CFG_TUD_ENDPOINT0_SIZE,
 
                                         .idVendor = USB_VID,
                                         .idProduct = USB_PID,
-                                        .bcdDevice = 0x0100,
+                                        .bcdDevice = 0x0101,
 
                                         .iManufacturer = 0x01,
                                         .iProduct = 0x02,
