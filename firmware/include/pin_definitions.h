@@ -33,7 +33,7 @@
 // ==================== USB CONFIGURATION ====================
 // USB VID/PID - Raspberry Pi Foundation
 #define USB_VID 0x2E8A
-#define USB_PID 0x000A
+#define USB_PID 0x0032
 
 // ==================== DEVICE CONSTANTS ====================
 #define NUM_BUTTONS 7

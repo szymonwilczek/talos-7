@@ -4,29 +4,44 @@
 
 extern volatile uint8_t g_detected_platform;
 
+// --- HELPERS ASSOC DEFINITIONS (for Windows mostly)---
+#ifndef TUD_ASSOC_DESC_LEN
+#define TUD_ASSOC_DESC_LEN 8
+#endif
+
+#ifndef TUD_ASSOCIATION_DESCRIPTOR
+#define TUD_ASSOCIATION_DESCRIPTOR(_firstitf, _nitfs, _fclass, _fsubclass,     \
+                                   _fproto, _istr)                             \
+  8, TUSB_DESC_INTERFACE_ASSOCIATION, _firstitf, _nitfs, _fclass, _fsubclass,  \
+      _fproto, _istr
+#endif
+
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
-tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
-                                        .bDescriptorType = TUSB_DESC_DEVICE,
-                                        .bcdUSB = 0x0200,
-                                        .bDeviceClass = 0x00,
-                                        .bDeviceSubClass = 0x00,
-                                        .bDeviceProtocol = 0x00,
-                                        .bMaxPacketSize0 =
-                                            CFG_TUD_ENDPOINT0_SIZE,
+tusb_desc_device_t const desc_device = {
+    .bLength = sizeof(tusb_desc_device_t),
+    .bDescriptorType = TUSB_DESC_DEVICE,
+    .bcdUSB = 0x0200,
 
-                                        .idVendor = USB_VID,
-                                        .idProduct = USB_PID,
-                                        .bcdDevice = 0x0100,
+    // 0xEF (MISC), 0x02, 0x01 - required for composite devices on Windows
+    // also works for Linux
+    .bDeviceClass = TUSB_CLASS_MISC,
+    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol = MISC_PROTOCOL_IAD,
 
-                                        .iManufacturer = 0x01,
-                                        .iProduct = 0x02,
-                                        .iSerialNumber = 0x03,
+    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
 
-                                        .bNumConfigurations = 0x01};
+    .idVendor = USB_VID,
+    .idProduct = 0x0032,
+    .bcdDevice = 0x0100,
 
-// invoked when received GET DEVICE DESCRIPTOR
+    .iManufacturer = 0x01,
+    .iProduct = 0x02,
+    .iSerialNumber = 0x03,
+
+    .bNumConfigurations = 0x01};
+
 uint8_t const *tud_descriptor_device_cb(void) {
   return (uint8_t const *)&desc_device;
 }
@@ -35,11 +50,9 @@ uint8_t const *tud_descriptor_device_cb(void) {
 // HID Report Descriptor
 //--------------------------------------------------------------------+
 uint8_t const desc_hid_report[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)), // klawiatura
-    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(2))     // myszka
-};
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(2))};
 
-// invoked when received GET HID REPORT DESCRIPTOR
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
   (void)instance;
   return desc_hid_report;
@@ -53,18 +66,19 @@ enum {
   ITF_NUM_CDC_DATA,
   ITF_NUM_HID,
   ITF_NUM_MIDI,
+  ITF_NUM_MIDI_STREAMING,
   ITF_NUM_TOTAL
 };
 
 #define CONFIG_TOTAL_LEN                                                       \
   (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN +                 \
-   TUD_MIDI_DESC_LEN)
+   TUD_ASSOC_DESC_LEN + TUD_MIDI_DESC_LEN)
 
 #define EPNUM_CDC_NOTIF 0x81
 #define EPNUM_CDC_OUT 0x02
 #define EPNUM_CDC_IN 0x82
 #define EPNUM_HID 0x83
-#define EPNUM_MIDI_OUT 0x03
+#define EPNUM_MIDI_OUT 0x04
 #define EPNUM_MIDI_IN 0x84
 
 uint8_t const desc_configuration[] = {
@@ -77,16 +91,17 @@ uint8_t const desc_configuration[] = {
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT,
                        EPNUM_CDC_IN, 64),
 
-    // interface number, string index, protocol, report descriptor len, EP In
-    // address, size & polling interval
+    // interface number, string index, protocol, report descriptor len, EP
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report), EPNUM_HID,
                        CFG_TUD_HID_EP_BUFSIZE, 10),
 
-    // interface number, string index, EP Out & In address, size
+    // MIDI IAD
+    TUD_ASSOCIATION_DESCRIPTOR(ITF_NUM_MIDI, 2, 0x01, 0x01, 0x00, 0),
+
+    // interface number, string index, EP OUT & IN address, packet size
     TUD_MIDI_DESCRIPTOR(ITF_NUM_MIDI, 6, EPNUM_MIDI_OUT, EPNUM_MIDI_IN, 64)};
 
-// invoked when received GET CONFIGURATION DESCRIPTOR
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
   (void)index;
   return desc_configuration;
@@ -96,30 +111,25 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 // String Descriptors
 //--------------------------------------------------------------------+
 char const *string_desc_arr[] = {
-    (const char[]){0x09, 0x04}, // 0: English (0x0409)
+    (const char[]){0x09, 0x04}, // 0: English
     "Szymon Wilczek",           // 1: Manufacturer
     "Talos 7",                  // 2: Product
     "123456",                   // 3: Serial
-    "Talos Config Interface",   // 4: CDC Interface
-    "Talos 7 HID",              // 5: HID Interface
-    "Talos 7 MIDI"              // 6: MIDI Interface
+    "Talos Config",             // 4: CDC Interface
+    "Talos HID",                // 5: HID Interface
+    "Talos MIDI"                // 6: MIDI Interface
 };
 
 static uint16_t _desc_str[32];
 
-// invoked when received GET STRING DESCRIPTOR request
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void)langid;
-
   uint8_t chr_count;
 
-  // --- Windows (OS Fingerprinting) ---
-  // zawsze pyta o deskryptor 0xEE (Microsoft OS String)
   if (index == 0xEE) {
     g_detected_platform = 1;
     return NULL;
   }
-  // ------------------------------------------------------------
 
   if (index == 0) {
     memcpy(&_desc_str[1], string_desc_arr[0], 2);
@@ -129,9 +139,8 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
       return NULL;
 
     const char *str;
-    char serial_buf[33]; // bufor na unique id (max 16 bajtow hex + null)
+    char serial_buf[33];
 
-    // obsluga unique id dla numeru seryjnego (index 3)
     if (index == 3) {
       pico_get_unique_board_id_string(serial_buf, sizeof(serial_buf));
       str = serial_buf;
@@ -139,20 +148,16 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
       str = string_desc_arr[index];
     }
 
-    // cap at max char
     chr_count = strlen(str);
     if (chr_count > 31)
       chr_count = 31;
 
-    // convert ASCII string into UTF-16
     for (uint8_t i = 0; i < chr_count; i++) {
       _desc_str[1 + i] = str[i];
     }
   }
 
-  // first byte is length (including header), second byte is string type
   _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
-
   return _desc_str;
 }
 
