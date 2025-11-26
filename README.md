@@ -42,7 +42,7 @@ Talos 7 is built on the accessible and powerful **Raspberry Pi Pico (RP2040)**.
 * 7x **Mechanical Switches** (Cherry MX Red / I switch them sometimes to Akko Black)
 * 7x **Keycaps** (I've been using Keychron Keycaps)
 * 1x **SSD1306 OLED Display** (I'm using 0.96", SPI Interface)
-* 7x **LEDs** (3mm or 5mm - just for debugging, for the assembling part I'm using SMD LEDs 0805 - much more eye pleasing for user experience) + Resistors (220ΩR)
+* 7x **LEDs** (3mm or 5mm - just for debugging, for the assembling part I'm using SMD LEDs 0805 - much more eye pleasing for user experience) + Resistors (220R)
 * 1x **Micro-USB Data Cable** (for Pico - I think they come with Pico by default)
 
 ### Wiring Diagram (Pinout)
