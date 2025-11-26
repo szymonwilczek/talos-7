@@ -48,10 +48,32 @@ void exec_script(const char *script, uint8_t platform,
     press_sequence(0x08, 21); // Win + R
     sleep_ms(500);
 
-    type_text_content("powershell\n", platform);
+    // open PowerShell
+    type_text_content("powershell -NoProfile -ExecutionPolicy Bypass\n",
+                      platform);
     sleep_ms(1500);
 
+    // define temp file path
+    type_text_content("$f=\"$env:TEMP\\m.ps1\"\n", platform);
+    sleep_ms(100);
+
+    // start here-String
+    type_text_content("$c=@'\n", platform);
+
+    // type script content
     type_text_content(script, platform);
+
+    // end here-String
+    type_text_content("\n'@\n", platform);
+    sleep_ms(200);
+
+    // save to file
+    type_text_content("Set-Content -Path $f -Value $c -Encoding UTF8\n",
+                      platform);
+    sleep_ms(200);
+
+    // execute and Remove
+    type_text_content("& $f; Remove-Item $f\n", platform);
     press_sequence(0, 40);
   } else if (platform == 2) { // MACOS
     press_sequence(0x08, 44); // Cmd + Space
