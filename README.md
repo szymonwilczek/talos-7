@@ -38,12 +38,12 @@ Once configured via the web interface, you can plug it into **any computer** (Wi
 Talos 7 is built on the accessible and powerful **Raspberry Pi Pico (RP2040)**.
 
 ### Bill of Materials (BOM)
-* 1x **Raspberry Pi Pico** (or Pico W)
+* 1x **Raspberry Pi Pico** (I'm using Pico W - but it's the same thing, just with WiFi access)
 * 7x **Mechanical Switches** (Cherry MX Red / I switch them sometimes to Akko Black)
 * 7x **Keycaps** (I've been using Keychron Keycaps)
-* 1x **SSD1306 OLED Display** (1.3" or 0.96", SPI Interface)
-* 7x **LEDs** (3mm or 5mm) + Resistors (220Ω)
-* 1x **Micro-USB Data Cable** (for Pico)
+* 1x **SSD1306 OLED Display** (I'm using 0.96", SPI Interface)
+* 7x **LEDs** (3mm or 5mm - just for debugging, for the assembling part I'm using SMD LEDs 0805 - much more eye pleasing for user experience) + Resistors (220ΩR)
+* 1x **Micro-USB Data Cable** (for Pico - I think they come with Pico by default)
 
 ### Wiring Diagram (Pinout)
 
