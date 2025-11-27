@@ -12,6 +12,7 @@
 #define BTN_PIN_5 6
 #define BTN_PIN_6 7
 #define BTN_PIN_7 8
+#define BTN_OS_TOGGLE_PIN 9
 
 // LED
 #define LED_PIN_1 20

@@ -113,6 +113,10 @@ void buttons_init(void) {
     gpio_pull_up(BUTTON_PINS[i]); // pull-up (button connects to GND)
   }
 
+  gpio_init(BTN_OS_TOGGLE_PIN);
+  gpio_set_dir(BTN_OS_TOGGLE_PIN, GPIO_IN);
+  gpio_pull_up(BTN_OS_TOGGLE_PIN);
+
   add_repeating_timer_ms(5, buttons_timer_callback, NULL, &buttons_timer);
 
   cdc_log("[BUTTONS] Initialized (%d buttons)\n", NUM_BUTTONS);

@@ -14,13 +14,49 @@ volatile uint8_t g_detected_platform = 0;
 uint8_t detect_platform(void) { return g_detected_platform; }
 
 static bool button_processed[NUM_BUTTONS] = {false};
+static bool prev_os_btn_state = true;
+static uint32_t last_os_toggle_time = 0;
+
+void check_os_toggle_button(void) {
+  bool current_state = gpio_get(BTN_OS_TOGGLE_PIN);
+  uint32_t now = to_ms_since_boot(get_absolute_time());
+
+  if (prev_os_btn_state == true && current_state == false) {
+    if (now - last_os_toggle_time > 200) {
+
+      // platform: 0 -> 1 -> 2 -> 0 ...
+      g_detected_platform++;
+      if (g_detected_platform > 2) {
+        g_detected_platform = 0;
+      }
+
+      switch (g_detected_platform) {
+      case 0: // Linux
+        cdc_log("[OS] Switched to LINUX (Manual)\n");
+        break;
+
+      case 1: // Windows
+        cdc_log("[OS] Switched to WINDOWS (Manual)\n");
+        break;
+
+      case 2: // macOS
+        cdc_log("[OS] Switched to MACOS (Manual)\n");
+        break;
+      }
+
+      last_os_toggle_time = now;
+    }
+  }
+  prev_os_btn_state = current_state;
+  oled_display_layer_info(config_get_current_layer());
+}
 
 static void print_boot_message(void) {
   sleep_ms(4000); // czekanie na CDC connection
 
   cdc_log("\n");
   cdc_log("========================================\n");
-  cdc_log("  MACRO KEYBOARD FIRMWARE v1.0\n");
+  cdc_log("  MACRO KEYBOARD FIRMWARE \n");
   cdc_log("========================================\n");
   cdc_log("Device: Raspberry Pi Pico (RP2040)\n");
   cdc_log("USB VID:PID = 0x%04X:0x%04X\n", USB_VID, USB_PID);
@@ -30,12 +66,6 @@ static void print_boot_message(void) {
   cdc_log("Layers: %d\n", MAX_LAYERS);
   cdc_log("========================================\n");
   cdc_log("\n");
-
-  if (g_detected_platform == 1) {
-    cdc_log("OS Detected: Windows (via 0xEE)\n");
-  } else {
-    cdc_log("OS Detected: Linux/Generic (default)\n");
-  }
 
   cdc_log("Buttons: %d (GP%d-GP%d)\n", NUM_BUTTONS, BTN_PIN_1, BTN_PIN_7);
   cdc_log("LEDs: %d (GP%d-GP%d)\n", NUM_BUTTONS, LED_PIN_1, LED_PIN_7);
@@ -68,17 +98,7 @@ int main(void) {
   cdc_log("[MAIN] Initializing hardware...\n");
   hardware_init();
 
-  gpio_init(BTN_PIN_1);
-  gpio_set_dir(BTN_PIN_1, GPIO_IN);
-  gpio_pull_up(BTN_PIN_1); // pull-up
-  sleep_ms(10);            // stabilizacja
-
-  if (gpio_get(BTN_PIN_1) == 0) {
-    g_detected_platform = 2; // macOS
-    // TODO: MIGNIECIE INNA DIODA ZEBY DAC ZNAK UZYTKOWNIKOWI
-  } else {
-    g_detected_platform = 0; // Linux
-  }
+  check_os_toggle_button();
 
   // displaying initial layer
   uint8_t current_layer = config_get_current_layer();
@@ -103,6 +123,8 @@ int main(void) {
     oled_power_save_task();
 
     oled_ui_task();
+
+    check_os_toggle_button();
 
     uint32_t now = to_ms_since_boot(get_absolute_time());
     current_layer = config_get_current_layer();

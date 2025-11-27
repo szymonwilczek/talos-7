@@ -174,6 +174,19 @@ void oled_display_layer_info(uint8_t layer) {
   oled_draw_emoji(title_x, 0, config->layer_emojis[layer]);
   oled_draw_string(title_x + 15, 0, line1);
 
+  uint8_t icon_idx = 0;
+  uint8_t detected_platform = detect_platform();
+
+  if (detected_platform == 1) {
+    icon_idx = 1; // Windows
+  } else if (detected_platform == 2) {
+    icon_idx = 2; // macOS
+  } else {
+    icon_idx = 0; // Linux
+  }
+
+  oled_draw_bitmap(120, 0, 8, 8, os_icons[icon_idx]);
+
   // separator
   oled_draw_line(15);
 

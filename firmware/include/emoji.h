@@ -51,4 +51,13 @@ static const char *emoji_strings[MAX_EMOJIS] = {
     "🎮", "💼", "🏠", "🔧", "⚡", "📧", "💻", "🎵", "📝", "☕", "🗡️",
     "❤️",  "🔔", "🧪", "🔒", "☂️",  "🦕", "👻", "🔫", "⏳", "🌷"};
 
+static const uint8_t os_icons[3][8] = {
+    // 0: Linux
+    {0x20, 0xfe, 0x37, 0x33, 0x3f, 0xf7, 0xf3, 0xff},
+    // 1: Windows
+    {0x00, 0xee, 0xee, 0xee, 0x00, 0xee, 0xee, 0xee},
+    // 2: macOS
+    {0x38, 0xfc, 0xfc, 0x7a, 0xfd, 0xfc, 0x48, 0x00},
+};
+
 #endif // EMOJI_H

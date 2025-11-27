@@ -126,11 +126,6 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void)langid;
   uint8_t chr_count;
 
-  if (index == 0xEE) {
-    g_detected_platform = 1;
-    return NULL;
-  }
-
   if (index == 0) {
     memcpy(&_desc_str[1], string_desc_arr[0], 2);
     chr_count = 1;
