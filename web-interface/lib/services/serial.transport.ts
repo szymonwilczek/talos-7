@@ -17,7 +17,7 @@ export class SerialTransport {
       throw new Error("Web Serial API not supported");
 
     this.port = await navigator.serial.requestPort({
-      filters: [{ usbVendorId: 0x2e8a, usbProductId: 0x0032 }],
+      filters: [{ usbVendorId: 0x2e8a }],
     });
 
     await this.port.open({ baudRate });
