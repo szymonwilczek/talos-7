@@ -68,49 +68,40 @@ void send_unicode(uint8_t platform, uint32_t codepoint) {
     tud_hid_keyboard_report(1, 0, NULL);
     sleep_ms(2);
 
-  } else if (platform == 1) { // Windows: Alt + + + hex + Alt release
-
-    // alt down
-    while (!tud_hid_ready())
-      tud_task();
-
-    tud_hid_keyboard_report(1, 0x04, NULL);
-    cdc_log("[HID] Sent Alt down\n");
-    sleep_ms(100);
-
-    // +
-    tud_hid_keyboard_report(1, 0x04, (uint8_t[]){46, 0, 0, 0, 0, 0});
-    cdc_log("[HID] Sent +\n");
-    sleep_ms(100);
-
-    tud_hid_keyboard_report(1, 0x04, NULL);
-    sleep_ms(50);
+  } else if (platform == 1) { // Windows: hex digits + alt+x sequence
 
     // hex
     for (char *h = hex; *h; h++) {
-      uint8_t keycode = 0;
-
-      if (*h >= '0' && *h <= '9')
-        keycode = 30 + (*h - '0');
-      else if (*h >= 'A' && *h <= 'F')
-        keycode = 4 + (*h - 'A');
-
-      if (keycode) {
+      uint8_t keycode, modifiers;
+      if (map_char_to_hid(*h, &keycode, &modifiers)) {
         while (!tud_hid_ready())
           tud_task();
 
-        tud_hid_keyboard_report(1, 0x04, (uint8_t[]){keycode, 0, 0, 0, 0, 0});
-        cdc_log("[HID] Sent hex digit %c\n", *h);
-        sleep_ms(100);
+        uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
+        tud_hid_keyboard_report(1, modifiers, report);
+        sleep_ms(2);
 
-        tud_hid_keyboard_report(1, 0, NULL);
-        sleep_ms(50);
+        while (!tud_hid_ready())
+          tud_task();
+        tud_hid_keyboard_report(1, 0, NULL); // release
+        sleep_ms(2);
       }
     }
 
-    // alt up
+    sleep_ms(10);
+
+    // Alt + x
+    while (!tud_hid_ready())
+      tud_task();
+
+    tud_hid_keyboard_report(1, 0x04, (uint8_t[]){27, 0, 0, 0, 0, 0});
+    cdc_log("[HID] Sent Alt+X conversion\n");
+    sleep_ms(20);
+
+    // release Alt + x
+    while (!tud_hid_ready())
+      tud_task();
     tud_hid_keyboard_report(1, 0, NULL);
-    cdc_log("[HID] Sent Alt up\n");
     sleep_ms(50);
 
   } else if (platform == 2) { // Mac: Ctrl+Cmd+Space + hex + space
