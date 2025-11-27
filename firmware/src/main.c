@@ -48,6 +48,7 @@ void check_os_toggle_button(void) {
     }
   }
   prev_os_btn_state = current_state;
+  led_rgb_update_os(g_detected_platform);
   oled_display_layer_info(config_get_current_layer());
 }
 
@@ -97,6 +98,7 @@ int main(void) {
 
   cdc_log("[MAIN] Initializing hardware...\n");
   hardware_init();
+  led_rgb_update_os(0); // default to Linux
 
   check_os_toggle_button();
 

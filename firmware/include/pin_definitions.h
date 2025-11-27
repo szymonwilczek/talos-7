@@ -22,6 +22,9 @@
 #define LED_PIN_5 27
 #define LED_PIN_6 28
 #define LED_PIN_7 0
+#define PIN_RGB_R 10 // 330R
+#define PIN_RGB_G 11 // 220R
+#define PIN_RGB_B 12 // 220R
 
 // OLED SPI
 #define OLED_SPI spi0

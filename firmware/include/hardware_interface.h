@@ -19,6 +19,9 @@ void leds_init(void);
 void led_set(uint8_t led_index, bool state);
 void led_toggle(uint8_t led_index);
 void leds_update_for_layer(uint8_t layer);
+void led_rgb_init(void);
+void led_rgb_set(bool r, bool g, bool b);
+void led_rgb_update_os(uint8_t platform);
 
 // helpery
 bool map_char_to_hid(char c, uint8_t *keycode, uint8_t *modifiers);

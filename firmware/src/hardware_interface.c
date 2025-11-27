@@ -161,6 +161,48 @@ void leds_update_for_layer(uint8_t layer) {
   }
 }
 
+void led_rgb_init(void) {
+  gpio_init(PIN_RGB_R);
+  gpio_set_dir(PIN_RGB_R, GPIO_OUT);
+
+  gpio_init(PIN_RGB_G);
+  gpio_set_dir(PIN_RGB_G, GPIO_OUT);
+
+  gpio_init(PIN_RGB_B);
+  gpio_set_dir(PIN_RGB_B, GPIO_OUT);
+
+  // common anode: 1 = OFF
+  gpio_put(PIN_RGB_R, 1);
+  gpio_put(PIN_RGB_G, 1);
+  gpio_put(PIN_RGB_B, 1);
+
+  cdc_log("[RGB] Initialized (Common Anode) on pins %d, %d, %d\n", PIN_RGB_R,
+          PIN_RGB_G, PIN_RGB_B);
+}
+
+void led_rgb_set(bool r, bool g, bool b) {
+  gpio_put(PIN_RGB_R, !r);
+  gpio_put(PIN_RGB_G, !g);
+  gpio_put(PIN_RGB_B, !b);
+}
+
+void led_rgb_update_os(uint8_t platform) {
+  switch (platform) {
+  case 0: // Linux -> YELLOW (R + G)
+    led_rgb_set(1, 1, 0);
+    break;
+  case 1: // Windows -> BLUE (B)
+    led_rgb_set(0, 0, 1);
+    break;
+  case 2: // macOS -> PINK (R + B)
+    led_rgb_set(1, 0, 1);
+    break;
+  default: // off or error -> RED
+    led_rgb_set(1, 0, 0);
+    break;
+  }
+}
+
 bool map_char_to_hid(char c, uint8_t *keycode, uint8_t *modifiers) {
   *modifiers = 0;
   if (c >= 'a' && c <= 'z') {
@@ -305,5 +347,6 @@ void hardware_init(void) {
   buttons_init();
   leds_init();
   oled_init();
+  led_rgb_init();
   cdc_log("[HARDWARE] Initialization complete\n");
 }
