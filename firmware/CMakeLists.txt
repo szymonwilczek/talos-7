@@ -42,6 +42,7 @@ target_link_libraries(talos7
     hardware_i2c
     hardware_gpio
     hardware_spi
+    hardware_watchdog
     tinyusb_device
     tinyusb_board
 )

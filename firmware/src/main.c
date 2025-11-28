@@ -1,6 +1,7 @@
 #include "cdc/cdc_dispatcher.h"
 #include "cdc/cdc_transport.h"
 #include "executor/macro_executor.h"
+#include "hardware/watchdog.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "oled_display.h"
@@ -117,7 +118,11 @@ int main(void) {
 
   oled_wake_up();
 
+  watchdog_enable(2000, 1);
+  cdc_log("[MAIN] Watchdog enabled (2s timeout)\n");
+
   while (1) {
+    watchdog_update();
     tud_task();
     cdc_protocol_task();
 
