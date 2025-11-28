@@ -11,10 +11,15 @@ jobs:
   build-electron:
     name: Build ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    
+    permissions:
+      contents: write
+
     defaults:
       run:
         working-directory: ./web-interface
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
 
@@ -38,9 +43,4 @@ jobs:
           package_root: web-interface
           github_token: ${{ secrets.GITHUB_TOKEN }}
           release: true
-          
-          windows_certs: ''
-          mac_certs: ''
-          linux_certs: ''
-
           args: "--config.publish.provider=github"
