@@ -2,6 +2,7 @@
 
 #include "cdc/cdc_transport.h"
 #include "executor/actions/exec_hid_core.h"
+#include "hardware/watchdog.h"
 #include "tusb.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -41,6 +42,9 @@ void exec_mouse_click(uint8_t buttons, uint16_t count, uint16_t interval,
   }
 
   for (uint16_t i = 0; i < count; i++) {
+
+    watchdog_update();
+
     // interrupt check
     if (check_cancel(trigger_btn, &wait_for_release))
       break;
@@ -102,6 +106,8 @@ void exec_mouse_move(int16_t total_x, int16_t total_y, uint16_t count,
   const uint8_t STEP_DELAY = 8; // 8ms miedzy krokami (ok 125Hz)
 
   while (infinite || i < count) {
+    watchdog_update();
+
     if (check_cancel(trigger_btn, &wait_for_release))
       break;
 
@@ -127,8 +133,13 @@ void exec_mouse_move(int16_t total_x, int16_t total_y, uint16_t count,
       tud_task();
     }
 
+    uint32_t delay = interval;
+    if (infinite && delay < 50)
+      delay = 500;
+
     if (infinite || i < count - 1)
-      sleep_ms(interval > 0 ? interval : 20);
+      sleep_ms(delay > 0 ? delay : 20);
+
     if (!infinite)
       i++;
   }

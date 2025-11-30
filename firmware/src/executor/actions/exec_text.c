@@ -1,6 +1,7 @@
 #include "executor/actions/exec_text.h"
 
 #include "cdc/cdc_transport.h"
+#include "hardware/watchdog.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
 #include "tusb.h"
@@ -41,6 +42,8 @@ void send_unicode(uint8_t platform, uint32_t codepoint) {
 
     // hex digits
     for (char *h = hex; *h; h++) {
+      watchdog_update();
+
       uint8_t keycode, modifiers;
       if (map_char_to_hid(*h, &keycode, &modifiers)) {
         while (!tud_hid_ready())
@@ -72,6 +75,8 @@ void send_unicode(uint8_t platform, uint32_t codepoint) {
 
     // hex
     for (char *h = hex; *h; h++) {
+      watchdog_update();
+
       uint8_t keycode, modifiers;
       if (map_char_to_hid(*h, &keycode, &modifiers)) {
         while (!tud_hid_ready())
@@ -118,6 +123,8 @@ void send_unicode(uint8_t platform, uint32_t codepoint) {
     sleep_ms(50);
 
     for (char *h = hex; *h; h++) {
+      watchdog_update();
+
       uint8_t keycode, modifiers;
 
       if (map_char_to_hid(*h, &keycode, &modifiers)) {
@@ -163,6 +170,8 @@ bool is_pure_ascii(const char *str) {
 void type_text_turbo_ascii(const char *text) {
   const char *p = text;
   while (*p) {
+    watchdog_update();
+
     uint8_t keycode, modifiers;
 
     if (map_char_to_hid(*p, &keycode, &modifiers)) {
@@ -188,6 +197,8 @@ void type_text_turbo_ascii(const char *text) {
 void type_text_content(const char *text, uint8_t platform) {
   const char *p = text;
   while (*p) {
+    watchdog_update();
+
     uint32_t code = utf8_to_codepoint(&p);
 
     if (code == 0)

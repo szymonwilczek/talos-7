@@ -1,6 +1,7 @@
 #include "executor/actions/exec_hid_core.h"
 
 #include "cdc/cdc_transport.h"
+#include "hardware/watchdog.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
 #include "tusb.h"
@@ -101,6 +102,8 @@ void exec_key_repeat_fast(uint8_t keycode, uint16_t count, uint16_t interval) {
   uint32_t wait_time = (interval > 0) ? interval : 2;
 
   for (uint16_t i = 0; i < count; i++) {
+    watchdog_update();
+
     // press
     while (!tud_hid_ready())
       tud_task();
@@ -125,6 +128,7 @@ void exec_key_repeat_fast(uint8_t keycode, uint16_t count, uint16_t interval) {
 
 void exec_key_sequence(const key_step_t *sequence, uint8_t len) {
   for (int i = 0; i < len; i++) {
+    watchdog_update();
     press_sequence(sequence[i].modifiers, sequence[i].keycode);
 
     if (sequence[i].duration > 0) {

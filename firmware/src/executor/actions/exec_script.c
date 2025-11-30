@@ -3,6 +3,7 @@
 #include "cdc/cdc_transport.h"
 #include "executor/actions/exec_hid_core.h"
 #include "executor/actions/exec_text.h"
+#include "hardware/watchdog.h"
 #include "tusb.h"
 #include <stdint.h>
 
@@ -26,6 +27,7 @@ void exec_script(const char *script, uint8_t platform,
       press_sequence(0x05, 23);
     }
 
+    watchdog_update();
     sleep_ms(1500); // waiting for gui response
 
     // 2. temporary file
@@ -51,6 +53,7 @@ void exec_script(const char *script, uint8_t platform,
     // open PowerShell
     type_text_content("powershell -NoProfile -ExecutionPolicy Bypass\n",
                       platform);
+    watchdog_update();
     sleep_ms(1500);
 
     // define temp file path
@@ -83,6 +86,7 @@ void exec_script(const char *script, uint8_t platform,
     sleep_ms(100);
 
     press_sequence(0, 40);
+    watchdog_update();
     sleep_ms(1000);
 
     type_text_content("cat << 'EOF' > /tmp/m.sh\n", platform);
