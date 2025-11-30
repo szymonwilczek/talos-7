@@ -307,7 +307,13 @@ export function ButtonEditDialog({
           {macroType === MacroType.MOUSE_MOVE && (
             <MacroFormMouse
               type="MOVE"
-              value={0} moveX={moveX} moveY={moveY}
+              value={0}
+              moveX={moveX}
+              moveY={moveY}
+              repeatCount={macroRepeatCount}
+              repeatInterval={macroRepeatInterval}
+              onRepeatCountChange={setMacroRepeatCount}
+              onRepeatIntervalChange={setMacroRepeatInterval}
               onValueChange={() => { }}
               onMoveChange={(x, y) => { setMoveX(x); setMoveY(y); }}
             />
