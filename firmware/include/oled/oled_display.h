@@ -143,7 +143,7 @@ void oled_draw_line(uint8_t y);
  * @param height Height of the bitmap in pixels
  * @param bitmap Pointer to bitmap data
  */
-void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
+void oled_draw_bitmap(int x, int y, uint8_t width, uint8_t height,
                       const uint8_t *bitmap);
 
 /**
@@ -167,6 +167,14 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
                         uint8_t height_pages, const uint8_t *icon_data);
 
 /**
+ * @brief Draw a single pixel at (x, y) with specified color
+ * @param x X coordinate
+ * @param y Y coordinate
+ * @param color 1 for ON, 0 for OFF
+ */
+void oled_draw_pixel(int x, int y, uint8_t color);
+
+/**
  * @brief OLED power saving task to be called in main loop
  */
 void oled_power_save_task(void); // w petli glownej
@@ -187,18 +195,6 @@ void oled_wake_up(void);
  * @return true if active, false if in power save mode
  */
 bool oled_is_active(void);
-
-/**
- * @brief Renders one frame of the Matrix Rain effect.
- * Should be called periodically (e.g., every 50-100ms) when idle.
- */
-void oled_effect_matrix_rain(void);
-
-/**
- * @brief Resets the Matrix Rain state (clears drops).
- * Call this when entering the screensaver mode.
- */
-void oled_effect_matrix_reset(void);
 
 /**
  * @brief Count the number of active drops in the Matrix Rain effect

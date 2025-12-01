@@ -3,7 +3,7 @@
 #include "cdc/cdc_transport.h"
 #include "hardware/timer.h"
 #include "macro_config.h"
-#include "oled_display.h"
+#include "oled/oled_display.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
 #include <stdio.h>

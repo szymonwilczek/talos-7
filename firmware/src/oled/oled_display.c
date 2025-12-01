@@ -1,4 +1,4 @@
-#include "oled_display.h"
+#include "oled/oled_display.h"
 
 #include "assets_graphics.h"
 #include "cdc/cdc_transport.h"
@@ -8,6 +8,7 @@
 #include "hardware/timer.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
+#include "oled/screensaver/screensaver_manager.h"
 #include "pico/stdlib.h"
 #include "pin_definitions.h"
 #include <stdio.h>
@@ -412,17 +413,12 @@ void oled_draw_line(uint8_t y) {
   }
 }
 
-void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
+void oled_draw_bitmap(int x, int y, uint8_t width, uint8_t height,
                       const uint8_t *bitmap) {
-  for (uint8_t i = 0; i < width; i++) {
-    for (uint8_t j = 0; j < height; j++) {
-      if (bitmap[i] & (1 << j)) {
-        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
-        int bit_idx = y % 8 + j;
-        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
-          oled_buffer[byte_idx] |= (1 << bit_idx);
-        }
-      }
+  for (int i = 0; i < width; i++) {
+    for (int j = 0; j < height; j++) {
+      bool pixel_on = (bitmap[i] & (1 << j));
+      oled_draw_pixel(x + i, y + j, pixel_on ? 1 : 0);
     }
   }
 }
@@ -453,6 +449,19 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
   }
 }
 
+void oled_draw_pixel(int x, int y, uint8_t color) {
+  if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT)
+    return;
+
+  int byte_idx = (y / 8) * OLED_WIDTH + x;
+  int bit_idx = y % 8;
+
+  if (color)
+    oled_buffer[byte_idx] |= (1 << bit_idx);
+  else
+    oled_buffer[byte_idx] &= ~(1 << bit_idx);
+}
+
 void oled_power_save_task(void) {
   if (config_mode == 1)
     return;
@@ -479,11 +488,12 @@ void oled_power_save_task(void) {
     if (!timer_running) {
       add_repeating_timer_ms(50, matrix_timer_callback, NULL, &matrix_timer);
       timer_running = true;
-      oled_effect_matrix_reset();
+
+      screensaver_start_new_session();
     }
 
     if (matrix_tick_flag) {
-      oled_effect_matrix_rain();
+      screensaver_update(); // Zamiast oled_effect_matrix_rain()
       matrix_tick_flag = false;
     }
   } else if (time_since_activity >= (timeout_ms + SCREENSAVER_DURATION_MS)) {
@@ -544,63 +554,6 @@ int count_active_drops(void) {
       count++;
   }
   return count;
-}
-
-void oled_effect_matrix_reset(void) {
-  for (int i = 0; i < MATRIX_COLS; i++) {
-    rain_cols[i].y = -100;
-    rain_cols[i].active = false;
-  }
-  oled_clear();
-  matrix_initialized = true;
-}
-
-void oled_effect_matrix_rain(void) {
-  if (!matrix_initialized) {
-    oled_effect_matrix_reset();
-  }
-
-  if (count_active_drops() < MATRIX_MAX_ACTIVE_DROPS) {
-    if (rand() % 3 == 0) {
-      int col = rand() % MATRIX_COLS;
-
-      if (!rain_cols[col].active) {
-        rain_cols[col].active = true;
-        rain_cols[col].y = -1;
-      }
-    }
-  }
-
-  for (int i = 0; i < MATRIX_COLS; i++) {
-    if (!rain_cols[i].active)
-      continue;
-
-    int x = i * MATRIX_COL_WIDTH;
-    int y_char_pos = rain_cols[i].y;
-
-    // head
-    if (y_char_pos >= 0 && y_char_pos < 8) {
-      char random_char = (rand() % (122 - 33 + 1)) + 33;
-      oled_draw_char(x, y_char_pos * 8, random_char);
-    }
-
-    // clear tail
-    int y_erase_pos = y_char_pos - MATRIX_TRAIL_LEN;
-    if (y_erase_pos >= 0 && y_erase_pos < 8) {
-      oled_draw_char(x, y_erase_pos * 8, ' ');
-    }
-
-    // move down
-    rain_cols[i].y++;
-
-    // deactivate if off screen
-    if (rain_cols[i].y - MATRIX_TRAIL_LEN > 8) {
-      rain_cols[i].active = false;
-      rain_cols[i].y = -100;
-    }
-  }
-
-  oled_update();
 }
 
 void oled_trigger_preview(uint8_t layer, uint8_t button) {

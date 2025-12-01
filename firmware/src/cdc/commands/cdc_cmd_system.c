@@ -4,7 +4,7 @@
 #include "cdc/commands/cdc_cmd_write.h"
 #include "hardware_interface.h"
 #include "macro_config.h"
-#include "oled_display.h"
+#include "oled/oled_display.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include <stdio.h>

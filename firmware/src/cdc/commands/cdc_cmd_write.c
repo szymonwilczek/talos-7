@@ -1,4 +1,5 @@
 #include "cdc/commands/cdc_cmd_write.h"
+
 #include "cdc/cdc_dispatcher.h"
 #include "cdc/cdc_transport.h"
 #include "hardware_interface.h"
