@@ -377,11 +377,15 @@ void oled_draw_char(uint8_t x, uint8_t y, char c) {
     for (int j = 0; j < 8; j++) {
       if (y + j >= OLED_HEIGHT)
         break;
-      if (glyph[i] & (1 << j)) {
-        int byte_idx = (y / 8) * OLED_WIDTH + x + i;
-        int bit_idx = y % 8 + j;
-        if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
+
+      int byte_idx = (y / 8) * OLED_WIDTH + x + i;
+      int bit_idx = y % 8 + j;
+
+      if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
+        if (glyph[i] & (1 << j)) {
           oled_buffer[byte_idx] |= (1 << bit_idx);
+        } else {
+          oled_buffer[byte_idx] &= ~(1 << bit_idx);
         }
       }
     }
@@ -475,6 +479,7 @@ void oled_power_save_task(void) {
     if (!timer_running) {
       add_repeating_timer_ms(50, matrix_timer_callback, NULL, &matrix_timer);
       timer_running = true;
+      oled_effect_matrix_reset();
     }
 
     if (matrix_tick_flag) {

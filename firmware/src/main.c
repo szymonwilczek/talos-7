@@ -46,11 +46,13 @@ void check_os_toggle_button(void) {
       }
 
       last_os_toggle_time = now;
+
+      led_rgb_update_os(g_detected_platform);
+      oled_wake_up();
+      oled_display_layer_info(config_get_current_layer());
     }
   }
   prev_os_btn_state = current_state;
-  led_rgb_update_os(g_detected_platform);
-  oled_display_layer_info(config_get_current_layer());
 }
 
 static void print_boot_message(void) {
@@ -101,12 +103,8 @@ int main(void) {
   hardware_init();
   led_rgb_update_os(0); // default to Linux
 
-  check_os_toggle_button();
-
-  // displaying initial layer
-  uint8_t current_layer = config_get_current_layer();
-  oled_display_layer_info(current_layer);
-  leds_update_for_layer(current_layer);
+  oled_display_layer_info(config_get_current_layer());
+  leds_update_for_layer(config_get_current_layer());
 
   cdc_log("[MAIN] System ready!\n");
   cdc_log("[MAIN] Press Button 1 (GP%d) to test\n", BTN_PIN_1);
@@ -134,7 +132,7 @@ int main(void) {
     check_os_toggle_button();
 
     uint32_t now = to_ms_since_boot(get_absolute_time());
-    current_layer = config_get_current_layer();
+    uint8_t current_layer = config_get_current_layer();
 
     for (int i = 0; i < NUM_BUTTONS; i++) {
       bool pressed = button_is_pressed(i);
