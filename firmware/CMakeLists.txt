@@ -22,7 +22,14 @@ add_executable(talos7
     src/executor/actions/exec_mouse.c
     src/executor/actions/exec_script.c
     src/executor/actions/exec_text.c
-    src/oled_display.c
+    src/oled/oled_display.c
+    src/oled/screensaver/screensaver_manager.c
+    src/oled/screensaver/screensaver_utils.c
+    src/oled/screensaver/animations/anim_bouncing_logo.c
+    src/oled/screensaver/animations/anim_matrix.c
+    src/oled/screensaver/animations/anim_starfield.c
+    src/oled/screensaver/animations/anim_breakout.c
+    src/oled/screensaver/animations/anim_invaders.c
     src/cdc/commands/cdc_cmd_read.c
     src/cdc/commands/cdc_cmd_write.c
     src/cdc/commands/cdc_cmd_system.c
