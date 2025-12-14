@@ -109,8 +109,8 @@ int main(void) {
 
   oled_wake_up();
 
-  watchdog_enable(2000, 1);
-  cdc_log("[MAIN] Watchdog enabled (2s timeout)\n");
+  watchdog_enable(8000, 1);
+  cdc_log("[MAIN] Watchdog enabled (8s timeout)\n");
 
   while (1) {
     watchdog_update();

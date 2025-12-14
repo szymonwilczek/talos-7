@@ -1,6 +1,7 @@
 #include "macro_config.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
+#include "hardware/watchdog.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
 #include <stdio.h>
@@ -149,7 +150,7 @@ void config_set_factory_defaults(void) {
   g_config.crc32 = config_calculate_crc(&g_config);
   g_config_loaded = true;
   g_config.global_text_platform = detect_platform();
-  g_config.oled_timeout_s = 300; // 5 minut 
+  g_config.oled_timeout_s = 300; // 5 minut
 }
 
 // ==================== ODCZYT Z FLASH ====================
@@ -174,49 +175,42 @@ static bool config_load_from_flash(void) {
 
 // ==================== ZAPIS DO FLASH ====================
 bool config_save(void) {
-  g_config.crc32 = config_calculate_crc(&g_config);
+  watchdog_update();
 
-  char msg[128];
-  // snprintf(msg, sizeof(msg),
-  //          "[CONFIG] Saving to flash... CRC: 0x%08X, size: %d bytes\n",
-  //          g_config.crc32, sizeof(config_data_t));
-  // tud_cdc_write_str(msg);
-  // tud_cdc_write_flush();
+  g_config.crc32 = config_calculate_crc(&g_config);
 
   // wymagany rozmiar sektora (wielokrotnosc 4KB)
   uint32_t sector_size = FLASH_SECTOR_SIZE_CALC;
   uint32_t aligned_size =
       (sizeof(config_data_t) + 255) & ~255; // wyrownanie do 256 bajtow
 
-  // snprintf(msg, sizeof(msg),
-  //          "[CONFIG] Sector size: %lu bytes, aligned size: %lu bytes\n",
-  //          sector_size, aligned_size);
-  // tud_cdc_write_str(msg);
-  // tud_cdc_write_flush();
-
   // wyrownany bufor
   uint8_t *aligned_buffer = malloc(aligned_size);
   if (!aligned_buffer) {
-    // tud_cdc_write_str("[CONFIG] ERROR: Memory allocation failed\n");
-    // tud_cdc_write_flush();
+    printf("[CONFIG] ERROR: Memory allocation failed\n");
     return false;
   }
 
   memset(aligned_buffer, 0xFF, aligned_size);
   memcpy(aligned_buffer, &g_config, sizeof(config_data_t));
 
+  watchdog_update();
+
+  printf("[CONFIG] Writing to flash (%lu bytes)...\n", aligned_size);
+
   uint32_t ints = save_and_disable_interrupts();
-  flash_range_erase(FLASH_TARGET_OFFSET,
-                    sector_size); // czysc odpowiednia liczbe sektorow
+  flash_range_erase(FLASH_TARGET_OFFSET, sector_size);
   flash_range_program(FLASH_TARGET_OFFSET, aligned_buffer, aligned_size);
   restore_interrupts(ints);
 
+  watchdog_update();
+
   free(aligned_buffer);
 
-  // tud_cdc_write_str("[CONFIG] Flash write complete\n");
-  // tud_cdc_write_flush();
+  printf("[CONFIG] Flash write complete, verifying...\n");
 
-  sleep_ms(100);
+  sleep_ms(50);
+  watchdog_update();
 
   // weryfikacja
   config_data_t temp_verify;
@@ -226,19 +220,14 @@ bool config_save(void) {
 
   uint32_t flash_crc = config_calculate_crc(&temp_verify);
 
-  // snprintf(msg, sizeof(msg),
-  //          "[CONFIG] Verification: saved CRC=0x%08X, flash CRC=0x%08X\n",
-  //          g_config.crc32, flash_crc);
-  // tud_cdc_write_str(msg);
-  // tud_cdc_write_flush();
+  watchdog_update();
 
   if (flash_crc == g_config.crc32) {
-    // tud_cdc_write_str("[CONFIG] Verification successful\n");
-    // tud_cdc_write_flush();
+    printf("[CONFIG] Verification successful\n");
     return true;
   } else {
-    // tud_cdc_write_str("[CONFIG] ERROR: CRC mismatch after save\n");
-    // tud_cdc_write_flush();
+    printf("[CONFIG] ERROR: CRC mismatch (expected 0x%08X, got 0x%08X)\n",
+           g_config.crc32, flash_crc);
     return false;
   }
 }
