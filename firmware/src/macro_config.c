@@ -249,8 +249,6 @@ void config_init(void) {
   if (config_load_from_flash()) {
     g_config_loaded = true;
     printf("[CONFIG] Configuration loaded from flash\n");
-    // config_set_factory_defaults(); // for testing purposes
-    config_save();
   } else {
     printf("[CONFIG] Flash empty or corrupted, loading factory defaults\n");
     config_set_factory_defaults();
