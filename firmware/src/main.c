@@ -70,13 +70,6 @@ static void print_boot_message(void) {
   cdc_log("Layers: %d\n", MAX_LAYERS);
   cdc_log("========================================\n");
   cdc_log("\n");
-
-  cdc_log("Buttons: %d (GP%d-GP%d)\n", NUM_BUTTONS, BTN_PIN_1, BTN_PIN_7);
-  cdc_log("LEDs: %d (GP%d-GP%d)\n", NUM_BUTTONS, LED_PIN_1, LED_PIN_7);
-  cdc_log("OLED: SPI0 (MOSI=GP%d, SCK=GP%d)\n", OLED_MOSI_PIN, OLED_SCK_PIN);
-  cdc_log("Layers: %d\n", MAX_LAYERS);
-  cdc_log("========================================\n");
-  cdc_log("\n");
 }
 
 int main(void) {
