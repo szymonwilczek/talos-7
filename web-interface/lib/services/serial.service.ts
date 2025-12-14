@@ -281,13 +281,17 @@ export class SerialService {
   private parseLayerName(line: string, config: GlobalConfig) {
     const parts = line.split("|");
     const layerIdx = parseInt(parts[1]);
-    const name = parts[2] || `Layer ${layerIdx + 1}`;
     const emojiIdx = parseInt(parts[3]);
 
-    if (config.layers[layerIdx]) {
-      config.layers[layerIdx].name = name;
-      config.layers[layerIdx].emoji = getEmojiString(emojiIdx);
+    if (isNaN(layerIdx) || layerIdx < 0 || layerIdx >= config.layers.length) {
+      return;
     }
+
+    const name = parts[2] || `Layer ${layerIdx + 1}`;
+    config.layers[layerIdx].name = name;
+    config.layers[layerIdx].emoji = getEmojiString(
+      isNaN(emojiIdx) ? 0 : emojiIdx,
+    );
   }
 
   private parseMacroLine(
@@ -301,6 +305,10 @@ export class SerialService {
     const layer = parseInt(parts[1]);
     const button = parseInt(parts[2]);
     const type = parseInt(parts[3]) as MacroType;
+
+    if (isNaN(layer) || isNaN(button) || isNaN(type)) return null;
+    if (layer < 0 || layer >= config.layers.length) return null;
+    if (button < 0 || button >= config.layers[layer].macros.length) return null;
 
     const macro: MacroEntry = {
       type,
