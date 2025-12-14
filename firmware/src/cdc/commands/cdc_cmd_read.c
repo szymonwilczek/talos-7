@@ -31,7 +31,6 @@ void cmd_handle_get_conf(void) {
   printf("[CDC] Sent %d layer names\n", MAX_LAYERS);
 
   // all macros
-  int macro_count = 0;
   for (int layer = 0; layer < MAX_LAYERS; layer++) {
     for (int btn = 0; btn < NUM_BUTTONS; btn++) {
       macro_entry_t *macro = &config->macros[layer][btn];
@@ -99,7 +98,7 @@ void cmd_handle_get_conf(void) {
       }
     }
   }
-  printf("[CDC] Sent %d macros\n", macro_count);
+  printf("[CDC] Sent %d macros\n", MAX_LAYERS * NUM_BUTTONS);
 
   printf("[CDC] About to send CONF_END...\n");
   cdc_send_response("CONF_END");
