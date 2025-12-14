@@ -145,13 +145,27 @@ void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
 
 void cdc_receive_sequence(uint8_t layer, uint8_t button, uint8_t count,
                           uint8_t *steps) {
+  if (layer >= MAX_LAYERS || button >= NUM_BUTTONS) {
+    cdc_send_response("ERROR|Invalid layer or button");
+    return;
+  }
+
+  if (steps == NULL) {
+    cdc_send_response("ERROR|NULL steps pointer");
+    return;
+  }
+
+  if (count > MAX_SEQUENCE_STEPS) {
+    count = MAX_SEQUENCE_STEPS;
+  }
+
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
 
   macro->type = MACRO_TYPE_KEY_SEQUENCE;
   macro->sequence_length = count;
 
-  for (int i = 0; i < count && i < MAX_SEQUENCE_STEPS; i++) {
+  for (int i = 0; i < count; i++) {
     macro->sequence[i].keycode = steps[i * 2];
     macro->sequence[i].modifiers = steps[i * 2 + 1];
   }
