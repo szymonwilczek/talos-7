@@ -75,6 +75,8 @@ export class SerialTransport {
     await this.writer.write(bytes);
   }
 
+  private static readonly MAX_BUFFER_SIZE = 65536; // 64KB limit
+
   async readLine(timeout: number = 5000): Promise<string> {
     if (!this.reader) throw new Error("Not connected");
     const startTime = Date.now();
@@ -87,6 +89,11 @@ export class SerialTransport {
         const line = this.readBuffer.substring(0, newlineIndex).trim();
         this.readBuffer = this.readBuffer.substring(newlineIndex + 1);
         return line;
+      }
+
+      if (this.readBuffer.length > SerialTransport.MAX_BUFFER_SIZE) {
+        this.readBuffer = "";
+        throw new Error("Buffer overflow - no newline received");
       }
 
       const { value, done } = await this.reader.read();
