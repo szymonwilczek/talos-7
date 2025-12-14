@@ -145,6 +145,12 @@ void oled_write_data(const uint8_t *data, size_t len) {
 void oled_display_layer_info(uint8_t layer) {
   oled_clear();
 
+  if (layer >= MAX_LAYERS) {
+    oled_draw_string(0, 28, "Invalid layer!");
+    oled_update();
+    return;
+  }
+
   if (config_mode == 1) {
     printf("[OLED] Config mode active, displaying special screen\n");
     oled_clear();
