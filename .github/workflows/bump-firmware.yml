@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'firmware/**'
+      - '!firmware/tests/**'
       - '!firmware/include/firmware_version.h'
 
 jobs:
