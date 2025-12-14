@@ -2,6 +2,8 @@
 #ifndef CDC_TRANSPORT_H
 #define CDC_TRANSPORT_H
 
+#include <stdbool.h>
+
 #define CDC_MAX_COMMAND_LEN 256 ///< Maximum length of a CDC command
 #define CDC_FIELD_SEPARATOR '|' ///< Separator for fields in the command
 #define CDC_LINE_ENDING '\n'    ///< End of command character
@@ -39,5 +41,18 @@ void cdc_protocol_task(void);
  * @param ... - arguments to format.
  */
 void cdc_log(const char *format, ...);
+
+/**
+ * @brief Sets binary mode for CDC protocol.
+ * @note When enabled, cdc_protocol_task() will not process incoming data.
+ * @param enabled - true to enable binary mode, false to disable.
+ */
+void cdc_set_binary_mode(bool enabled);
+
+/**
+ * @brief Checks if CDC protocol is in binary mode.
+ * @return true if binary mode is enabled, false otherwise.
+ */
+bool cdc_is_binary_mode(void);
 
 #endif // CDC_TRANSPORT_H

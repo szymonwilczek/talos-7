@@ -5,9 +5,15 @@
 
 static char cmd_buffer[CDC_MAX_COMMAND_LEN];
 static uint16_t cmd_buffer_pos = 0;
+static volatile bool cdc_binary_mode = false;
+
+void cdc_set_binary_mode(bool enabled) { cdc_binary_mode = enabled; }
+
+bool cdc_is_binary_mode(void) { return cdc_binary_mode; }
 
 void cdc_protocol_init(void) {
   cmd_buffer_pos = 0;
+  cdc_binary_mode = false;
   memset(cmd_buffer, 0, sizeof(cmd_buffer));
   printf("[CDC] Protocol initialized\n");
 }
@@ -42,6 +48,10 @@ void cdc_send_response_fmt(const char *format, ...) {
 
 void cdc_protocol_task(void) {
   if (!tud_cdc_connected()) {
+    return;
+  }
+
+  if (cdc_binary_mode) {
     return;
   }
 

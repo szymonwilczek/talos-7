@@ -3,6 +3,7 @@
 #include "cdc/commands/cdc_cmd_read.h"
 #include "cdc/commands/cdc_cmd_system.h"
 #include "cdc/commands/cdc_cmd_write.h"
+#include "hardware/watchdog.h"
 #include "macro_config.h"
 #include "tusb.h"
 #include <stdint.h>
@@ -108,6 +109,8 @@ void process_command(const char *cmd_input) {
 
 void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
                         uint16_t script_size) {
+  cdc_set_binary_mode(true);
+
   config_data_t *config = config_get();
   macro_entry_t *macro = &config->macros[layer][button];
 
@@ -116,10 +119,11 @@ void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
 
   uint16_t received = 0;
   uint32_t timeout_start = time_us_32();
-  const uint32_t TIMEOUT_MS = 5000; // 5s timeout
+  const uint32_t TIMEOUT_MS = 10000; // 10s timeout
 
   while (received < script_size) {
     if ((time_us_32() - timeout_start) > (TIMEOUT_MS * 1000)) {
+      cdc_set_binary_mode(false);
       cdc_send_response("ERROR|Timeout");
       printf("[CDC] Script receive timeout\n");
       return;
@@ -128,10 +132,11 @@ void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
     if (tud_cdc_available()) {
       char c = tud_cdc_read_char();
       macro->script[received++] = c;
-      timeout_start = time_us_32(); // reset timeout
+      timeout_start = time_us_32();
     }
 
     tud_task();
+    watchdog_update();
     sleep_us(100);
   }
 
@@ -139,8 +144,9 @@ void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
   macro->type = MACRO_TYPE_SCRIPT;
   macro->script_platform = platform;
 
+  cdc_set_binary_mode(false);
   cdc_send_response("OK");
-  printf("[CDC] Script received successfully\n");
+  printf("[CDC] Script received successfully (%d bytes)\n", received);
 }
 
 void cdc_receive_sequence(uint8_t layer, uint8_t button, uint8_t count,
