@@ -317,12 +317,12 @@ export class SerialService {
     // specific mappings for MIDI
     if (type === MacroType.MIDI_NOTE) {
       macro.midiNote = macro.value;
-      macro.midiVelocity = macro.moveX;
-      macro.midiChannel = macro.moveY;
+      macro.midiVelocity = macro.moveX && macro.moveX > 0 ? macro.moveX : 127;
+      macro.midiChannel = macro.moveY && macro.moveY > 0 ? macro.moveY : 1;
     } else if (type === MacroType.MIDI_CC) {
       macro.midiCCNumber = macro.value;
-      macro.midiCCValue = macro.moveX;
-      macro.midiChannel = macro.moveY;
+      macro.midiCCValue = macro.moveX && macro.moveX >= 0 ? macro.moveX : 127;
+      macro.midiChannel = macro.moveY && macro.moveY > 0 ? macro.moveY : 1;
     }
 
     if (type === MacroType.SCRIPT && parts.length >= 9) {
