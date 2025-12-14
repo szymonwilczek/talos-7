@@ -117,6 +117,7 @@ void config_set_factory_defaults(void) {
     for (int btn = 0; btn < NUM_BUTTONS; btn++) {
       g_config.macros[layer][btn].type = MACRO_TYPE_KEY_PRESS;
       g_config.macros[layer][btn].value = 0;
+      g_config.macros[layer][btn].sequence_length = 0;
       snprintf(g_config.macros[layer][btn].name, MAX_NAME_LEN, "Empty");
       g_config.macros[layer][btn].emoji_index = 0; // domyslny
 
