@@ -203,7 +203,10 @@ export function Configurator() {
         else if (change.type === 'macro') {
           const macro = change.macro;
           if (change.layer !== undefined && change.button !== undefined) {
-            if (!macro) return;
+            if (!macro) {
+              console.warn(`⚠️ Skipping macro change L${change.layer}B${change.button}: macro is undefined`);
+              continue;
+            }
             if (macro.type === MacroType.SCRIPT && macro.script) {
               await serialService.setScript(
                 change.layer,
@@ -213,7 +216,6 @@ export function Configurator() {
                 macro.terminalShortcut || []
               );
             } else {
-              if (!macro) return;
               await serialService.setMacro(
                 change.layer,
                 change.button,
