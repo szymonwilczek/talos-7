@@ -20,6 +20,7 @@ int main(void) {
 
   UNITY_BEGIN();
 
+  run_macro_config_tests();
   run_hardware_interface_tests();
   run_exec_midi_tests();
   run_cdc_cmd_write_tests();

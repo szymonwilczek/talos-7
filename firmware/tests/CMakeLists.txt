@@ -27,6 +27,7 @@ target_include_directories(mocks PUBLIC
 # test executable
 add_executable(run_tests
     test_runner.c
+    test_macro_config.c
     test_hardware_interface.c
     test_exec_midi.c
     test_cdc_cmd_write.c

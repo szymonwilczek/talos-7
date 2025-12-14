@@ -6,7 +6,7 @@ Unit tests for Talos 7 firmware using the Unity Test Framework.
 ## Requirements 
 
 - CMake 3.13+
-- Kompilator C (gcc/clang)
+- C compiler (gcc/clang)
 
 ## Running 
 
@@ -22,20 +22,23 @@ make
 
 ```
 tests/
-├── unity/             # Unity Test Framework
-├── mocks/             # Hardware mocks (pico, flash, tusb)
-├── test_*.c           # Tests files
-├── test_runner.c      # Main runner
-└── CMakeLists.txt     # CMake config
+├── unity/             # unity test framework
+├── mocks/             # hardware mocks (pico, flash, tusb, gpio, watchdog)
+├── test_*.c           # test files
+├── test_runner.c      # main runner
+└── CMakeLists.txt     # cmake config
 ```
 
 ## Tests 
 
 | File | Testing | Tests |
 |------|---------|-------|
-| `test_hardware_interface.c` | Mapping HID keycodes, GPIO mock | 10 |
+| `test_macro_config.c` | CRC32, layer switching, factory defaults, structures | 17 |
+| `test_hardware_interface.c` | HID keycodes mapping, GPIO mock | 10 |
 | `test_exec_midi.c` | MIDI clamping, velocity/channel fallbacks | 13 |
 | `test_cdc_cmd_write.c` | SET_MACRO parsing, validation | 9 |
+
+**Total (currently): 49 tests**
 
 ## Adding new tests 
 
