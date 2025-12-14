@@ -249,15 +249,48 @@ export class SerialService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private static readonly RETRY_CONFIG = {
+    maxRetries: 3,
+    retryDelayMs: 500,
+  };
+
   /**
-   * Helper: sends a command and checks for "OK" response
+   * Helper: sends a command and checks for "OK" response with retry logic
    */
   private async sendCommandCheckOK(command: string): Promise<void> {
-    await this.transport.writeLine(command);
-    const response = await this.transport.readLine();
-    if (!response.includes("OK")) {
-      throw new Error(`Command failed: ${response}`);
+    let lastError: Error | null = null;
+
+    for (
+      let attempt = 1;
+      attempt <= SerialService.RETRY_CONFIG.maxRetries;
+      attempt++
+    ) {
+      try {
+        await this.transport.writeLine(command);
+        const response = await this.transport.readLine();
+
+        if (response.includes("OK")) {
+          return; // success
+        }
+
+        lastError = new Error(`Command failed: ${response}`);
+        console.warn(
+          `⚠️ Attempt ${attempt}/${SerialService.RETRY_CONFIG.maxRetries} failed: ${response}`,
+        );
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(
+          `⚠️ Attempt ${attempt}/${SerialService.RETRY_CONFIG.maxRetries} error:`,
+          err,
+        );
+      }
+
+      if (attempt < SerialService.RETRY_CONFIG.maxRetries) {
+        await this.delay(SerialService.RETRY_CONFIG.retryDelayMs);
+      }
     }
+
+    throw lastError || new Error("Command failed after retries");
   }
 
   private createEmptyConfig(): GlobalConfig {
