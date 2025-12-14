@@ -87,7 +87,6 @@ void config_set_factory_defaults(void);
 uint32_t config_calculate_crc(const config_data_t *config);
 uint8_t config_get_current_layer(void);
 void config_cycle_layer(void);
-uint8_t config_get_current_layer(void);
 uint8_t detect_platform(void);
 
 #endif // MACRO_CONFIG_H
