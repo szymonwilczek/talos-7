@@ -1,3 +1,4 @@
 
 /firmware/build
 pico-sdk/
+/firmware/tests/build
