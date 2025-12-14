@@ -282,7 +282,7 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
       snprintf(details, sizeof(details), "Text: [Unicode/Emoji]");
     } else {
       // 10 znakow tresci + 3 kropki + null terminator
-      char safe_preview[16];
+      char safe_preview[20];
       const char *ptr = macro->macro_string;
       size_t idx = 0;
       const size_t CHAR_LIMIT = 10; // limit widocznych znakow przed kropkami
@@ -302,7 +302,7 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
 
       // cos zostalo - dodaj kropki
       if (*ptr != '\0') {
-        strcat(safe_preview, "...");
+        strncat(safe_preview, "...", sizeof(safe_preview) - idx - 1);
       }
 
       snprintf(details, sizeof(details), "Text: \"%s\"", safe_preview);
