@@ -31,7 +31,7 @@ void cdc_send_response_fmt(const char *format, ...) {
   if (!tud_cdc_connected())
     return;
 
-  char buffer[256];
+  char buffer[512];
   va_list args;
   va_start(args, format);
   vsnprintf(buffer, sizeof(buffer), format, args);
