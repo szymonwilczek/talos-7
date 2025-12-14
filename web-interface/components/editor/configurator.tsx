@@ -48,7 +48,7 @@ export function Configurator() {
         .then(() => console.log("✅ setConfigMode sent successfully"))
         .catch((err) => console.error("❌ setConfigMode failed:", err));
     }
-  }, [pendingChanges.size, status, config]);
+  }, [pendingChanges.size, status, config, serialService]);
 
   const handleConnect = async () => {
     setStatus('CONNECTING');
