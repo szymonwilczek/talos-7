@@ -27,19 +27,34 @@ export class SerialTransport {
   }
 
   async disconnect(): Promise<void> {
-    if (this.reader) {
-      await this.reader.cancel();
-      this.reader.releaseLock();
+    try {
+      if (this.reader) {
+        await this.reader.cancel().catch(() => {});
+        this.reader.releaseLock();
+        this.reader = null;
+      }
+    } catch {
       this.reader = null;
     }
-    if (this.writer) {
-      await this.writer.releaseLock();
+
+    try {
+      if (this.writer) {
+        this.writer.releaseLock();
+        this.writer = null;
+      }
+    } catch {
       this.writer = null;
     }
-    if (this.port) {
-      await this.port.close();
+
+    try {
+      if (this.port) {
+        await this.port.close();
+        this.port = null;
+      }
+    } catch {
       this.port = null;
     }
+
     this.readBuffer = "";
   }
 
