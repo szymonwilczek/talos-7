@@ -167,11 +167,31 @@ On every valid push to `main`:
 
 ### Device not connecting in browser?
 * **Windows:** Ensure you are not blocking USB devices via Group Policy. No drivers needed.
-* **Linux:** You might need udev rules. Run:
-    ```bash
-    echo 'SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", MODE="0666"' | sudo tee /etc/udev/rules.d/99-pico.rules
-    sudo udevadm control --reload-rules
-    ```
+* **Linux:** If you are unable to connect to the device via the web configurator on Linux (receiving `NetworkError: Failed to execute open on SerialPort`), you need to configure `udev` rules to allow non-root access to the Raspberry Pi Pico.
+
+1. **Create a new udev rule file:**
+   ```bash
+   sudo nano /etc/udev/rules.d/99-talos.rules
+   ```
+
+2. **Add the following content**: This grants r/w permission to the device (Vendor ID 0x2e8a is RPi Pico):
+
+```text
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2e8a", MODE="0666"
+KERNEL=="ttyACM*", ATTRS{idVendor}=="2e8a", MODE="0666"
+```
+
+3. Reload the rules and reconnect:
+
+```bash
+sudo udevadm control --reload-rules # reload
+sudo udevadm trigger # apply changes
+```
+
+**Note for Fedora/RHEL users**: If connection issues persist, ModemManager might be interfering with the serial port. You can temporarily stop it with: `sudo systemctl stop ModemManager`
+
+
+
 * **Browser:** Use Chrome, Edge, or Opera. Firefox/Safari do not support Web Serial yet.
 
 ### Firmware update failed?
