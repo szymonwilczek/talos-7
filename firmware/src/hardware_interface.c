@@ -188,17 +188,17 @@ void led_rgb_set(bool r, bool g, bool b) {
 
 void led_rgb_update_os(uint8_t platform) {
   switch (platform) {
-  case 0: // Linux -> YELLOW (R + G)
-    led_rgb_set(1, 1, 0);
+  case 0: // Linux -> GREEN (G only)
+    led_rgb_set(0, 1, 0);
     break;
-  case 1: // Windows -> BLUE (B)
+  case 1: // Windows -> BLUE (B only)
     led_rgb_set(0, 0, 1);
     break;
-  case 2: // macOS -> PINK (R + B)
-    led_rgb_set(1, 0, 1);
+  case 2: // macOS -> CYAN (G + B)
+    led_rgb_set(0, 1, 1);
     break;
-  default: // off or error -> RED
-    led_rgb_set(1, 0, 0);
+  default: // off or error -> BLUE (red is broken)
+    led_rgb_set(0, 0, 1);
     break;
   }
 }
