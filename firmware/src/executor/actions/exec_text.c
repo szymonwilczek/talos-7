@@ -181,14 +181,14 @@ void type_text_turbo_ascii(const char *text) {
 
       uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
       tud_hid_keyboard_report(1, modifiers, report);
-      sleep_ms(2); // minimal delay for keypress
+      sleep_ms(5); // minimal delay for keypress
 
       // release
       while (!tud_hid_ready())
         tud_task();
       tud_hid_keyboard_report(1, 0, NULL);
 
-      sleep_ms(2);
+      sleep_ms(5);
     }
     p++;
   }
@@ -214,13 +214,13 @@ void type_text_content(const char *text, uint8_t platform) {
 
         uint8_t report[6] = {keycode, 0, 0, 0, 0, 0};
         tud_hid_keyboard_report(1, modifiers, report);
-        sleep_ms(2);
+        sleep_ms(5);
 
         while (!tud_hid_ready())
           tud_task();
 
         tud_hid_keyboard_report(1, 0, NULL);
-        sleep_ms(2);
+        sleep_ms(5);
       }
     } else {
       // unicode
