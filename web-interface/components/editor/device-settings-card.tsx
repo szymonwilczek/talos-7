@@ -26,7 +26,7 @@ export function DeviceSettingsCard({ oledTimeout, onTimeoutChange }: DeviceSetti
             value={[oledTimeout]}
             min={0}
             max={1800}
-            step={30}
+            step={10}
             onValueChange={onTimeoutChange}
             className="w-full"
           />
