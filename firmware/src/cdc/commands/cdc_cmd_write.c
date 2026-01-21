@@ -264,6 +264,8 @@ void cmd_handle_set_macro_seq(char *args) {
 void cmd_handle_set_macro_script(char *args) {
 
   int layer, button, platform, size, shortcut_len;
+  char name[MAX_NAME_LEN] = {0};
+  uint8_t emoji_index = 0;
   key_step_t temp_shortcut[MAX_SEQUENCE_STEPS];
   memset(temp_shortcut, 0, sizeof(temp_shortcut));
 
@@ -301,6 +303,33 @@ void cmd_handle_set_macro_script(char *args) {
   }
   token++;
 
+  // name
+  char *end_name = strchr(token, '|');
+  if (!end_name) {
+    cdc_send_response("ERROR|Invalid format");
+    return;
+  }
+
+  size_t name_len = end_name - token;
+
+  if (name_len >= MAX_NAME_LEN)
+    name_len = MAX_NAME_LEN - 1;
+
+  strncpy(name, token, name_len);
+  name[name_len] = '\0';
+  token = end_name + 1;
+
+  // emoji_index
+  char *end_emoji = strchr(token, '|');
+
+  if (!end_emoji) {
+    cdc_send_response("ERROR|Invalid format");
+    return;
+  }
+
+  emoji_index = atoi(token);
+  token = end_emoji + 1;
+
   shortcut_len = atoi(token);
   if (shortcut_len > MAX_SEQUENCE_STEPS)
     shortcut_len = MAX_SEQUENCE_STEPS;
@@ -332,10 +361,16 @@ void cmd_handle_set_macro_script(char *args) {
     config_data_t *config = config_get();
     macro_entry_t *macro = &config->macros[layer][button];
 
+    strncpy(macro->name, name, MAX_NAME_LEN - 1);
+    macro->emoji_index = emoji_index;
+
     macro->terminal_shortcut_length = shortcut_len;
     for (int i = 0; i < MAX_SEQUENCE_STEPS; i++) {
       macro->terminal_shortcut[i] = temp_shortcut[i];
     }
+
+    // wait for the host to finish sending the command string
+    sleep_ms(50);
 
     // flush any pending data in RX buffer to ensure clean state
     cdc_flush_rx();
