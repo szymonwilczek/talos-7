@@ -326,7 +326,8 @@ void cmd_handle_set_macro_script(char *args) {
 
   // validation and assignment
   if (layer >= 0 && layer < MAX_LAYERS && button >= 0 && button < NUM_BUTTONS &&
-      platform >= 0 && platform <= 2 && size > 0 && size <= MAX_SCRIPT_SIZE) {
+      platform >= 0 && platform <= 2 && size > 0 &&
+      size < MAX_SCRIPT_SIZE) { // leave room for null terminator
 
     config_data_t *config = config_get();
     macro_entry_t *macro = &config->macros[layer][button];
