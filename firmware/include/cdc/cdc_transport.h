@@ -55,4 +55,9 @@ void cdc_set_binary_mode(bool enabled);
  */
 bool cdc_is_binary_mode(void);
 
+/**
+ * @brief Flushes the RX buffer by reading and discarding all available bytes.
+ */
+void cdc_flush_rx(void);
+
 #endif // CDC_TRANSPORT_H

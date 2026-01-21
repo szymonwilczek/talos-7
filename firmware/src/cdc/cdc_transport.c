@@ -90,3 +90,14 @@ void cdc_log(const char *format, ...) {
 
   printf("%s", buffer);
 }
+
+void cdc_flush_rx(void) {
+  uint32_t count = 0;
+  while (tud_cdc_available()) {
+    tud_cdc_read_char();
+    count++;
+  }
+  if (count > 0) {
+    printf("[CDC] Flushed %d bytes from RX buffer\n", count);
+  }
+}

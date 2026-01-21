@@ -336,6 +336,12 @@ void cmd_handle_set_macro_script(char *args) {
       macro->terminal_shortcut[i] = temp_shortcut[i];
     }
 
+    // flush any pending data in RX buffer to ensure clean state
+    cdc_flush_rx();
+
+    // clear the script buffer to prevent garbage from previous runs
+    memset(macro->script, 0, MAX_SCRIPT_SIZE);
+
     cdc_send_response("READY");
     cdc_receive_script(layer, button, platform, size);
   } else {
