@@ -103,4 +103,14 @@ export class SerialTransport {
       this.readBuffer += decoder.decode(value);
     }
   }
+
+  async flush(): Promise<void> {
+    if (!this.reader) return;
+    try {
+      // clear local buffer
+      this.readBuffer = "";
+    } catch (e) {
+      console.warn("Error checking for data", e);
+    }
+  }
 }

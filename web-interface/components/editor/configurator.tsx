@@ -213,7 +213,9 @@ export function Configurator() {
                 change.button,
                 macro.scriptPlatform || ScriptPlatform.LINUX,
                 macro.script,
-                macro.terminalShortcut || []
+                macro.terminalShortcut || [],
+                macro.name,
+                macro.emoji
               );
             } else {
               await serialService.setMacro(

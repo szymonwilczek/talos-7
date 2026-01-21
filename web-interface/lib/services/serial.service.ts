@@ -54,6 +54,7 @@ export class SerialService {
    */
   async readConfig(): Promise<GlobalConfig> {
     console.log("📤 Sending GET_CONF...");
+    await this.transport.flush();
     await this.transport.writeLine("GET_CONF");
 
     const startResponse = await this.transport.readLine();
@@ -162,6 +163,8 @@ export class SerialService {
     platform: ScriptPlatform,
     scriptContent: string,
     terminalShortcut: KeyPress[],
+    name: string,
+    emoji: string,
   ): Promise<void> {
     // size validation
     const encoder = new TextEncoder();
@@ -178,9 +181,18 @@ export class SerialService {
       .map((s) => `${s.keycode},${s.modifiers}`)
       .join(",");
 
-    // sending header
-    const command = `SET_MACRO_SCRIPT|${layer}|${button}|${platform}|${scriptBytes.length}|${compiledSteps.length}|${shortcutStr}\n`;
+    let emojiIndex = 0;
+    for (let i = 0; i < 21; i++) {
+      if (getEmojiString(i) === emoji) {
+        emojiIndex = i;
+        break;
+      }
+    }
+
+    // header format: SET_MACRO_SCRIPT|layer|button|platform|size|name|emoji_index|shortcut_len|steps
+    const command = `SET_MACRO_SCRIPT|${layer}|${button}|${platform}|${scriptBytes.length}|${name}|${emojiIndex}|${compiledSteps.length}|${shortcutStr}\n`;
     console.log(`📤 Sending script header...`);
+    await this.transport.flush();
     await this.transport.writeRaw(command);
 
     // waiting for READY
@@ -217,6 +229,7 @@ export class SerialService {
 
   async saveFlash(): Promise<void> {
     console.log("📤 Saving to Flash...");
+    await this.transport.flush();
     await this.sendCommandCheckOK("SAVE_FLASH");
 
     console.log("🔄 Reloading config...");
