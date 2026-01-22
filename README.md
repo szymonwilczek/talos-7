@@ -19,6 +19,29 @@
 
 ---
 
+## 📸 Preview
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/talos_front.JPEG" alt="Talos Front" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/talos_back.JPEG" alt="Talos Back" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/talos_atari.JPEG" alt="Atari Game" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <video src="assets/atari_preview.MP4" controls width="100%"></video>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 📖 Overview
 
 **Talos 7** is not just a keypad; it's a hardware productivity platform. I've name this functionality as SudoPad. Unlike traditional macro pads that rely on heavy background software (like Synapse or iCUE), **Talos 7 runs everything on the device itself**.
