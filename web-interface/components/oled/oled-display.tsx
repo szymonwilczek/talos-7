@@ -191,6 +191,8 @@ export function OLEDDisplay({
         return { text: `Note: ${macro.midiNote}, Vel: ${macro.midiVelocity}, Ch: ${macro.midiChannel}`, alert: null };
       case 9: // MIDI CC
         return { text: `CC: ${macro.midiCCNumber}, Value: ${macro.midiCCValue}, Ch: ${macro.midiChannel}`, alert: null };
+      case 10: // GAME
+        return { text: "Atari Breakout", alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }

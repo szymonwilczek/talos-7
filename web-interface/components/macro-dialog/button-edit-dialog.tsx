@@ -236,6 +236,7 @@ export function ButtonEditDialog({
                 <SelectItem value="7">Mouse Scroll</SelectItem>
                 <SelectItem value="8">MIDI Note</SelectItem>
                 <SelectItem value="9">MIDI Control Change (CC)</SelectItem>
+                <SelectItem value="10">Atari Breakout (Game)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -364,6 +365,19 @@ export function ButtonEditDialog({
             </div>
           )}
 
+          {macroType === MacroType.GAME && (
+            <div className="space-y-2">
+              <Label>Atari Breakout</Label>
+              <p className="text-sm text-muted-foreground">
+                This button will launch the hidden Atari Breakout game on the OLED screen.
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+                <span className="text-2xl">🕹️</span>
+                <span className="text-sm">Use buttons 4 & 6 to move, button 1 to exit.</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-4">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
@@ -374,6 +388,6 @@ export function ButtonEditDialog({
           </div>
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }

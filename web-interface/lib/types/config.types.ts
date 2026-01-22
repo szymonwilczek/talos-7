@@ -13,6 +13,7 @@ export enum MacroType {
   MOUSE_WHEEL = 7,
   MIDI_NOTE = 8,
   MIDI_CC = 9,
+  GAME = 10,
 }
 
 export type ConnectionStatus =
@@ -76,10 +77,10 @@ export interface GlobalConfig {
 
 export interface ConnectionError {
   type:
-    | "BROWSER_NOT_SUPPORTED"
-    | "DEVICE_NOT_FOUND"
-    | "PROTOCOL_ERROR"
-    | "PERMISSION_DENIED";
+  | "BROWSER_NOT_SUPPORTED"
+  | "DEVICE_NOT_FOUND"
+  | "PROTOCOL_ERROR"
+  | "PERMISSION_DENIED";
   message: string;
 }
 
@@ -231,7 +232,8 @@ export function isMacroType(value: unknown): value is MacroType {
     value === MacroType.KEY_PRESS ||
     value === MacroType.TEXT_STRING ||
     value === MacroType.LAYER_TOGGLE ||
-    value === MacroType.SCRIPT
+    value === MacroType.SCRIPT ||
+    value === MacroType.GAME
   );
 }
 
@@ -264,6 +266,8 @@ export function formatMacroType(type: MacroType): string {
       return "Layer Toggle";
     case MacroType.SCRIPT:
       return "Script Execution";
+    case MacroType.GAME:
+      return "Breakout Game";
     default:
       return "Unknown";
   }
