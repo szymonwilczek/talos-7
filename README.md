@@ -31,14 +31,15 @@
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">
+    <td colspan="2" align="center">
       <img src="assets/talos_atari.JPEG" alt="Atari Game" width="100%">
-    </td>
-    <td width="50%" align="center">
-      <video src="assets/atari_preview.MP4" controls width="100%"></video>
     </td>
   </tr>
 </table>
+
+<div align="center">
+  <video src="assets/atari_preview.MP4" controls width="100%"></video>
+</div>
 
 ---
 
