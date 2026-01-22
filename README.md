@@ -24,15 +24,15 @@
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="assets/talos_front.JPEG" alt="Talos Front" width="100%">
+      <img src="assets/images/talos_front.JPEG" alt="Talos Front" width="100%">
     </td>
     <td width="50%" align="center">
-      <img src="assets/talos_atari.JPEG" alt="Talos Back" width="100%">
+      <img src="assets/images/talos_atari.JPEG" alt="Talos Back" width="100%">
     </td>
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="assets/talos_back.JPEG" alt="Atari Game" width="100%">
+      <img src="assets/images/talos_back.JPEG" alt="Atari Game" width="100%">
     </td>
   </tr>
 </table>
