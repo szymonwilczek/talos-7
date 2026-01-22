@@ -74,7 +74,6 @@ Talos 7 is built on the accessible and powerful **Raspberry Pi Pico (RP2040)**.
 ### Wiring Diagram (Pinout)
 
 See [Talos Schema](assets/board/talos_schema.pdf) for more information.
----
 
 ## 🚀 Setup & Installation
 
