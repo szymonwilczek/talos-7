@@ -1,5 +1,6 @@
 #include "cdc/cdc_dispatcher.h"
 #include "cdc/cdc_transport.h"
+#include "easter_egg.h"
 #include "executor/macro_executor.h"
 #include "hardware/watchdog.h"
 #include "hardware_interface.h"

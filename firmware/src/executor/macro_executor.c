@@ -1,6 +1,7 @@
 #include "executor/macro_executor.h"
 
 #include "cdc/cdc_transport.h"
+#include "easter_egg.h"
 #include "executor/actions/exec_hid_core.h"
 #include "executor/actions/exec_midi_core.h"
 #include "executor/actions/exec_mouse.h"
@@ -93,6 +94,14 @@ void execute_macro(uint8_t layer, uint8_t button) {
     uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y : 1;
 
     exec_midi_cc(cc_num, cc_val, channel);
+    break;
+  }
+
+  case MACRO_TYPE_GAME: {
+    run_game_breakout();
+    oled_clear();
+    oled_display_layer_info(layer);
+    oled_wake_up();
     break;
   }
   }

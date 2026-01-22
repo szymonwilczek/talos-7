@@ -42,7 +42,8 @@ typedef enum {
   MACRO_TYPE_MOUSE_MOVE = 6,   // ruch (X, Y)
   MACRO_TYPE_MOUSE_WHEEL = 7,  // scroll
   MACRO_TYPE_MIDI_NOTE = 8,    // odtworzenie nuty MIDI
-  MACRO_TYPE_MIDI_CC = 9       // wyslanie komunikatu MIDI CC
+  MACRO_TYPE_MIDI_CC = 9,      // wyslanie komunikatu MIDI CC
+  MACRO_TYPE_GAME = 10         // Atari Breakout Game
 } macro_type_t;
 
 // ==================== STRUKTURA MAKRA ====================
