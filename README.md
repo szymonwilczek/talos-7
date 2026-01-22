@@ -62,31 +62,18 @@ Once configured via the web interface, you can plug it into **any computer** (Wi
 Talos 7 is built on the accessible and powerful **Raspberry Pi Pico (RP2040)**.
 
 ### Bill of Materials (BOM)
-* 1x **Raspberry Pi Pico** (I'm using Pico W - but it's the same thing, just with WiFi access)
-* 7x **Mechanical Switches** (Cherry MX Red / I switch them sometimes to Akko Black)
-* 7x **Keycaps** (I've been using Keychron Keycaps)
-* 1x **SSD1306 OLED Display** (I'm using 0.96", SPI Interface)
-* 7x **LEDs** (3mm or 5mm - just for debugging, for the assembling part I'm using SMD LEDs 0805 - much more eye pleasing for user experience) + Resistors (220R)
-* 1x **Micro-USB Data Cable** (for Pico - I think they come with Pico by default)
+* 1x **Raspberry Pi Pico**
+* 7x **Mechanical Switches** (MX standard)
+* 7x **Keycaps** (MX standard)
+* 1x **SSD1306 OLED Display** (0.96", SPI Interface)
+* 7x **LEDs** (0805, red)
+* 10x **Resistors** (220R or 47R if you prefer dimmer light)
+* 1x **RGB LED** (LTST-G563ZEGBW or FYLS-5050NRGBC)
+* 1x **Micro-USB Data Cable**
 
 ### Wiring Diagram (Pinout)
 
-| Component | Function | Pico Pin (GPIO) | Physical Pin |
-| :--- | :--- | :--- | :--- |
-| **Switch 1** | Input (Pull-UP) | **GP2** | 4 |
-| **Switch 2** | Input (Pull-UP) | **GP3** | 5 |
-| **Switch 3** | Input (Pull-UP) | **GP4** | 6 |
-| **Switch 4** | Input (Pull-UP) | **GP5** | 7 |
-| **Switch 5** | Input (Pull-UP) | **GP6** | 9 |
-| **Switch 6** | Input (Pull-UP) | **GP7** | 10 |
-| **Switch 7** | Input (Pull-UP) | **GP8** | 11 |
-| **OLED MOSI** | SPI TX | **GP19** | 25 |
-| **OLED SCK** | SPI SCK | **GP18** | 24 |
-| **OLED CS** | Chip Select | **GP17** | 22 |
-| **OLED DC** | Data/Command | **GP16** | 21 |
-| **OLED RST** | Reset | **GP15** | 20 |
-| **LEDs 1-7** | Backlight | GP20, 21, 22, 26, 27, 28, 0 | Various |
-
+See [Talos Schema](assets/board/talos_schema.pdf) for more information.
 ---
 
 ## 🚀 Setup & Installation
@@ -166,6 +153,9 @@ Sends a generic MIDI value (Potentiometer/Fader simulation).
     * **Premiere Pro:** Set Timeline Zoom level.
     * **Windows Volume:** Use middleware (e.g., MidiKey2Key) to map CC to system volume.
 
+### 9. 🕹️ Atari Breakout Game
+A pleasant *Break* during work
+
 ---
 
 ## 🤖 DevOps: Hephaestus
@@ -230,6 +220,7 @@ If you "bricked" the configuration or the device is unresponsive:
 ## 📄 License & Credits
 
 * **Core Logic:** Szymon Wilczek
+* **3D Case**: Kacper Kil, thanks a lot again!
 * **Project Link:** [github.com/szymonwilczek/talos-7](https://github.com/szymonwilczek/talos-7)
 * **License:** [MIT License](./LICENSE.md)
 
