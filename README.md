@@ -38,7 +38,7 @@
 </table>
 
 <div align="center">
-  <video src="assets/atari_preview.MP4" controls width="100%"></video>
+  https://github.com/user-attachments/assets/fb88e3e2-818f-48c2-9b6d-56c365594454
 </div>
 
 ---
