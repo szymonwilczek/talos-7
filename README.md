@@ -38,7 +38,7 @@
 </table>
 
 <div align="center">
-  https://github.com/user-attachments/assets/fb88e3e2-818f-48c2-9b6d-56c365594454
+  <video src="https://github.com/user-attachments/assets/fb88e3e2-818f-48c2-9b6d-56c365594454" controls></video>
 </div>
 
 ---
