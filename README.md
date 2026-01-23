@@ -14,5 +14,9 @@ Główne cechy:
 *   Wsparcie dla systemów Windows, Linux, macOS.
 
 ## Pełna dokumentacja i kod źródłowy
+
+Dla ułatwienia załączyłem również całość struktury raportu jako jeden plik ZIP do pobrania na dysk. 
+Znajduje się ona w głównym katalogu.
+
 Pełna historia zmian oraz wersja deweloperska projektu znajduje się na głównej gałęzi repozytorium:
 [https://github.com/szymonwilczek/talos-7/tree/main](https://github.com/szymonwilczek/talos-7/tree/main)
