@@ -9,12 +9,6 @@
   [![Firmware](https://img.shields.io/github/v/release/szymonwilczek/talos-7?label=firmware&color=00599C)](https://github.com/szymonwilczek/talos-7/releases)
   ![License](https://img.shields.io/badge/license-MIT-green)
   ![Platform](https://img.shields.io/badge/platform-RP2040-C51A4A)
-
-  <p>
-    <b>Professional. Driverless. Infinite Possibilities.</b><br/>
-    Designed for Streamers, Developers, and Creatives. <br/>
-    Forged to automate.
-  </p>
 </div>
 
 ---
