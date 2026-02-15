@@ -512,6 +512,10 @@ void oled_power_save_task(void) {
       oled_clear();
       oled_update();
       oled_set_power(false);
+      led_rgb_set(0, 0, 0);
+      for (int i = 0; i < NUM_BUTTONS; i++) {
+        led_set(i, false);
+      }
     }
   } else {
     if (timer_running) {
@@ -548,6 +552,8 @@ void oled_wake_up(void) {
 
   if (!g_oled_active) {
     oled_set_power(true);
+    led_rgb_update_os(detect_platform());
+    leds_update_for_layer(config_get_current_layer());
   }
 }
 
