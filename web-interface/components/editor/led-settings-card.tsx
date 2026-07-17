@@ -88,7 +88,8 @@ export function LedSettingsCard({
       <CardHeader>
         <CardTitle>Per-Key Lighting</CardTitle>
         <CardDescription>
-          Reactive LEDs sleep with the display. Always On LEDs keep shining.
+          Reactive LEDs flash briefly on key press. Always On LEDs stay lit
+          even when the display sleeps.
         </CardDescription>
         <CardAction>
           <div className="flex gap-2">

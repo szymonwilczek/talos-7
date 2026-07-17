@@ -518,7 +518,7 @@ void oled_power_save_task(void) {
       oled_update();
       oled_set_power(false);
       led_rgb_set(0, 0, 0);
-      leds_sleep(); // reactive LEDs off, always-on LEDs keep shining
+      leds_refresh(); // always-on LEDs keep shining
     }
   } else {
     if (timer_running) {
@@ -556,7 +556,7 @@ void oled_wake_up(void) {
   if (!g_oled_active) {
     oled_set_power(true);
     led_rgb_update_os(detect_platform());
-    leds_update_for_layer(config_get_current_layer());
+    leds_refresh();
   }
 }
 

@@ -98,7 +98,7 @@ int main(void) {
   led_rgb_update_os(0); // default to Linux
 
   oled_display_layer_info(config_get_current_layer());
-  leds_update_for_layer(config_get_current_layer());
+  leds_refresh();
 
   cdc_log("[MAIN] System ready!\n");
   cdc_log("[MAIN] Press Button 1 (GP%d) to test\n", BTN_PIN_1);

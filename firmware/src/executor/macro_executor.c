@@ -59,7 +59,6 @@ void execute_macro(uint8_t layer, uint8_t button) {
     uint8_t new_layer = config_get_current_layer();
 
     printf("[LAYER] Switched to layer %d\n", new_layer);
-    leds_update_for_layer(new_layer);
 
     oled_display_layer_info(new_layer);
     break;
@@ -107,7 +106,7 @@ void execute_macro(uint8_t layer, uint8_t button) {
 
   case MACRO_TYPE_LED_TOGGLE: {
     leds_master_toggle();
-    leds_update_for_layer(config_get_current_layer());
+    leds_refresh();
     break;
   }
   }

@@ -79,11 +79,7 @@ void cmd_handle_set_led_mode(const char *args) {
   config_data_t *config = config_get();
   config->led_modes[button] = (uint8_t)mode;
 
-  if (oled_is_active()) {
-    leds_update_for_layer(config_get_current_layer());
-  } else {
-    leds_sleep();
-  }
+  leds_refresh();
 
   cdc_send_response("OK");
   printf("[CDC] LED mode set: B%d = %s\n", button + 1,
