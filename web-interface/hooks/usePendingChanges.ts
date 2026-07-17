@@ -43,6 +43,22 @@ export function usePendingChanges(config: GlobalConfig | null) {
       });
     }
 
+    // tryby LED per przycisk
+    (config.ledModes ?? []).forEach((mode, buttonIdx) => {
+      const originalMode = originalConfig.ledModes?.[buttonIdx] ?? 0;
+      if (mode !== originalMode) {
+        console.log(
+          `🔄 LED mode changed: B${buttonIdx + 1} {from: ${originalMode}, to: ${mode}}`,
+        );
+        changes.set(`setting-led-${buttonIdx}`, {
+          type: "setting",
+          settingName: "ledMode",
+          button: buttonIdx,
+          value: mode,
+        });
+      }
+    });
+
     // warstwy i makra
     config.layers.forEach((layer, layerIdx) => {
       const origLayer = originalConfig.layers[layerIdx];

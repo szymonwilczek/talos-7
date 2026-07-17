@@ -58,6 +58,12 @@ void process_command(const char *cmd_input) {
     return;
   }
 
+  if (strncmp(cmd_ptr, "SET_LED_MODE|", 13) == 0) {
+    char *token = cmd_ptr + 13;
+    cmd_handle_set_led_mode(token);
+    return;
+  }
+
   if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
     char *token = cmd_ptr + 10;
     cmd_handle_set_macro(token);

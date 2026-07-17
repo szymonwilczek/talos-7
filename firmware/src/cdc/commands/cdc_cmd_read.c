@@ -21,6 +21,12 @@ void cmd_handle_get_conf(void) {
   // global settings
   cdc_send_response_fmt("SETTINGS|%lu", config->oled_timeout_s);
 
+  // per-button LED modes (0 = reactive, 1 = always on)
+  cdc_send_response_fmt("LED_MODES|%d|%d|%d|%d|%d|%d|%d", config->led_modes[0],
+                        config->led_modes[1], config->led_modes[2],
+                        config->led_modes[3], config->led_modes[4],
+                        config->led_modes[5], config->led_modes[6]);
+
   // layer names and emojis
   for (int layer = 0; layer < MAX_LAYERS; layer++) {
     cdc_send_response_fmt("LAYER_NAME|%d|%s|%d", layer,

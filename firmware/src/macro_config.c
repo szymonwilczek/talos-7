@@ -151,6 +151,10 @@ void config_set_factory_defaults(void) {
   g_config_loaded = true;
   g_config.global_text_platform = detect_platform();
   g_config.oled_timeout_s = 300; // 5 minut
+
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    g_config.led_modes[i] = LED_MODE_REACTIVE;
+  }
 }
 
 // ==================== ODCZYT Z FLASH ====================
@@ -169,6 +173,15 @@ static bool config_load_from_flash(void) {
   }
 
   memcpy(&g_config, &temp_config, sizeof(config_data_t));
+
+  // led_modes leza za crc32 (poza suma kontrolna) -
+  // config zapisany starszym firmware zostawia tam skasowany flash (0xFF)
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    if (g_config.led_modes[i] > LED_MODE_ALWAYS_ON) {
+      g_config.led_modes[i] = LED_MODE_REACTIVE;
+    }
+  }
+
   printf("[CONFIG] Loaded from flash successfully\n");
   return true;
 }

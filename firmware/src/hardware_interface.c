@@ -150,16 +150,41 @@ void led_toggle(uint8_t led_index) {
   led_set(led_index, !led_states[led_index]);
 }
 
-void leds_update_for_layer(uint8_t layer) {
-  // turn off all LEDs, then turn on LED for current layer (if layer < 7)
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    led_set(i, false);
-  }
+// master switch: false = all LEDs forced off (runtime only, not persisted)
+static bool leds_master_on = true;
 
-  if (layer < NUM_BUTTONS - 1) {
-    led_set(layer, true);
+bool leds_master_enabled(void) { return leds_master_on; }
+
+void leds_master_toggle(void) {
+  leds_master_on = !leds_master_on;
+  cdc_log("[LEDS] Master switch: %s\n", leds_master_on ? "ON" : "OFF");
+}
+
+// reactive_visible = false when the display is asleep:
+// reactive LEDs go dark, always-on LEDs keep shining
+// (unless master switch is off)
+static void leds_apply(uint8_t layer, bool reactive_visible) {
+  config_data_t *config = config_get();
+
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    bool on = false;
+
+    if (leds_master_on) {
+      if (config->led_modes[i] == LED_MODE_ALWAYS_ON) {
+        on = true;
+      } else if (reactive_visible && layer < NUM_BUTTONS - 1 &&
+                 i == (int)layer) {
+        on = true; // layer indicator
+      }
+    }
+
+    led_set(i, on);
   }
 }
+
+void leds_update_for_layer(uint8_t layer) { leds_apply(layer, true); }
+
+void leds_sleep(void) { leds_apply(config_get_current_layer(), false); }
 
 void led_rgb_init(void) {
   gpio_init(PIN_RGB_R);

@@ -4,8 +4,10 @@ import {
   MacroType,
   ScriptPlatform,
   KeyPress,
+  LedMode,
   FIRMWARE_CONSTANTS,
   DEFAULT_LAYER_EMOJIS,
+  createDefaultLedModes,
 } from "../types/config.types";
 import { SerialTransport } from "./serial.transport";
 import { SerialProtocol } from "./serial.protocol";
@@ -79,6 +81,8 @@ export class SerialService {
           config.firmwareVersion = line.split("|")[1];
         } else if (line.startsWith("SETTINGS|")) {
           config.oledTimeout = parseInt(line.split("|")[1]);
+        } else if (line.startsWith("LED_MODES|")) {
+          this.parseLedModes(line, config);
         } else if (line.startsWith("LAYER_NAME|")) {
           this.parseLayerName(line, config);
         } else if (line.startsWith("MACRO|")) {
@@ -227,6 +231,11 @@ export class SerialService {
     await this.sendCommandCheckOK(`SET_OLED_TIMEOUT|${seconds}`);
   }
 
+  async setLedMode(button: number, mode: LedMode): Promise<void> {
+    console.log(`📤 Setting LED mode: B${button + 1} = ${mode}`);
+    await this.sendCommandCheckOK(`SET_LED_MODE|${button}|${mode}`);
+  }
+
   async saveFlash(): Promise<void> {
     console.log("📤 Saving to Flash...");
     await this.transport.flush();
@@ -320,8 +329,19 @@ export class SerialService {
         })),
       })),
       oledTimeout: 300,
+      ledModes: createDefaultLedModes(),
       firmwareVersion: "unknown",
     };
+  }
+
+  private parseLedModes(line: string, config: GlobalConfig) {
+    // LED_MODES|m0|m1|m2|m3|m4|m5|m6
+    const parts = line.split("|");
+    for (let i = 0; i < FIRMWARE_CONSTANTS.NUM_BUTTONS; i++) {
+      const mode = parseInt(parts[i + 1]);
+      config.ledModes[i] =
+        mode === LedMode.ALWAYS_ON ? LedMode.ALWAYS_ON : LedMode.REACTIVE;
+    }
   }
 
   private parseLayerName(line: string, config: GlobalConfig) {

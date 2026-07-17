@@ -237,6 +237,7 @@ export function ButtonEditDialog({
                 <SelectItem value="8">MIDI Note</SelectItem>
                 <SelectItem value="9">MIDI Control Change (CC)</SelectItem>
                 <SelectItem value="10">Atari Breakout (Game)</SelectItem>
+                <SelectItem value="11">LED Toggle (All LEDs)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -361,6 +362,22 @@ export function ButtonEditDialog({
               <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
                 <span className="text-2xl">🔄</span>
                 <span className="text-sm">Automatic layer rotation enabled</span>
+              </div>
+            </div>
+          )}
+
+          {macroType === MacroType.LED_TOGGLE && (
+            <div className="space-y-2">
+              <Label>LED Master Switch</Label>
+              <p className="text-sm text-muted-foreground">
+                This button will instantly switch all button LEDs off. Press it
+                again to bring them back — including keys set to Always On.
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+                <span className="text-2xl">💡</span>
+                <span className="text-sm">
+                  Per-key lighting settings are kept and restored on toggle.
+                </span>
               </div>
             </div>
           )}

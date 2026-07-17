@@ -1,27 +1,31 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { SerialService } from '@/lib/services/serial.service';
+import { useState, useEffect } from "react";
+import { SerialService } from "@/lib/services/serial.service";
 import {
   GlobalConfig,
   ConnectionStatus,
   ConnectionError,
   MacroEntry,
-  MacroType, ScriptPlatform
-} from '@/lib/types/config.types';
-import { ConnectionPanel } from '@/components/device/connection-panel';
-import { LayerTabs } from '@/components/layout/LayerTabs';
-import { PCBVisualization } from './pcb-visualization';
-import { ButtonEditDialog } from '@/components/macro-dialog/button-edit-dialog';
-import { usePendingChanges } from '@/hooks/usePendingChanges';
-import { Header } from '../layout/header';
-import { SaveFeedback } from '../layout/save-feedback';
-import { LayerSettingsCard } from './layer-settings-card';
-import { DeviceSettingsCard } from './device-settings-card';
+  MacroType,
+  ScriptPlatform,
+  LedMode,
+  createDefaultLedModes,
+} from "@/lib/types/config.types";
+import { ConnectionPanel } from "@/components/device/connection-panel";
+import { LayerTabs } from "@/components/layout/LayerTabs";
+import { PCBVisualization } from "./pcb-visualization";
+import { ButtonEditDialog } from "@/components/macro-dialog/button-edit-dialog";
+import { usePendingChanges } from "@/hooks/usePendingChanges";
+import { Header } from "../layout/header";
+import { SaveFeedback } from "../layout/save-feedback";
+import { LayerSettingsCard } from "./layer-settings-card";
+import { DeviceSettingsCard } from "./device-settings-card";
+import { LedSettingsCard } from "./led-settings-card";
 
 export function Configurator() {
   const [serialService] = useState(() => new SerialService());
-  const [status, setStatus] = useState<ConnectionStatus>('DISCONNECTED');
+  const [status, setStatus] = useState<ConnectionStatus>("DISCONNECTED");
   const [error, setError] = useState<ConnectionError | null>(null);
   const [config, setConfig] = useState<GlobalConfig | null>(null);
   const [activeLayer, setActiveLayer] = useState(0);
@@ -35,44 +39,45 @@ export function Configurator() {
   useEffect(() => {
     if (!SerialService.isSupported()) {
       setError({
-        type: 'BROWSER_NOT_SUPPORTED',
-        message: 'Web Serial API not supported. Use Chrome or Edge.',
+        type: "BROWSER_NOT_SUPPORTED",
+        message: "Web Serial API not supported. Use Chrome or Edge.",
       });
-      setStatus('ERROR');
+      setStatus("ERROR");
     }
   }, []);
 
   useEffect(() => {
-    if (status === 'CONNECTED' && config) {
-      serialService.setConfigMode(pendingChanges.size > 0 ? 1 : 0)
+    if (status === "CONNECTED" && config) {
+      serialService
+        .setConfigMode(pendingChanges.size > 0 ? 1 : 0)
         .then(() => console.log("✅ setConfigMode sent successfully"))
         .catch((err) => console.error("❌ setConfigMode failed:", err));
     }
   }, [pendingChanges.size, status, config, serialService]);
 
   const handleConnect = async () => {
-    setStatus('CONNECTING');
+    setStatus("CONNECTING");
     setError(null);
     try {
       await serialService.connectPico();
-      setStatus('CONNECTED');
+      setStatus("CONNECTED");
       const loadedConfig = await serialService.readConfig();
       setConfig(loadedConfig);
     } catch (err) {
-      setStatus('ERROR');
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('USER_CANCELLED')) {
-        setError({ type: 'DEVICE_NOT_FOUND', message: 'Connection cancelled' });
-        setStatus('DISCONNECTED');
+      setStatus("ERROR");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      if (errorMessage.includes("USER_CANCELLED")) {
+        setError({ type: "DEVICE_NOT_FOUND", message: "Connection cancelled" });
+        setStatus("DISCONNECTED");
       } else {
-        setError({ type: 'PROTOCOL_ERROR', message: errorMessage });
+        setError({ type: "PROTOCOL_ERROR", message: errorMessage });
       }
     }
   };
 
   const handleDisconnect = async () => {
     await serialService.disconnect();
-    setStatus('DISCONNECTED');
+    setStatus("DISCONNECTED");
     setConfig(null);
     setActiveLayer(0);
     setSelectedButton(null);
@@ -82,8 +87,10 @@ export function Configurator() {
     if (!config) return;
 
     // JSON
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
-    const downloadAnchorNode = document.createElement('a');
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(config, null, 2));
+    const downloadAnchorNode = document.createElement("a");
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "talos_config.json");
     document.body.appendChild(downloadAnchorNode);
@@ -100,7 +107,14 @@ export function Configurator() {
       try {
         const json = JSON.parse(e.target?.result as string);
 
-        if (json.layers && Array.isArray(json.layers) && json.layers.length > 0) {
+        if (
+          json.layers &&
+          Array.isArray(json.layers) &&
+          json.layers.length > 0
+        ) {
+          if (!Array.isArray(json.ledModes)) {
+            json.ledModes = createDefaultLedModes();
+          }
           setConfig(json as GlobalConfig);
           setSelectedButton(null);
           console.log("✅ Config imported successfully");
@@ -113,7 +127,7 @@ export function Configurator() {
       }
     };
     reader.readAsText(file);
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleLayerNameChange = (name: string, emoji: string) => {
@@ -121,7 +135,7 @@ export function Configurator() {
     setConfig({
       ...config,
       layers: config.layers.map((layer, idx) =>
-        idx === activeLayer ? { ...layer, name, emoji } : layer
+        idx === activeLayer ? { ...layer, name, emoji } : layer,
       ),
     });
   };
@@ -134,12 +148,12 @@ export function Configurator() {
       layers: config.layers.map((layer, idx) =>
         idx === activeLayer
           ? {
-            ...layer,
-            macros: layer.macros.map((m, btnIdx) =>
-              btnIdx === buttonIndex ? macro : m
-            ),
-          }
-          : layer
+              ...layer,
+              macros: layer.macros.map((m, btnIdx) =>
+                btnIdx === buttonIndex ? macro : m,
+              ),
+            }
+          : layer,
       ),
     });
   };
@@ -148,27 +162,48 @@ export function Configurator() {
     if (!config) return;
     setConfig({
       ...config,
-      oledTimeout: val[0]
+      oledTimeout: val[0],
+    });
+  };
+
+  const handleLedModeChange = (button: number, mode: LedMode) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      ledModes: config.ledModes.map((m, idx) => (idx === button ? mode : m)),
+    });
+  };
+
+  const handleLedModeSetAll = (mode: LedMode) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      ledModes: config.ledModes.map(() => mode),
     });
   };
 
   const handleEnterBootloader = async () => {
     const confirmed = window.confirm(
       "This will restart your Talos device into Firmware Update mode.\n\n" +
-      "1. The device will disconnect from this app.\n" +
-      "2. A folder named 'RPI-RP2' will open on your computer.\n" +
-      "3. Drag and drop the new .uf2 firmware file into that folder."
+        "1. The device will disconnect from this app.\n" +
+        "2. A folder named 'RPI-RP2' will open on your computer.\n" +
+        "3. Drag and drop the new .uf2 firmware file into that folder.",
     );
 
     if (confirmed) {
       try {
         await serialService.enterBootloader();
-        setStatus('DISCONNECTED');
+        setStatus("DISCONNECTED");
         setConfig(null);
-        alert("Device is now in update mode. Go into your file explorer and open the 'RPI-RP2' drive to copy the firmware file (.uf2).");
+        alert(
+          "Device is now in update mode. Go into your file explorer and open the 'RPI-RP2' drive to copy the firmware file (.uf2).",
+        );
       } catch (err) {
         console.error("Failed to enter bootloader:", err);
-        setError({ type: 'PROTOCOL_ERROR', message: 'Failed to restart device' });
+        setError({
+          type: "PROTOCOL_ERROR",
+          message: "Failed to restart device",
+        });
       }
     }
   };
@@ -179,7 +214,7 @@ export function Configurator() {
     setSaveProgress(0);
     setSaveSuccess(false);
 
-    console.log('🔄 Starting save process...');
+    console.log("🔄 Starting save process...");
 
     try {
       const changes = Array.from(pendingChanges.values());
@@ -188,23 +223,41 @@ export function Configurator() {
       for (let i = 0; i < changes.length; i++) {
         const change = changes[i];
 
-        if (change.type === 'setting') {
-          if (change.settingName === 'oledTimeout') {
+        if (change.type === "setting") {
+          if (change.settingName === "oledTimeout") {
             console.log(`📤 Updating OLED Timeout: ${change.value}s`);
             await serialService.setOledTimeout(change.value);
+          } else if (
+            change.settingName === "ledMode" &&
+            change.button !== undefined
+          ) {
+            console.log(
+              `📤 Updating LED mode: B${change.button + 1} = ${change.value}`,
+            );
+            await serialService.setLedMode(change.button, change.value);
           }
-        }
-        else if (change.type === 'layer') {
-          console.log(`📤 Processing layer change: ${change.emoji} ${change.name}`);
-          if (change.layer !== undefined && change.name !== undefined && change.emoji !== undefined) {
-            await serialService.setLayerName(change.layer, change.name, change.emoji);
+        } else if (change.type === "layer") {
+          console.log(
+            `📤 Processing layer change: ${change.emoji} ${change.name}`,
+          );
+          if (
+            change.layer !== undefined &&
+            change.name !== undefined &&
+            change.emoji !== undefined
+          ) {
+            await serialService.setLayerName(
+              change.layer,
+              change.name,
+              change.emoji,
+            );
           }
-        }
-        else if (change.type === 'macro') {
+        } else if (change.type === "macro") {
           const macro = change.macro;
           if (change.layer !== undefined && change.button !== undefined) {
             if (!macro) {
-              console.warn(`⚠️ Skipping macro change L${change.layer}B${change.button}: macro is undefined`);
+              console.warn(
+                `⚠️ Skipping macro change L${change.layer}B${change.button}: macro is undefined`,
+              );
               continue;
             }
             if (macro.type === MacroType.SCRIPT && macro.script) {
@@ -215,7 +268,7 @@ export function Configurator() {
                 macro.script,
                 macro.terminalShortcut || [],
                 macro.name,
-                macro.emoji
+                macro.emoji,
               );
             } else {
               await serialService.setMacro(
@@ -230,34 +283,34 @@ export function Configurator() {
                 macro.repeatCount,
                 macro.repeatInterval,
                 macro.moveX,
-                macro.moveY
+                macro.moveY,
               );
             }
           }
         }
 
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 150));
         setSaveProgress(((i + 1) / (totalChanges + 1)) * 100);
       }
 
-      console.log('📤 Calling saveFlash...');
+      console.log("📤 Calling saveFlash...");
       await serialService.saveFlash();
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-      console.log('✅ saveFlash completed successfully');
+      console.log("✅ saveFlash completed successfully");
       setSaveProgress(100);
 
-      console.log('🔄 Updating local state after save...');
+      console.log("🔄 Updating local state after save...");
       updateOriginalConfig();
 
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, 400));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      console.error('❌ Save failed with error:', err);
+      console.error("❌ Save failed with error:", err);
       setError({
-        type: 'PROTOCOL_ERROR',
-        message: err instanceof Error ? err.message : 'Save failed',
+        type: "PROTOCOL_ERROR",
+        message: err instanceof Error ? err.message : "Save failed",
       });
     } finally {
       setIsSaving(false);
@@ -265,7 +318,7 @@ export function Configurator() {
     }
   };
 
-  if (status !== 'CONNECTED' || !config) {
+  if (status !== "CONNECTED" || !config) {
     return (
       <ConnectionPanel
         status={status}
@@ -280,7 +333,6 @@ export function Configurator() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-
       <Header
         firmwareVersion={config.firmwareVersion}
         pendingChangesCount={pendingChanges.size}
@@ -319,6 +371,12 @@ export function Configurator() {
         onTimeoutChange={handleTimeoutChange}
       />
 
+      <LedSettingsCard
+        ledModes={config.ledModes}
+        onLedModeChange={handleLedModeChange}
+        onSetAll={handleLedModeSetAll}
+      />
+
       <PCBVisualization
         config={config}
         activeLayer={activeLayer}
@@ -331,7 +389,9 @@ export function Configurator() {
       <ButtonEditDialog
         open={selectedButton !== null}
         buttonIndex={selectedButton}
-        macro={selectedButton !== null ? currentLayer.macros[selectedButton] : null}
+        macro={
+          selectedButton !== null ? currentLayer.macros[selectedButton] : null
+        }
         layerMacros={currentLayer.macros}
         onClose={() => setSelectedButton(null)}
         onSave={handleMacroChange}

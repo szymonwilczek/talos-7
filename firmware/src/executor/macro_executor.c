@@ -104,11 +104,19 @@ void execute_macro(uint8_t layer, uint8_t button) {
     oled_wake_up();
     break;
   }
+
+  case MACRO_TYPE_LED_TOGGLE: {
+    leds_master_toggle();
+    leds_update_for_layer(config_get_current_layer());
+    break;
+  }
   }
 
-  led_toggle(button);
-  sleep_ms(10);
-  led_toggle(button);
+  if (macro->type != MACRO_TYPE_LED_TOGGLE) {
+    led_toggle(button);
+    sleep_ms(10);
+    led_toggle(button);
+  }
 
   if (tud_hid_ready()) {
     tud_hid_keyboard_report(1, 0, NULL);

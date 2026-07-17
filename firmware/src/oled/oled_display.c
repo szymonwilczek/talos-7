@@ -513,9 +513,7 @@ void oled_power_save_task(void) {
       oled_update();
       oled_set_power(false);
       led_rgb_set(0, 0, 0);
-      for (int i = 0; i < NUM_BUTTONS; i++) {
-        led_set(i, false);
-      }
+      leds_sleep(); // reactive LEDs off, always-on LEDs keep shining
     }
   } else {
     if (timer_running) {

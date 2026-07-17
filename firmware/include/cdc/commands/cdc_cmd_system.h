@@ -32,6 +32,14 @@ void cmd_handle_set_config_mode(const char *args);
 void cmd_handle_set_oled_timeout(const char *args);
 
 /**
+ * @brief Handles the SET_LED_MODE|button|mode command.
+ * @note Usage: SET_LED_MODE|button|mode
+ * @param args Pointer to the arguments
+ * (button 0-6, mode 0=reactive 1=always-on).
+ */
+void cmd_handle_set_led_mode(const char *args);
+
+/**
  * @brief Handles the BOOTSEL command.
  * @note Usage: BOOTSEL
  * Resets the device into USB Mass Storage Bootloader mode.

@@ -9,6 +9,7 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void cmd_handle_save_flash(void) {
   if (config_save()) {
@@ -57,6 +58,36 @@ void cmd_handle_set_oled_timeout(const char *args) {
   config_data_t *config = config_get();
   config->oled_timeout_s = timeout;
   cdc_send_response("OK");
+}
+
+void cmd_handle_set_led_mode(const char *args) {
+  int button = atoi(args);
+
+  const char *sep = strchr(args, '|');
+  if (!sep) {
+    cdc_send_response("ERROR|Invalid format");
+    return;
+  }
+  int mode = atoi(sep + 1);
+
+  if (button < 0 || button >= NUM_BUTTONS || mode < 0 ||
+      mode > LED_MODE_ALWAYS_ON) {
+    cdc_send_response("ERROR|Invalid parameters");
+    return;
+  }
+
+  config_data_t *config = config_get();
+  config->led_modes[button] = (uint8_t)mode;
+
+  if (oled_is_active()) {
+    leds_update_for_layer(config_get_current_layer());
+  } else {
+    leds_sleep();
+  }
+
+  cdc_send_response("OK");
+  printf("[CDC] LED mode set: B%d = %s\n", button + 1,
+         mode == LED_MODE_ALWAYS_ON ? "ALWAYS_ON" : "REACTIVE");
 }
 
 void cmd_handle_bootsel(void) {

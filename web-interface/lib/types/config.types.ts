@@ -14,7 +14,18 @@ export enum MacroType {
   MIDI_NOTE = 8,
   MIDI_CC = 9,
   GAME = 10,
+  LED_TOGGLE = 11,
 }
+
+export enum LedMode {
+  REACTIVE = 0,
+  ALWAYS_ON = 1,
+}
+
+export const LedModeLabels: Record<LedMode, string> = {
+  [LedMode.REACTIVE]: "Reactive",
+  [LedMode.ALWAYS_ON]: "Always On",
+};
 
 export type ConnectionStatus =
   | "DISCONNECTED"
@@ -72,6 +83,7 @@ export interface LayerConfig {
 export interface GlobalConfig {
   layers: LayerConfig[];
   oledTimeout: number;
+  ledModes: LedMode[]; // tryb LED per przycisk (NUM_BUTTONS)
   firmwareVersion?: string;
 }
 
@@ -216,12 +228,20 @@ export function createDefaultLayer(index: number): LayerConfig {
   };
 }
 
+export function createDefaultLedModes(): LedMode[] {
+  return Array.from(
+    { length: FIRMWARE_CONSTANTS.NUM_BUTTONS },
+    () => LedMode.REACTIVE,
+  );
+}
+
 export function createDefaultConfig(): GlobalConfig {
   return {
     layers: Array.from({ length: FIRMWARE_CONSTANTS.MAX_LAYERS }, (_, i) =>
       createDefaultLayer(i),
     ),
     oledTimeout: 300,
+    ledModes: createDefaultLedModes(),
   };
 }
 
@@ -233,7 +253,8 @@ export function isMacroType(value: unknown): value is MacroType {
     value === MacroType.TEXT_STRING ||
     value === MacroType.LAYER_TOGGLE ||
     value === MacroType.SCRIPT ||
-    value === MacroType.GAME
+    value === MacroType.GAME ||
+    value === MacroType.LED_TOGGLE
   );
 }
 
@@ -268,6 +289,8 @@ export function formatMacroType(type: MacroType): string {
       return "Script Execution";
     case MacroType.GAME:
       return "Breakout Game";
+    case MacroType.LED_TOGGLE:
+      return "LED Toggle";
     default:
       return "Unknown";
   }

@@ -43,8 +43,13 @@ typedef enum {
   MACRO_TYPE_MOUSE_WHEEL = 7,  // scroll
   MACRO_TYPE_MIDI_NOTE = 8,    // odtworzenie nuty MIDI
   MACRO_TYPE_MIDI_CC = 9,      // wyslanie komunikatu MIDI CC
-  MACRO_TYPE_GAME = 10         // Atari Breakout Game
+  MACRO_TYPE_GAME = 10,        // Atari Breakout Game
+  MACRO_TYPE_LED_TOGGLE = 11   // master switch wszystkich diod LED
 } macro_type_t;
+
+// ==================== TRYBY LED ====================
+#define LED_MODE_REACTIVE 0  // dioda gasnie razem z wyswietlaczem
+#define LED_MODE_ALWAYS_ON 1 // dioda swieci zawsze (poza master switch OFF)
 
 // ==================== STRUKTURA MAKRA ====================
 typedef struct {
@@ -73,6 +78,7 @@ typedef struct {
   uint32_t crc32;                                // checksum
   uint8_t global_text_platform;                  // domyslna platforma tekstu
   uint32_t oled_timeout_s;                       // timeout wygaszacza OLED
+  uint8_t led_modes[NUM_BUTTONS];                // tryb LED per przycisk
 } config_data_t;
 
 // ==================== FLASH STORAGE ====================

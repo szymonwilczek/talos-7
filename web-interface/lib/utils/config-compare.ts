@@ -73,5 +73,6 @@ export function cloneConfig(config: GlobalConfig): GlobalConfig {
       macros: layer.macros.map((macro) => ({ ...macro })),
     })),
     oledTimeout: config.oledTimeout,
+    ledModes: [...config.ledModes],
   };
 }
