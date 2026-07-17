@@ -359,6 +359,11 @@ void oled_display_button_preview(uint8_t layer, uint8_t button) {
              (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
     break;
 
+  case MACRO_TYPE_LED_TOGGLE:
+    snprintf(details, sizeof(details), "LEDs: %s",
+             leds_master_enabled() ? "ON -> OFF" : "OFF -> ON");
+    break;
+
   default:
     snprintf(details, sizeof(details), "Unknown Action");
     break;

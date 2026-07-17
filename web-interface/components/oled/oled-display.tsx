@@ -193,6 +193,8 @@ export function OLEDDisplay({
         return { text: `CC: ${macro.midiCCNumber}, Value: ${macro.midiCCValue}, Ch: ${macro.midiChannel}`, alert: null };
       case 10: // GAME
         return { text: "Atari Breakout", alert: null };
+      case 11: // LED Toggle
+        return { text: "LEDs: ON -> OFF", alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }
