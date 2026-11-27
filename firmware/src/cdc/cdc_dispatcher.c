@@ -135,6 +135,11 @@ void process_command(const char *cmd_input)
 		return;
 	}
 
+	if (strncmp(cmd_ptr, "COMP_VOL|", 9) == 0) {
+		cmd_handle_comp_vol(cmd_ptr + 9);
+		return;
+	}
+
 	if (strcmp(cmd_ptr, "COMP_WAKE") == 0) {
 		cmd_handle_comp_wake();
 		return;

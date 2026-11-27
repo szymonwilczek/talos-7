@@ -141,6 +141,8 @@ typedef struct {
 	bool time_valid;
 
 	uint8_t vol_level; // 0..7 segments
+	uint8_t vol_pct; // 0..100 synchronized system volume
+	bool vol_muted;
 	uint32_t vol_overlay_until_ms;
 	uint32_t stats_overlay_until_ms;
 	uint32_t led_alert_until_ms;
@@ -176,6 +178,8 @@ void companion_state_pet(companion_state_t *state, uint32_t now_ms);
 void companion_state_coffee(companion_state_t *state, uint32_t now_ms);
 void companion_state_show_volume(companion_state_t *state, bool up, bool mute,
 				 uint32_t now_ms);
+void companion_state_set_volume(companion_state_t *state, uint8_t pct,
+				bool muted, uint32_t now_ms, bool show_overlay);
 
 void companion_pomo_toggle_run(companion_state_t *state, uint32_t now_ms);
 void companion_pomo_start(companion_state_t *state, uint32_t now_ms);

@@ -274,13 +274,21 @@ static void render_yellow_hud(const companion_state_t *state,
 	    (int32_t)(state->vol_overlay_until_ms - now_ms) > 0) {
 		oled_draw_bitmap(2, 0, 8, 8,
 				 companion_hud_icons[COMP_ICON_SPEAKER]);
-		oled_draw_string_clipped(12, 0, 12, 34, "VOL");
-		uint8_t pct =
-			(uint8_t)(((uint16_t)state->vol_level * 100U) / 7U);
-		draw_progress_bar(36, 1, 66, 6, pct);
-		char pct_buf[8];
-		snprintf(pct_buf, sizeof(pct_buf), "%u%%", (unsigned)pct);
-		oled_draw_string_clipped(105, 0, 105, 127, pct_buf);
+		if (state->vol_muted) {
+			oled_draw_string_clipped(12, 0, 12, 40, "MUTE");
+			draw_progress_bar(42, 1, 60, 6, 0);
+			oled_draw_string_clipped(105, 0, 105, 127, "0%");
+		} else {
+			oled_draw_string_clipped(12, 0, 12, 34, "VOL");
+			uint8_t pct = (state->vol_pct <= 100U) ?
+					      state->vol_pct :
+					      100U;
+			draw_progress_bar(36, 1, 66, 6, pct);
+			char pct_buf[8];
+			snprintf(pct_buf, sizeof(pct_buf), "%u%%",
+				 (unsigned)pct);
+			oled_draw_string_clipped(105, 0, 105, 127, pct_buf);
+		}
 		oled_draw_line(14);
 		return;
 	}

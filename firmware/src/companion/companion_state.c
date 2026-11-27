@@ -69,6 +69,8 @@ void companion_state_init(companion_state_t *state, uint32_t now_ms)
 	state->last_activity_ms = now_ms;
 	state->happiness = 80;
 	state->energy = 80;
+	state->vol_pct = 50;
+	state->vol_muted = false;
 	state->vol_level = 4;
 
 	state->pomo.work_duration_s = COMP_POMO_DEFAULT_WORK_S;
@@ -390,20 +392,57 @@ void companion_state_coffee(companion_state_t *state, uint32_t now_ms)
 				      "ENERGIZED!", now_ms);
 }
 
+static uint8_t volume_segments_for(uint8_t pct, bool muted)
+{
+	if (muted || pct == 0U)
+		return 0U;
+	uint8_t seg = (uint8_t)(((uint16_t)pct * 7U + 99U) / 100U);
+	return (seg > 7U) ? 7U : seg;
+}
+
 void companion_state_show_volume(companion_state_t *state, bool up, bool mute,
 				 uint32_t now_ms)
 {
 	if (!state)
 		return;
 	if (mute) {
-		state->vol_level = 0;
-	} else if (up && state->vol_level < 7) {
-		state->vol_level++;
-	} else if (!up && state->vol_level > 0) {
-		state->vol_level--;
+		state->vol_muted = !state->vol_muted;
+	} else {
+		state->vol_muted = false;
+		if (up) {
+			state->vol_pct = (state->vol_pct >= 95U) ?
+						 100U :
+						 (uint8_t)(state->vol_pct + 5U);
+		} else {
+			state->vol_pct = (state->vol_pct <= 5U) ?
+						 0U :
+						 (uint8_t)(state->vol_pct - 5U);
+		}
 	}
+	state->vol_level =
+		volume_segments_for(state->vol_pct, state->vol_muted);
 	state->vol_overlay_until_ms = now_ms + COMP_VOL_OVERLAY_MS;
 	companion_state_touch_activity(state, now_ms);
+}
+
+void companion_state_set_volume(companion_state_t *state, uint8_t pct,
+				bool muted, uint32_t now_ms, bool show_overlay)
+{
+	if (!state)
+		return;
+	if (pct > 100U)
+		pct = 100U;
+
+	bool changed = (state->vol_pct != pct) || (state->vol_muted != muted);
+	state->vol_pct = pct;
+	state->vol_muted = muted;
+	state->vol_level = volume_segments_for(pct, muted);
+
+	if (show_overlay && changed &&
+	    state->active_event != COMP_EVT_BOOT_HELLO &&
+	    !companion_state_is_sleeping(state)) {
+		state->vol_overlay_until_ms = now_ms + COMP_VOL_OVERLAY_MS;
+	}
 }
 
 void companion_pomo_toggle_run(companion_state_t *state, uint32_t now_ms)

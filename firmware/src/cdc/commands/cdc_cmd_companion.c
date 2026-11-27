@@ -191,6 +191,39 @@ bool companion_cdc_apply_time(const char *args, companion_state_t *state)
 	return true;
 }
 
+bool companion_cdc_apply_volume(const char *args, companion_state_t *state,
+				uint32_t now_ms)
+{
+	if (!args || !state)
+		return false;
+
+	const char *cur = args;
+	bool more = false;
+	char pct_buf[8];
+	char mute_buf[8];
+
+	split_field(&cur, pct_buf, sizeof(pct_buf), &more);
+	if (!more || pct_buf[0] == '\0')
+		return false;
+
+	split_field(&cur, mute_buf, sizeof(mute_buf), &more);
+	if (mute_buf[0] == '\0')
+		return false;
+
+	char *end_p = NULL;
+	char *end_m = NULL;
+	long pct = strtol(pct_buf, &end_p, 10);
+	long muted = strtol(mute_buf, &end_m, 10);
+	if (*end_p != '\0' || *end_m != '\0' || pct < 0 || pct > 100 ||
+	    (muted != 0 && muted != 1)) {
+		return false;
+	}
+
+	companion_state_set_volume(state, (uint8_t)pct, muted != 0, now_ms,
+				   true);
+	return true;
+}
+
 void cmd_handle_comp_state(const char *args)
 {
 	uint32_t now_ms = to_ms_since_boot(get_absolute_time());
@@ -206,6 +239,12 @@ void cmd_handle_comp_evt(const char *args)
 void cmd_handle_comp_time(const char *args)
 {
 	companion_cdc_apply_time(args, companion_mode_get_state());
+}
+
+void cmd_handle_comp_vol(const char *args)
+{
+	uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+	companion_cdc_apply_volume(args, companion_mode_get_state(), now_ms);
 }
 
 void cmd_handle_comp_wake(void)
