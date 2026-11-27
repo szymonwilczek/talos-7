@@ -1,5 +1,6 @@
 #include "cdc/cdc_dispatcher.h"
 #include "cdc/cdc_transport.h"
+#include "cdc/commands/cdc_cmd_companion.h"
 #include "cdc/commands/cdc_cmd_read.h"
 #include "cdc/commands/cdc_cmd_system.h"
 #include "cdc/commands/cdc_cmd_write.h"
@@ -10,183 +11,214 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void process_command(const char *cmd_input) {
-  printf("[CDC] Command received: %s\n", cmd_input);
+void process_command(const char *cmd_input)
+{
+	printf("[CDC] Command received: %s\n", cmd_input);
 
-  // local copy to modify
-  char cmd[CDC_MAX_COMMAND_LEN];
-  strncpy(cmd, cmd_input, CDC_MAX_COMMAND_LEN - 1);
-  cmd[CDC_MAX_COMMAND_LEN - 1] = '\0';
+	// local copy to modify
+	char cmd[CDC_MAX_COMMAND_LEN];
+	strncpy(cmd, cmd_input, CDC_MAX_COMMAND_LEN - 1);
+	cmd[CDC_MAX_COMMAND_LEN - 1] = '\0';
 
-  // removing whitespace from the start
-  char *cmd_ptr = cmd;
-  while (*cmd_ptr == ' ' || *cmd_ptr == '\t' || *cmd_ptr == '\r' ||
-         *cmd_ptr == '\n') {
-    cmd_ptr++;
-  }
+	// removing whitespace from the start
+	char *cmd_ptr = cmd;
+	while (*cmd_ptr == ' ' || *cmd_ptr == '\t' || *cmd_ptr == '\r' ||
+	       *cmd_ptr == '\n') {
+		cmd_ptr++;
+	}
 
-  // removing whitespace from the end
-  size_t len = strlen(cmd_ptr);
-  while (len > 0 && (cmd_ptr[len - 1] == ' ' || cmd_ptr[len - 1] == '\t' ||
-                     cmd_ptr[len - 1] == '\r' || cmd_ptr[len - 1] == '\n')) {
-    cmd_ptr[len - 1] = '\0';
-    len--;
-  }
+	// removing whitespace from the end
+	size_t len = strlen(cmd_ptr);
+	while (len > 0 &&
+	       (cmd_ptr[len - 1] == ' ' || cmd_ptr[len - 1] == '\t' ||
+		cmd_ptr[len - 1] == '\r' || cmd_ptr[len - 1] == '\n')) {
+		cmd_ptr[len - 1] = '\0';
+		len--;
+	}
 
-  // debug log: TODO remove later
-  printf("[CDC] Processed command: '%s' (len=%zu)\n", cmd_ptr, len);
-  for (size_t i = 0; i < len && i < 20; i++) {
-    printf("[CDC]   byte[%zu] = 0x%02x ('%c')\n", i, (unsigned char)cmd_ptr[i],
-           (cmd_ptr[i] >= 32 && cmd_ptr[i] < 127) ? cmd_ptr[i] : '?');
-  }
+	// debug log: TODO remove later
+	printf("[CDC] Processed command: '%s' (len=%zu)\n", cmd_ptr, len);
+	for (size_t i = 0; i < len && i < 20; i++) {
+		printf("[CDC]   byte[%zu] = 0x%02x ('%c')\n", i,
+		       (unsigned char)cmd_ptr[i],
+		       (cmd_ptr[i] >= 32 && cmd_ptr[i] < 127) ? cmd_ptr[i] :
+								'?');
+	}
 
-  if (len == 0) {
-    printf("[CDC] Empty command, ignoring\n");
-    return;
-  }
+	if (len == 0) {
+		printf("[CDC] Empty command, ignoring\n");
+		return;
+	}
 
-  config_data_t *config = config_get();
+	config_data_t *config = config_get();
 
-  if (strcmp(cmd_ptr, "GET_CONF") == 0) {
-    cmd_handle_get_conf();
-    return;
-  }
+	if (strcmp(cmd_ptr, "GET_CONF") == 0) {
+		cmd_handle_get_conf();
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_OLED_TIMEOUT|", 17) == 0) {
-    char *token = cmd_ptr + 17;
-    cmd_handle_set_oled_timeout(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_OLED_TIMEOUT|", 17) == 0) {
+		char *token = cmd_ptr + 17;
+		cmd_handle_set_oled_timeout(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_LED_MODE|", 13) == 0) {
-    char *token = cmd_ptr + 13;
-    cmd_handle_set_led_mode(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_LED_MODE|", 13) == 0) {
+		char *token = cmd_ptr + 13;
+		cmd_handle_set_led_mode(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_COMPANION_AUTOSTART|", 24) == 0) {
-    char *token = cmd_ptr + 24;
-    cmd_handle_set_companion_autostart(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_COMPANION_AUTOSTART|", 24) == 0) {
+		char *token = cmd_ptr + 24;
+		cmd_handle_set_companion_autostart(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
-    char *token = cmd_ptr + 10;
-    cmd_handle_set_macro(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
+		char *token = cmd_ptr + 10;
+		cmd_handle_set_macro(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_LAYER_NAME|", 15) == 0) {
-    char *token = cmd_ptr + 15;
-    cmd_handle_set_layer_name(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_LAYER_NAME|", 15) == 0) {
+		char *token = cmd_ptr + 15;
+		cmd_handle_set_layer_name(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_MACRO_SCRIPT|", 17) == 0) {
-    char *token = cmd_ptr + 17;
-    cmd_handle_set_macro_script(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_MACRO_SCRIPT|", 17) == 0) {
+		char *token = cmd_ptr + 17;
+		cmd_handle_set_macro_script(token);
+		return;
+	}
 
-  if (strcmp(cmd_ptr, "RELOAD_CONFIG") == 0) {
-    cmd_handle_reload_config();
-    return;
-  }
+	if (strcmp(cmd_ptr, "RELOAD_CONFIG") == 0) {
+		cmd_handle_reload_config();
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_CONFIG_MODE|", 16) == 0) {
-    char *token = cmd_ptr + 16;
-    cmd_handle_set_config_mode(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_CONFIG_MODE|", 16) == 0) {
+		char *token = cmd_ptr + 16;
+		cmd_handle_set_config_mode(token);
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "SET_MACRO_SEQ|", 14) == 0) {
-    char *token = cmd_ptr + 14;
-    cmd_handle_set_macro_seq(token);
-    return;
-  }
+	if (strncmp(cmd_ptr, "SET_MACRO_SEQ|", 14) == 0) {
+		char *token = cmd_ptr + 14;
+		cmd_handle_set_macro_seq(token);
+		return;
+	}
 
-  if (strcmp(cmd_ptr, "SAVE_FLASH") == 0) {
-    cmd_handle_save_flash();
-    return;
-  }
+	if (strcmp(cmd_ptr, "SAVE_FLASH") == 0) {
+		cmd_handle_save_flash();
+		return;
+	}
 
-  if (strncmp(cmd_ptr, "BOOTSEL", 7) == 0) {
-    cmd_handle_bootsel();
-    return;
-  }
+	if (strncmp(cmd_ptr, "BOOTSEL", 7) == 0) {
+		cmd_handle_bootsel();
+		return;
+	}
 
-  printf("[CDC] Unknown command: '%s'\n", cmd_ptr);
-  cdc_send_response("ERROR|Unknown command");
+	if (strncmp(cmd_ptr, "COMP_STATE|", 11) == 0) {
+		cmd_handle_comp_state(cmd_ptr + 11);
+		return;
+	}
+
+	if (strncmp(cmd_ptr, "COMP_EVT|", 9) == 0) {
+		cmd_handle_comp_evt(cmd_ptr + 9);
+		return;
+	}
+
+	if (strncmp(cmd_ptr, "COMP_TIME|", 10) == 0) {
+		cmd_handle_comp_time(cmd_ptr + 10);
+		return;
+	}
+
+	if (strcmp(cmd_ptr, "COMP_WAKE") == 0) {
+		cmd_handle_comp_wake();
+		return;
+	}
+
+	if (strcmp(cmd_ptr, "COMP_SLEEP") == 0) {
+		cmd_handle_comp_sleep();
+		return;
+	}
+
+	printf("[CDC] Unknown command: '%s'\n", cmd_ptr);
+	cdc_send_response("ERROR|Unknown command");
 }
 
 void cdc_receive_script(uint8_t layer, uint8_t button, uint8_t platform,
-                        uint16_t script_size) {
-  cdc_set_binary_mode(true);
+			uint16_t script_size)
+{
+	cdc_set_binary_mode(true);
 
-  config_data_t *config = config_get();
-  macro_entry_t *macro = &config->macros[layer][button];
+	config_data_t *config = config_get();
+	macro_entry_t *macro = &config->macros[layer][button];
 
-  printf("[CDC] Receiving script: L%d B%d Platform=%d Size=%d\n", layer, button,
-         platform, script_size);
+	printf("[CDC] Receiving script: L%d B%d Platform=%d Size=%d\n", layer,
+	       button, platform, script_size);
 
-  uint16_t received = 0;
-  uint32_t timeout_start = time_us_32();
-  const uint32_t TIMEOUT_MS = 10000; // 10s timeout
+	uint16_t received = 0;
+	uint32_t timeout_start = time_us_32();
+	const uint32_t TIMEOUT_MS = 10000; // 10s timeout
 
-  while (received < script_size) {
-    if ((time_us_32() - timeout_start) > (TIMEOUT_MS * 1000)) {
-      cdc_set_binary_mode(false);
-      cdc_send_response("ERROR|Timeout");
-      printf("[CDC] Script receive timeout\n");
-      return;
-    }
+	while (received < script_size) {
+		if ((time_us_32() - timeout_start) > (TIMEOUT_MS * 1000)) {
+			cdc_set_binary_mode(false);
+			cdc_send_response("ERROR|Timeout");
+			printf("[CDC] Script receive timeout\n");
+			return;
+		}
 
-    if (tud_cdc_available()) {
-      char c = tud_cdc_read_char();
-      macro->script[received++] = c;
-      timeout_start = time_us_32();
-    }
+		if (tud_cdc_available()) {
+			char c = tud_cdc_read_char();
+			macro->script[received++] = c;
+			timeout_start = time_us_32();
+		}
 
-    tud_task();
-    watchdog_update();
-    sleep_us(100);
-  }
+		tud_task();
+		watchdog_update();
+		sleep_us(100);
+	}
 
-  macro->script[received] = '\0';
-  macro->type = MACRO_TYPE_SCRIPT;
-  macro->script_platform = platform;
+	macro->script[received] = '\0';
+	macro->type = MACRO_TYPE_SCRIPT;
+	macro->script_platform = platform;
 
-  cdc_set_binary_mode(false);
-  cdc_send_response("OK");
-  printf("[CDC] Script received successfully (%d bytes)\n", received);
+	cdc_set_binary_mode(false);
+	cdc_send_response("OK");
+	printf("[CDC] Script received successfully (%d bytes)\n", received);
 }
 
 void cdc_receive_sequence(uint8_t layer, uint8_t button, uint8_t count,
-                          uint8_t *steps) {
-  if (layer >= MAX_LAYERS || button >= NUM_BUTTONS) {
-    cdc_send_response("ERROR|Invalid layer or button");
-    return;
-  }
+			  uint8_t *steps)
+{
+	if (layer >= MAX_LAYERS || button >= NUM_BUTTONS) {
+		cdc_send_response("ERROR|Invalid layer or button");
+		return;
+	}
 
-  if (steps == NULL) {
-    cdc_send_response("ERROR|NULL steps pointer");
-    return;
-  }
+	if (steps == NULL) {
+		cdc_send_response("ERROR|NULL steps pointer");
+		return;
+	}
 
-  if (count > MAX_SEQUENCE_STEPS) {
-    count = MAX_SEQUENCE_STEPS;
-  }
+	if (count > MAX_SEQUENCE_STEPS) {
+		count = MAX_SEQUENCE_STEPS;
+	}
 
-  config_data_t *config = config_get();
-  macro_entry_t *macro = &config->macros[layer][button];
+	config_data_t *config = config_get();
+	macro_entry_t *macro = &config->macros[layer][button];
 
-  macro->type = MACRO_TYPE_KEY_SEQUENCE;
-  macro->sequence_length = count;
+	macro->type = MACRO_TYPE_KEY_SEQUENCE;
+	macro->sequence_length = count;
 
-  for (int i = 0; i < count; i++) {
-    macro->sequence[i].keycode = steps[i * 2];
-    macro->sequence[i].modifiers = steps[i * 2 + 1];
-  }
+	for (int i = 0; i < count; i++) {
+		macro->sequence[i].keycode = steps[i * 2];
+		macro->sequence[i].modifiers = steps[i * 2 + 1];
+	}
 
-  cdc_send_response("OK");
+	cdc_send_response("OK");
 }

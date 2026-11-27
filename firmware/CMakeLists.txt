@@ -30,6 +30,7 @@ add_executable(talos7
     src/oled/screensaver/animations/anim_starfield.c
     src/oled/screensaver/animations/anim_breakout.c
     src/oled/screensaver/animations/anim_invaders.c
+    src/cdc/commands/cdc_cmd_companion.c
     src/cdc/commands/cdc_cmd_read.c
     src/cdc/commands/cdc_cmd_write.c
     src/cdc/commands/cdc_cmd_system.c
