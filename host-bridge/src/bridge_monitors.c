@@ -418,15 +418,72 @@ bool bridge_parse_pw_dump(const char *json, bool *out_voice_active)
 	return true;
 }
 
+static bool pactl_source_output_is_vesktop(const char *obj)
+{
+	const char *corked_v = NULL;
+	if (json_obj_find_key(obj, "corked", &corked_v) &&
+	    strncmp(corked_v, "true", 4) == 0) {
+		return false;
+	}
+
+	const char *props = NULL;
+	if (!json_obj_find_key(obj, "properties", &props) || *props != '{')
+		return false;
+
+	static const char *const PROP_KEYS[] = {
+		"application.name", "application.process.binary",
+		"pipewire.access.portal.app_id", "node.name"
+	};
+	for (size_t i = 0; i < sizeof(PROP_KEYS) / sizeof(PROP_KEYS[0]); i++) {
+		const char *pv = NULL;
+		char val[128] = { 0 };
+		if (json_obj_find_key(props, PROP_KEYS[i], &pv) && *pv == '"') {
+			parse_json_string(pv, val, sizeof(val));
+			if (ci_contains(val, "vesktop") ||
+			    ci_contains(val, "discord") ||
+			    ci_contains(val, "WEBRTC VoiceEngine")) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool bridge_parse_pactl_source_outputs(const char *json, bool *out_voice_active)
+{
+	if (!json || !out_voice_active)
+		return false;
+	*out_voice_active = false;
+
+	const char *p = skip_ws(json);
+	if (*p != '[')
+		return false;
+	p = skip_ws(p + 1);
+	while (*p != '\0' && *p != ']') {
+		p = skip_ws(p);
+		if (*p == '{' && pactl_source_output_is_vesktop(p)) {
+			*out_voice_active = true;
+			return true;
+		}
+		p = skip_json_value(p);
+		if (!p)
+			break;
+		p = skip_ws(p);
+		if (*p == ',')
+			p++;
+	}
+	return true;
+}
+
 bool bridge_parse_pactl_mute(const char *text, bool *out_muted)
 {
 	if (!text || !out_muted)
 		return false;
-	if (ci_contains(text, "yes")) {
+	if (ci_contains(text, "yes") || ci_contains(text, "tak")) {
 		*out_muted = true;
 		return true;
 	}
-	if (ci_contains(text, "no")) {
+	if (ci_contains(text, "no") || ci_contains(text, "nie")) {
 		*out_muted = false;
 		return true;
 	}
@@ -598,6 +655,7 @@ static int spawn_line_watcher(const char *const argv[], pid_t *out_pid)
 			dup2(devnull, STDERR_FILENO);
 			close(devnull);
 		}
+		setenv("LC_ALL", "C", 1);
 		execvp(argv[0], (char *const *)argv);
 		_exit(127);
 	}
@@ -635,6 +693,7 @@ static bool run_argv_capture(const char *const argv[], char *out,
 			dup2(devnull, STDERR_FILENO);
 			close(devnull);
 		}
+		setenv("LC_ALL", "C", 1);
 		execvp(argv[0], (char *const *)argv);
 		_exit(127);
 	}
@@ -746,10 +805,12 @@ static void refresh_mpris(host_snapshot_t *snap)
 
 static void refresh_audio(host_snapshot_t *snap)
 {
-	static char pw_buf[131072];
-	const char *const pw_argv[] = { "pw-dump", NULL };
-	if (run_argv_capture(pw_argv, pw_buf, sizeof(pw_buf))) {
-		bridge_parse_pw_dump(pw_buf, &snap->vesktop_voice_active);
+	char json_buf[32768];
+	const char *const so_argv[] = { "pactl",	  "-f", "json", "list",
+					"source-outputs", NULL };
+	if (run_argv_capture(so_argv, json_buf, sizeof(json_buf))) {
+		bridge_parse_pactl_source_outputs(json_buf,
+						  &snap->vesktop_voice_active);
 	} else {
 		snap->vesktop_voice_active = false;
 	}
@@ -915,15 +976,28 @@ static void drain_sway_fd(bridge_monitors_t *m, host_snapshot_t *snap,
 	}
 }
 
+static bool line_matches_any(const char *buf, const char *const *keywords,
+			     size_t count)
+{
+	if (!keywords || count == 0)
+		return true;
+	for (size_t i = 0; i < count; i++) {
+		if (ci_contains(buf, keywords[i]))
+			return true;
+	}
+	return false;
+}
+
 static void drain_line_pipe(int *fd, pid_t *pid, char *buf, size_t cap,
-			    size_t *len, const char *keyword, bool *flag)
+			    size_t *len, const char *const *keywords,
+			    size_t kw_count, bool *flag)
 {
 	for (;;) {
 		ssize_t n = read(*fd, buf + *len, cap - 1 - *len);
 		if (n > 0) {
 			*len += (size_t)n;
 			buf[*len] = '\0';
-			if (!keyword || ci_contains(buf, keyword))
+			if (line_matches_any(buf, keywords, kw_count))
 				*flag = true;
 			char *nl = strrchr(buf, '\n');
 			if (nl) {
@@ -964,20 +1038,25 @@ void bridge_monitors_process_events(bridge_monitors_t *m, host_snapshot_t *snap,
 		drain_sway_fd(m, snap, out_activity);
 
 	if (dbus_readable && m->dbus_fd >= 0) {
+		static const char *const DBUS_KW[] = { "mpris" };
 		drain_line_pipe(&m->dbus_fd, &m->dbus_pid, m->dbus_rx,
-				sizeof(m->dbus_rx), &m->dbus_rx_len, "mpris",
+				sizeof(m->dbus_rx), &m->dbus_rx_len, DBUS_KW, 1,
 				&m->need_mpris_refresh);
 	}
 
 	if (pactl_readable && m->pactl_fd >= 0) {
+		/* Ignore 'on client' events so querying pactl never triggers itself */
+		static const char *const PACTL_KW[] = { "on source",
+							"on sink" };
 		drain_line_pipe(&m->pactl_fd, &m->pactl_pid, m->pactl_rx,
-				sizeof(m->pactl_rx), &m->pactl_rx_len, NULL,
-				&m->need_audio_refresh);
+				sizeof(m->pactl_rx), &m->pactl_rx_len, PACTL_KW,
+				2, &m->need_audio_refresh);
 	}
 
+	uint64_t mpris_interval = (m->dbus_fd >= 0) ? 30000ULL : 10000ULL;
 	if (m->need_mpris_refresh ||
 	    (now_ms >= m->last_mpris_poll_ms &&
-	     (now_ms - m->last_mpris_poll_ms) >= 5000ULL)) {
+	     (now_ms - m->last_mpris_poll_ms) >= mpris_interval)) {
 		bool prev_ff = snap->firefox_mpris_playing;
 		bool prev_sp = snap->spotify_playing;
 		refresh_mpris(snap);
@@ -990,9 +1069,13 @@ void bridge_monitors_process_events(bridge_monitors_t *m, host_snapshot_t *snap,
 		}
 	}
 
-	if (m->need_audio_refresh ||
-	    (now_ms >= m->last_audio_poll_ms &&
-	     (now_ms - m->last_audio_poll_ms) >= 5000ULL)) {
+	uint64_t audio_interval = (m->pactl_fd >= 0) ? 30000ULL : 10000ULL;
+	bool audio_due = (now_ms >= m->last_audio_poll_ms &&
+			  (now_ms - m->last_audio_poll_ms) >= audio_interval);
+	bool audio_evt_ready =
+		(m->need_audio_refresh && now_ms >= m->last_audio_poll_ms &&
+		 (now_ms - m->last_audio_poll_ms) >= 300ULL);
+	if (audio_evt_ready || audio_due) {
 		bool prev_voice = snap->vesktop_voice_active;
 		refresh_audio(snap);
 		m->need_audio_refresh = false;

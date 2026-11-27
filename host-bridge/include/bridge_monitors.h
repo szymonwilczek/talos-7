@@ -75,6 +75,13 @@ bool bridge_parse_gdbus_mpris(const char *text, bool *out_playing,
 bool bridge_parse_pw_dump(const char *json, bool *out_voice_active);
 
 /**
+ * Parse `LC_ALL=C pactl -f json list source-outputs` to detect active
+ * Vesktop/Discord microphone streams.
+ */
+bool bridge_parse_pactl_source_outputs(const char *json,
+				       bool *out_voice_active);
+
+/**
  * Parse `pactl get-source-mute` / `get-sink-mute` text output.
  */
 bool bridge_parse_pactl_mute(const char *text, bool *out_muted);

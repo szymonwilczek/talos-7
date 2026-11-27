@@ -107,6 +107,23 @@ static void test_mpris_pw_dump_and_pactl_parsers(void)
 	TEST_ASSERT_TRUE(muted);
 	TEST_ASSERT_TRUE(bridge_parse_pactl_mute("Mute: no\n", &muted));
 	TEST_ASSERT_FALSE(muted);
+	TEST_ASSERT_TRUE(bridge_parse_pactl_mute("Wyciszenie: tak\n", &muted));
+	TEST_ASSERT_TRUE(muted);
+
+	const char *pactl_so_json =
+		"[{\"index\":30856,\"corked\":false,\"properties\":{"
+		"\"pipewire.access.portal.app_id\":\"dev.vencord.Vesktop\","
+		"\"application.name\":\"vesktop\",\"media.name\":\"RecordStream\"}}]";
+	TEST_ASSERT_TRUE(bridge_parse_pactl_source_outputs(pactl_so_json,
+							   &voice_active));
+	TEST_ASSERT_TRUE(voice_active);
+
+	const char *pactl_so_corked =
+		"[{\"index\":30856,\"corked\":true,\"properties\":{"
+		"\"application.name\":\"vesktop\"}}]";
+	TEST_ASSERT_TRUE(bridge_parse_pactl_source_outputs(pactl_so_corked,
+							   &voice_active));
+	TEST_ASSERT_FALSE(voice_active);
 }
 
 typedef struct {
