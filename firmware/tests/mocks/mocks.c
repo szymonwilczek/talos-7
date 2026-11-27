@@ -189,6 +189,23 @@ void exec_hid_consumer_press(uint16_t usage)
 	mock_consumer_count++;
 }
 
+bool config_save(void)
+{
+	return true;
+}
+
+void config_init(void)
+{
+}
+
+void cdc_send_response(const char *response)
+{
+	if (!response)
+		return;
+	snprintf(mock_cdc_output, sizeof(mock_cdc_output), "%s", response);
+	mock_cdc_output_pos = (int)strlen(mock_cdc_output);
+}
+
 void screensaver_start_new_session(void)
 {
 }

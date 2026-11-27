@@ -13,6 +13,7 @@ extern void run_hardware_interface_tests(void);
 extern void run_exec_midi_tests(void);
 extern void run_cdc_cmd_write_tests(void);
 extern void run_companion_state_tests(void);
+extern void run_companion_cdc_tests(void);
 
 int main(void)
 {
@@ -27,6 +28,7 @@ int main(void)
 	run_exec_midi_tests();
 	run_cdc_cmd_write_tests();
 	run_companion_state_tests();
+	run_companion_cdc_tests();
 
 	return UNITY_END();
 }

@@ -33,9 +33,12 @@ add_executable(run_tests
     test_exec_midi.c
     test_cdc_cmd_write.c
     test_companion_state.c
+    test_companion_cdc.c
     ../src/companion/companion_state.c
     ../src/companion/companion_renderer.c
     ../src/companion/companion_mode.c
+    ../src/cdc/commands/cdc_cmd_companion.c
+    ../src/cdc/commands/cdc_cmd_system.c
     ../src/oled/oled_display.c
     ../src/oled/screensaver/screensaver_utils.c
 )
