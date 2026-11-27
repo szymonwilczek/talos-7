@@ -19,6 +19,129 @@ static uint32_t s_last_render_ms = 0;
 static bool s_btn_prev[NUM_BUTTONS];
 static uint32_t s_btn_last_edge_ms[NUM_BUTTONS];
 static bool s_ignore_esc_release = false;
+static uint8_t s_last_led_mask = 0xFF;
+static uint8_t s_last_rgb_code = 0xFF;
+
+static uint8_t led_mask_n_segments(uint8_t count)
+{
+	if (count >= 7U)
+		return 0x7F;
+	if (count == 0U)
+		return 0x00;
+	return (uint8_t)((1U << count) - 1U);
+}
+
+uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
+					uint32_t now_ms)
+{
+	if (!state)
+		return 0;
+
+	companion_expr_t expr = companion_state_resolve_expr(state);
+	if (expr == COMP_EXPR_OLED_OFF || expr == COMP_EXPR_SLEEP) {
+		return 0;
+	}
+
+	// Transient volume bar shows briefly even in cinema mode
+	if (state->vol_overlay_until_ms != 0 &&
+	    (int32_t)(state->vol_overlay_until_ms - now_ms) > 0) {
+		return led_mask_n_segments(state->vol_level);
+	}
+
+	// Keep cinema dark outside volume adjustments
+	if (expr == COMP_EXPR_KINO) {
+		return 0;
+	}
+
+	// Transient event alerts (blink on errors/input requests)
+	if (state->led_alert_until_ms != 0 &&
+	    (int32_t)(state->led_alert_until_ms - now_ms) > 0) {
+		if (expr == COMP_EXPR_AGENT_ERR ||
+		    expr == COMP_EXPR_NEEDS_INPUT) {
+			return (((now_ms / 150UL) % 2U) == 0U) ?
+				       state->led_alert_mask :
+				       0;
+		}
+		return state->led_alert_mask;
+	}
+
+	// Pomodoro progress bar on 7 red LEDs during work
+	if (state->submode == COMP_SUBMODE_POMODORO &&
+	    state->pomo.phase == COMP_POMO_WORK) {
+		uint8_t count = companion_pomo_led_count(&state->pomo);
+		uint8_t mask = led_mask_n_segments(count);
+		if (!state->pomo.running && count > 0 &&
+		    ((now_ms / 450UL) % 2U) == 1U) {
+			mask &= (uint8_t)~(1U << (count - 1U));
+		}
+		return mask;
+	}
+
+	// Unmistakable mute/deafen status LEDs for Vesktop
+	if (expr == COMP_EXPR_VESKTOP_DEAF) {
+		return 0x03; // LED #1 + LED #2
+	}
+	if (expr == COMP_EXPR_VESKTOP_MUTED || expr == COMP_EXPR_VESKTOP_BRB) {
+		return 0x01; // LED #1
+	}
+
+	return 0;
+}
+
+static void update_companion_leds(uint32_t now_ms)
+{
+	uint8_t mask = companion_mode_compute_led_mask(&s_state, now_ms);
+	if (mask != s_last_led_mask) {
+		s_last_led_mask = mask;
+		for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+			led_set(i, (mask & (1U << i)) != 0);
+		}
+	}
+
+	companion_expr_t expr = companion_state_resolve_expr(&s_state);
+	bool g = false;
+	bool b = false;
+
+	switch (expr) {
+	case COMP_EXPR_AGENT_DONE:
+	case COMP_EXPR_GIT_COMMIT:
+	case COMP_EXPR_VESKTOP_ON_AIR:
+	case COMP_EXPR_POMO_BREAK:
+	case COMP_EXPR_COFFEE:
+		g = true;
+		break;
+	case COMP_EXPR_CODING_EMACS:
+	case COMP_EXPR_SPOTIFY:
+	case COMP_EXPR_PET:
+	case COMP_EXPR_BOOT_HELLO:
+	case COMP_EXPR_PING:
+		g = true;
+		b = true;
+		break;
+	case COMP_EXPR_POMO_WORK:
+	case COMP_EXPR_CODING_TERM:
+	case COMP_EXPR_VESKTOP_BRB:
+		b = true;
+		break;
+	case COMP_EXPR_AGENT_THINKING:
+		b = true;
+		g = ((now_ms / 600UL) % 2U) == 0U;
+		break;
+	case COMP_EXPR_AGENT_ERR:
+	case COMP_EXPR_NEEDS_INPUT:
+		b = ((now_ms / 180UL) % 2U) == 0U;
+		break;
+	default:
+		break;
+	}
+
+	// Note: RGB red channel is broken on hardware, use green/blue/cyan only
+	uint8_t rgb_code = (uint8_t)((g ? 2U : 0U) | (b ? 1U : 0U));
+	if (rgb_code != s_last_rgb_code) {
+		s_last_rgb_code = rgb_code;
+		led_rgb_set(false, g, b);
+	}
+}
 
 static void handle_home_button(uint8_t btn, uint32_t now_ms)
 {
@@ -166,6 +289,8 @@ void companion_mode_enter(uint32_t now_ms)
 	s_exit_done_ms = 0;
 	s_last_render_ms = 0;
 	s_ignore_esc_release = false;
+	s_last_led_mask = 0xFF;
+	s_last_rgb_code = 0xFF;
 
 	// Seed current physical button states so the entry press never fires a submode action
 	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
@@ -282,6 +407,8 @@ void companion_mode_task(uint32_t now_ms)
 		companion_mode_exit();
 		return;
 	}
+
+	update_companion_leds(now_ms);
 
 	if (s_last_render_ms == 0 ||
 	    (uint32_t)(now_ms - s_last_render_ms) >= COMP_RENDER_INTERVAL_MS) {

@@ -36,6 +36,12 @@ void companion_mode_handle_button_event(uint8_t button_idx, bool pressed,
 					uint32_t now_ms);
 
 /**
+ * @brief Computes the 7-bit per-key LED mask for the current Companion state.
+ */
+uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
+					uint32_t now_ms);
+
+/**
  * @brief Returns mutable pointer to the active Companion state for CDC updates/tests.
  */
 companion_state_t *companion_mode_get_state(void);
