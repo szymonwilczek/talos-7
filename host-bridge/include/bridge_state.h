@@ -60,6 +60,12 @@ bool bridge_is_media_or_voice_busy(const host_snapshot_t *snap);
 bool bridge_title_matches_video(const char *title);
 
 /**
+ * Format active Spotify track/artist title cleanly for COMP_MEDIA / HUD.
+ */
+void bridge_format_spotify_title(const host_snapshot_t *snap, char *dst,
+				 size_t dst_size);
+
+/**
  * Resolve the current host snapshot into a single Talos COMP_STATE descriptor.
  */
 void bridge_resolve_state(const host_snapshot_t *snap, int hour,

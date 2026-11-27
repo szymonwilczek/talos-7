@@ -132,6 +132,28 @@ static void pick_kino_title(const host_snapshot_t *snap, char *dst,
 	bridge_sanitize_field(src, dst, dst_size, BRIDGE_TEXT_MAX);
 }
 
+void bridge_format_spotify_title(const host_snapshot_t *snap, char *dst,
+				 size_t dst_size)
+{
+	if (!dst || dst_size == 0)
+		return;
+	if (!snap || !snap->spotify_playing) {
+		dst[0] = '\0';
+		return;
+	}
+
+	char combined[140];
+	if (snap->spotify_artist[0] != '\0' && snap->spotify_title[0] != '\0') {
+		snprintf(combined, sizeof(combined), "%s - %s",
+			 snap->spotify_artist, snap->spotify_title);
+	} else if (snap->spotify_title[0] != '\0') {
+		snprintf(combined, sizeof(combined), "%s", snap->spotify_title);
+	} else {
+		snprintf(combined, sizeof(combined), "Spotify");
+	}
+	bridge_sanitize_field(combined, dst, dst_size, BRIDGE_TEXT_MAX);
+}
+
 void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 			  uint64_t now_ms, bridge_resolved_state_t *out)
 {
@@ -140,8 +162,7 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 	memset(out, 0, sizeof(*out));
 
 	uint32_t flags = 0U;
-	if (snap->spotify_playing || snap->firefox_mpris_playing ||
-	    app_is_video_player(snap->focused_app)) {
+	if (snap->spotify_playing) {
 		flags |= BRIDGE_FLAG_MEDIA_ACTIVE;
 	}
 	if (snap->vesktop_voice_active)
@@ -164,19 +185,8 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 			snap->agent_task[0] != '\0' ? snap->agent_task : "AI";
 		bridge_sanitize_field(task, top, sizeof(top), BRIDGE_TEXT_MAX);
 		snprintf(sub, sizeof(sub), "Thinking...");
-	} else if (app_is_video_player(snap->focused_app) ||
-		   focused_firefox_is_video(snap)) {
-		out->ctx = BRIDGE_CTX_KINO;
-		flags |= BRIDGE_FLAG_MEDIA_ACTIVE;
-		if (app_is_firefox(snap->focused_app) &&
-		    !snap->firefox_mpris_playing) {
-			flags |= BRIDGE_FLAG_VIDEO_PAUSED;
-			snprintf(sub, sizeof(sub), "Paused");
-		} else {
-			snprintf(sub, sizeof(sub), "Watching");
-		}
-		pick_kino_title(snap, top, sizeof(top));
-	} else if (app_is_vesktop(snap->focused_app)) {
+	} else if (snap->vesktop_voice_active ||
+		   app_is_vesktop(snap->focused_app)) {
 		out->ctx = BRIDGE_CTX_VESKTOP;
 		snprintf(top, sizeof(top), "Vesktop");
 		if (snap->deafened) {
@@ -186,6 +196,23 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 		} else if (snap->vesktop_voice_active) {
 			snprintf(sub, sizeof(sub), "Voice On");
 		}
+	} else if (snap->focused_fullscreen || app_is_game(snap->focused_app)) {
+		out->ctx = BRIDGE_CTX_GAMING;
+		const char *gm = snap->focused_title[0] != '\0' ?
+					 snap->focused_title :
+					 snap->focused_app;
+		bridge_sanitize_field(gm[0] != '\0' ? gm : "Gaming", top,
+				      sizeof(top), BRIDGE_TEXT_MAX);
+		snprintf(sub, sizeof(sub), "Fullscreen");
+	} else if (app_is_video_player(snap->focused_app) ||
+		   snap->firefox_mpris_playing) {
+		out->ctx = BRIDGE_CTX_KINO;
+		pick_kino_title(snap, top, sizeof(top));
+		snprintf(sub, sizeof(sub), "Watching");
+	} else if (snap->spotify_playing) {
+		out->ctx = BRIDGE_CTX_SPOTIFY;
+		bridge_format_spotify_title(snap, top, sizeof(top));
+		snprintf(sub, sizeof(sub), "Spotify");
 	} else if (app_is_emacs(snap->focused_app)) {
 		out->ctx = BRIDGE_CTX_EMACS;
 		const char *buf = snap->emacs_buffer[0] != '\0' ?
@@ -203,40 +230,6 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 		bridge_sanitize_field(ttl, top, sizeof(top), BRIDGE_TEXT_MAX);
 		bridge_sanitize_field(snap->focused_app, sub, sizeof(sub),
 				      BRIDGE_SUB_MAX);
-	} else if (snap->focused_fullscreen || app_is_game(snap->focused_app)) {
-		out->ctx = BRIDGE_CTX_GAMING;
-		const char *gm = snap->focused_title[0] != '\0' ?
-					 snap->focused_title :
-					 snap->focused_app;
-		bridge_sanitize_field(gm[0] != '\0' ? gm : "Gaming", top,
-				      sizeof(top), BRIDGE_TEXT_MAX);
-		snprintf(sub, sizeof(sub), "Fullscreen");
-	} else if (snap->firefox_mpris_playing) {
-		out->ctx = BRIDGE_CTX_KINO;
-		pick_kino_title(snap, top, sizeof(top));
-		snprintf(sub, sizeof(sub), "Playing");
-	} else if (snap->spotify_playing) {
-		out->ctx = BRIDGE_CTX_SPOTIFY;
-		char combined[140];
-		if (snap->spotify_artist[0] != '\0' &&
-		    snap->spotify_title[0] != '\0') {
-			snprintf(combined, sizeof(combined), "%s - %s",
-				 snap->spotify_artist, snap->spotify_title);
-		} else if (snap->spotify_title[0] != '\0') {
-			snprintf(combined, sizeof(combined), "%s",
-				 snap->spotify_title);
-		} else {
-			snprintf(combined, sizeof(combined), "Spotify");
-		}
-		bridge_sanitize_field(combined, top, sizeof(top),
-				      BRIDGE_TEXT_MAX);
-		snprintf(sub, sizeof(sub), "Spotify");
-	} else if (snap->vesktop_voice_active) {
-		out->ctx = BRIDGE_CTX_VESKTOP;
-		snprintf(top, sizeof(top), "Vesktop");
-		snprintf(sub, sizeof(sub),
-			 snap->deafened ? "Deafened" :
-					  (snap->mic_muted ? "Muted" : "Call"));
 	} else {
 		out->ctx = BRIDGE_CTX_IDLE;
 		bridge_sanitize_field(snap->focused_app, sub, sizeof(sub),

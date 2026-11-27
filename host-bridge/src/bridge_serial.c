@@ -268,6 +268,7 @@ void bridge_serial_reset_cache(bridge_serial_t *serial)
 	serial->has_last_time = false;
 	serial->has_typing_sent = false;
 	serial->has_last_vol = false;
+	serial->has_last_media = false;
 }
 
 void bridge_serial_close(bridge_serial_t *serial)
@@ -458,6 +459,34 @@ bool bridge_serial_send_volume(bridge_serial_t *serial, uint8_t pct, bool muted)
 	serial->has_last_vol = true;
 	serial->last_vol_pct = pct;
 	serial->last_vol_muted = muted;
+	return true;
+}
+
+bool bridge_serial_send_media(bridge_serial_t *serial, bool playing,
+			      const char *title)
+{
+	if (!serial || serial->paused)
+		return false;
+
+	char clean_title[BRIDGE_TEXT_MAX + 1];
+	bridge_sanitize_field(title, clean_title, sizeof(clean_title),
+			      BRIDGE_TEXT_MAX);
+
+	if (serial->has_last_media && serial->last_media_playing == playing &&
+	    strcmp(serial->last_media_title, clean_title) == 0) {
+		return true;
+	}
+
+	char frame[128];
+	snprintf(frame, sizeof(frame), "COMP_MEDIA|%u|%s\n", playing ? 1U : 0U,
+		 clean_title);
+	if (!write_line(serial, frame))
+		return false;
+
+	serial->has_last_media = true;
+	serial->last_media_playing = playing;
+	snprintf(serial->last_media_title, sizeof(serial->last_media_title),
+		 "%s", clean_title);
 	return true;
 }
 

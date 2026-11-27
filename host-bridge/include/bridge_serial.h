@@ -38,6 +38,10 @@ typedef struct {
 	uint8_t last_vol_pct;
 	bool last_vol_muted;
 
+	bool has_last_media;
+	bool last_media_playing;
+	char last_media_title[BRIDGE_TEXT_MAX + 1];
+
 	bridge_serial_ops_t ops;
 } bridge_serial_t;
 
@@ -100,6 +104,12 @@ bool bridge_serial_send_time(bridge_serial_t *serial, uint8_t hour,
  */
 bool bridge_serial_send_volume(bridge_serial_t *serial, uint8_t pct,
 			       bool muted);
+
+/**
+ * Send COMP_MEDIA|<playing>|<title> diff-only for Spotify track isolation.
+ */
+bool bridge_serial_send_media(bridge_serial_t *serial, bool playing,
+			      const char *title);
 
 /**
  * Send an uncached single-line command such as "COMP_WAKE" or "COMP_SLEEP".

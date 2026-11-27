@@ -215,6 +215,13 @@ void bridge_daemon_tick(bridge_daemon_t *daemon, uint64_t now_ms,
 	bridge_resolve_state(&daemon->snap, hour, now_ms, &resolved);
 	bridge_serial_send_state(&daemon->serial, resolved.ctx, resolved.flags,
 				 resolved.top_text, resolved.sub_text, now_ms);
+
+	char media_title[BRIDGE_TEXT_MAX + 1];
+	bridge_format_spotify_title(&daemon->snap, media_title,
+				    sizeof(media_title));
+	bridge_serial_send_media(&daemon->serial, daemon->snap.spotify_playing,
+				 media_title);
+
 	if (daemon->snap.sink_vol_valid) {
 		bridge_serial_send_volume(&daemon->serial,
 					  daemon->snap.sink_vol_pct,
