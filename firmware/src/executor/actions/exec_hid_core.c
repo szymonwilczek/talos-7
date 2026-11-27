@@ -136,3 +136,21 @@ void exec_key_sequence(const key_step_t *sequence, uint8_t len) {
     }
   }
 }
+
+void exec_hid_consumer_press(uint16_t usage) {
+  while (!tud_hid_ready()) {
+    tud_task();
+  }
+
+  uint16_t report = usage;
+  tud_hid_report(3, &report, sizeof(report));
+  sleep_ms(20);
+
+  while (!tud_hid_ready()) {
+    tud_task();
+  }
+
+  report = 0;
+  tud_hid_report(3, &report, sizeof(report));
+  sleep_ms(10);
+}

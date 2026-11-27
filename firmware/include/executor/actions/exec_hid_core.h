@@ -5,6 +5,20 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Standard USB HID Consumer Page (0x0C) usage codes for Report ID 3
+#define TALOS_CONSUMER_PLAY_PAUSE 0x00CD
+#define TALOS_CONSUMER_SCAN_NEXT 0x00B5
+#define TALOS_CONSUMER_SCAN_PREV 0x00B6
+#define TALOS_CONSUMER_MUTE 0x00E2
+#define TALOS_CONSUMER_VOLUME_UP 0x00E9
+#define TALOS_CONSUMER_VOLUME_DOWN 0x00EA
+
+/**
+ * @brief Sends a USB HID Consumer Control usage press and release (Report ID 3).
+ * @param usage 16-bit Consumer Page usage ID.
+ */
+void exec_hid_consumer_press(uint16_t usage);
+
 /**
  * @brief Checks if the cancel button is pressed.
  * If it is pressed, optionally waits for its release.
@@ -22,7 +36,7 @@ bool check_cancel(uint8_t btn_index, bool *wait_for_release);
  * @param press_ms Duration in milliseconds to hold the key down.
  */
 void send_key_with_modifiers(uint8_t modifiers, uint8_t keycode,
-                             uint16_t press_ms);
+			     uint16_t press_ms);
 
 /**
  * @brief Presses a key with specified modifiers.
