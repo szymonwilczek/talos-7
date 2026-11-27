@@ -32,6 +32,12 @@ add_executable(run_tests
     test_hardware_interface.c
     test_exec_midi.c
     test_cdc_cmd_write.c
+    test_companion_state.c
+    ../src/companion/companion_state.c
+    ../src/companion/companion_renderer.c
+    ../src/companion/companion_mode.c
+    ../src/oled/oled_display.c
+    ../src/oled/screensaver/screensaver_utils.c
 )
 
 target_include_directories(run_tests PRIVATE 

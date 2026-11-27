@@ -12,18 +12,21 @@ extern void run_macro_config_tests(void);
 extern void run_hardware_interface_tests(void);
 extern void run_exec_midi_tests(void);
 extern void run_cdc_cmd_write_tests(void);
+extern void run_companion_state_tests(void);
 
-int main(void) {
-  printf("================================================\n");
-  printf("       TALOS 7 FIRMWARE UNIT TESTS\n");
-  printf("================================================\n");
+int main(void)
+{
+	printf("================================================\n");
+	printf("       TALOS 7 FIRMWARE UNIT TESTS\n");
+	printf("================================================\n");
 
-  UNITY_BEGIN();
+	UNITY_BEGIN();
 
-  run_macro_config_tests();
-  run_hardware_interface_tests();
-  run_exec_midi_tests();
-  run_cdc_cmd_write_tests();
+	run_macro_config_tests();
+	run_hardware_interface_tests();
+	run_exec_midi_tests();
+	run_cdc_cmd_write_tests();
+	run_companion_state_tests();
 
-  return UNITY_END();
+	return UNITY_END();
 }
