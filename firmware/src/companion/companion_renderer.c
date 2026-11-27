@@ -769,18 +769,14 @@ static void render_media_voice_pomo(companion_expr_t expr,
 		break;
 
 	case COMP_EXPR_VESKTOP_DEAF:
+	case COMP_EXPR_VESKTOP_BRB:
 		draw_headset_shell(dx, dy, true, true, true, now_ms);
 		draw_eye_closed_sleep(lx, ey + 2);
 		draw_eye_closed_sleep(rx, ey + 2);
-		draw_mouth_flat(cx, my);
-		break;
-
-	case COMP_EXPR_VESKTOP_BRB:
-		draw_headset_shell(dx, dy, true, true, false, now_ms);
-		draw_eye_happy_arc(lx, ey + 1);
-		draw_eye_open(rx, ey + 1, 0, 0, blink, true);
-		draw_mouth_smile(cx, my);
-		draw_coffee_with_steam(108 + dx, 49 + dy, now_ms);
+		draw_mouth_zipper(cx, my);
+		if (expr == COMP_EXPR_VESKTOP_BRB) {
+			draw_coffee_with_steam(108 + dx, 49 + dy, now_ms);
+		}
 		break;
 
 	case COMP_EXPR_SPOTIFY: {
