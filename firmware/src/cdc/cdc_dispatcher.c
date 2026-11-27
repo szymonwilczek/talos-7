@@ -64,6 +64,12 @@ void process_command(const char *cmd_input) {
     return;
   }
 
+  if (strncmp(cmd_ptr, "SET_COMPANION_AUTOSTART|", 24) == 0) {
+    char *token = cmd_ptr + 24;
+    cmd_handle_set_companion_autostart(token);
+    return;
+  }
+
   if (strncmp(cmd_ptr, "SET_MACRO|", 10) == 0) {
     char *token = cmd_ptr + 10;
     cmd_handle_set_macro(token);

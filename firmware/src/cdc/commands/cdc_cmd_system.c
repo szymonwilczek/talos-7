@@ -86,6 +86,27 @@ void cmd_handle_set_led_mode(const char *args) {
          mode == LED_MODE_ALWAYS_ON ? "ALWAYS_ON" : "REACTIVE");
 }
 
+void cmd_handle_set_companion_autostart(const char *args) {
+  if (!args || *args == '\0') {
+    cdc_send_response("ERROR|Invalid parameters");
+    return;
+  }
+
+  char *endptr = NULL;
+  long enabled = strtol(args, &endptr, 10);
+  if (endptr == args || *endptr != '\0' || (enabled != 0 && enabled != 1)) {
+    cdc_send_response("ERROR|Invalid parameters");
+    return;
+  }
+
+  config_data_t *config = config_get();
+  config->companion_autostart = (uint8_t)enabled;
+
+  cdc_send_response("OK");
+  printf("[CDC] Companion autostart set: %s\n",
+         enabled ? "ENABLED" : "DISABLED");
+}
+
 void cmd_handle_bootsel(void) {
   cdc_log("[SYSTEM] Entering BOOTSEL mode...\n");
 

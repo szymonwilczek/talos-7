@@ -27,6 +27,9 @@ void cmd_handle_get_conf(void) {
                         config->led_modes[3], config->led_modes[4],
                         config->led_modes[5], config->led_modes[6]);
 
+  cdc_send_response_fmt("COMPANION_AUTOSTART|%d",
+                        config->companion_autostart ? 1 : 0);
+
   // layer names and emojis
   for (int layer = 0; layer < MAX_LAYERS; layer++) {
     cdc_send_response_fmt("LAYER_NAME|%d|%s|%d", layer,

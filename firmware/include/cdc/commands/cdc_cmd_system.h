@@ -40,6 +40,13 @@ void cmd_handle_set_oled_timeout(const char *args);
 void cmd_handle_set_led_mode(const char *args);
 
 /**
+ * @brief Handles the SET_COMPANION_AUTOSTART|value command.
+ * @note Usage: SET_COMPANION_AUTOSTART|1 or SET_COMPANION_AUTOSTART|0
+ * @param args Pointer to the argument (1 to enable, 0 to disable).
+ */
+void cmd_handle_set_companion_autostart(const char *args);
+
+/**
  * @brief Handles the BOOTSEL command.
  * @note Usage: BOOTSEL
  * Resets the device into USB Mass Storage Bootloader mode.

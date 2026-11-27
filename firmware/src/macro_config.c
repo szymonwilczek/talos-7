@@ -155,6 +155,7 @@ void config_set_factory_defaults(void) {
   for (int i = 0; i < NUM_BUTTONS; i++) {
     g_config.led_modes[i] = LED_MODE_REACTIVE;
   }
+  g_config.companion_autostart = 0;
 }
 
 // ==================== ODCZYT Z FLASH ====================
@@ -180,6 +181,9 @@ static bool config_load_from_flash(void) {
     if (g_config.led_modes[i] > LED_MODE_ALWAYS_ON) {
       g_config.led_modes[i] = LED_MODE_REACTIVE;
     }
+  }
+  if (g_config.companion_autostart > 1) {
+    g_config.companion_autostart = 0;
   }
 
   printf("[CONFIG] Loaded from flash successfully\n");
