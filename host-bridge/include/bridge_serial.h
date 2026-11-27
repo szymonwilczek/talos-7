@@ -34,6 +34,10 @@ typedef struct {
 	uint8_t last_hour;
 	uint8_t last_minute;
 
+	bool has_last_vol;
+	uint8_t last_vol_pct;
+	bool last_vol_muted;
+
 	bridge_serial_ops_t ops;
 } bridge_serial_t;
 
@@ -90,6 +94,12 @@ bool bridge_serial_send_event(bridge_serial_t *serial, const char *evt_name,
  */
 bool bridge_serial_send_time(bridge_serial_t *serial, uint8_t hour,
 			     uint8_t minute);
+
+/**
+ * Send COMP_VOL|<pct>|<muted> if volume percentage or mute state changed.
+ */
+bool bridge_serial_send_volume(bridge_serial_t *serial, uint8_t pct,
+			       bool muted);
 
 /**
  * Send an uncached single-line command such as "COMP_WAKE" or "COMP_SLEEP".

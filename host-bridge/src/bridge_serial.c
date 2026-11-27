@@ -267,6 +267,7 @@ void bridge_serial_reset_cache(bridge_serial_t *serial)
 	serial->has_last_state = false;
 	serial->has_last_time = false;
 	serial->has_typing_sent = false;
+	serial->has_last_vol = false;
 }
 
 void bridge_serial_close(bridge_serial_t *serial)
@@ -433,6 +434,30 @@ bool bridge_serial_send_time(bridge_serial_t *serial, uint8_t hour,
 	serial->has_last_time = true;
 	serial->last_hour = hour;
 	serial->last_minute = minute;
+	return true;
+}
+
+bool bridge_serial_send_volume(bridge_serial_t *serial, uint8_t pct, bool muted)
+{
+	if (!serial || serial->paused)
+		return false;
+	if (pct > 100U)
+		pct = 100U;
+
+	if (serial->has_last_vol && serial->last_vol_pct == pct &&
+	    serial->last_vol_muted == muted) {
+		return true;
+	}
+
+	char frame[48];
+	snprintf(frame, sizeof(frame), "COMP_VOL|%u|%u\n", (unsigned)pct,
+		 muted ? 1U : 0U);
+	if (!write_line(serial, frame))
+		return false;
+
+	serial->has_last_vol = true;
+	serial->last_vol_pct = pct;
+	serial->last_vol_muted = muted;
 	return true;
 }
 

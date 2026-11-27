@@ -490,6 +490,31 @@ bool bridge_parse_pactl_mute(const char *text, bool *out_muted)
 	return false;
 }
 
+bool bridge_parse_pactl_volume(const char *text, uint8_t *out_pct)
+{
+	if (!text || !out_pct)
+		return false;
+
+	const char *pct = strchr(text, '%');
+	if (!pct || pct == text)
+		return false;
+
+	const char *start = pct;
+	while (start > text && isdigit((unsigned char)*(start - 1))) {
+		start--;
+	}
+	if (start == pct)
+		return false;
+
+	long val = strtol(start, NULL, 10);
+	if (val < 0)
+		val = 0;
+	if (val > 100)
+		val = 100;
+	*out_pct = (uint8_t)val;
+	return true;
+}
+
 static bool set_nonblocking(int fd)
 {
 	int flags = fcntl(fd, F_GETFL, 0);
@@ -822,14 +847,23 @@ static void refresh_audio(host_snapshot_t *snap)
 		bridge_parse_pactl_mute(mute_buf, &snap->mic_muted);
 	}
 
-	bool sink_muted = false;
+	bool sink_muted = snap->sink_muted;
 	const char *const sink_mute_argv[] = { "pactl", "get-sink-mute",
 					       "@DEFAULT_SINK@", NULL };
-	if (snap->vesktop_voice_active &&
-	    run_argv_capture(sink_mute_argv, mute_buf, sizeof(mute_buf))) {
-		bridge_parse_pactl_mute(mute_buf, &sink_muted);
+	if (run_argv_capture(sink_mute_argv, mute_buf, sizeof(mute_buf)) &&
+	    bridge_parse_pactl_mute(mute_buf, &sink_muted)) {
+		snap->sink_muted = sink_muted;
+		snap->sink_vol_valid = true;
 	}
-	snap->deafened = snap->vesktop_voice_active && sink_muted;
+
+	char vol_buf[256];
+	const char *const sink_vol_argv[] = { "pactl", "get-sink-volume",
+					      "@DEFAULT_SINK@", NULL };
+	if (run_argv_capture(sink_vol_argv, vol_buf, sizeof(vol_buf)) &&
+	    bridge_parse_pactl_volume(vol_buf, &snap->sink_vol_pct)) {
+		snap->sink_vol_valid = true;
+	}
+	snap->deafened = snap->vesktop_voice_active && snap->sink_muted;
 }
 
 int bridge_sway_consume_frame(uint8_t *buf, size_t *len, uint32_t *out_type,
@@ -1074,13 +1108,22 @@ void bridge_monitors_process_events(bridge_monitors_t *m, host_snapshot_t *snap,
 			  (now_ms - m->last_audio_poll_ms) >= audio_interval);
 	bool audio_evt_ready =
 		(m->need_audio_refresh && now_ms >= m->last_audio_poll_ms &&
-		 (now_ms - m->last_audio_poll_ms) >= 300ULL);
+		 (now_ms - m->last_audio_poll_ms) >= 50ULL);
 	if (audio_evt_ready || audio_due) {
 		bool prev_voice = snap->vesktop_voice_active;
+		bool prev_vol_valid = snap->sink_vol_valid;
+		uint8_t prev_vol = snap->sink_vol_pct;
+		bool prev_sink_muted = snap->sink_muted;
 		refresh_audio(snap);
 		m->need_audio_refresh = false;
 		m->last_audio_poll_ms = now_ms;
-		if (!prev_voice && snap->vesktop_voice_active && out_activity)
+		bool vol_changed = prev_vol_valid &&
+				   (prev_vol != snap->sink_vol_pct ||
+				    prev_sink_muted != snap->sink_muted);
+		if (((!prev_voice && snap->vesktop_voice_active) ||
+		     vol_changed) &&
+		    out_activity) {
 			*out_activity = true;
+		}
 	}
 }

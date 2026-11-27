@@ -24,6 +24,10 @@ typedef struct {
 	bool mic_muted;
 	bool deafened;
 
+	uint8_t sink_vol_pct;
+	bool sink_muted;
+	bool sink_vol_valid;
+
 	bool agent_thinking;
 	char agent_task[64];
 

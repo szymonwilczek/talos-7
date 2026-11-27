@@ -87,6 +87,11 @@ bool bridge_parse_pactl_source_outputs(const char *json,
 bool bridge_parse_pactl_mute(const char *text, bool *out_muted);
 
 /**
+ * Parse `pactl get-sink-volume` text output into clamped 0..100%.
+ */
+bool bridge_parse_pactl_volume(const char *text, uint8_t *out_pct);
+
+/**
  * Parse one i3-ipc binary frame if complete. Consumes bytes from buf via *len.
  * Returns 1 if a frame was decoded, 0 if incomplete, -1 on corrupt framing.
  */

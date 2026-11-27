@@ -215,6 +215,11 @@ void bridge_daemon_tick(bridge_daemon_t *daemon, uint64_t now_ms,
 	bridge_resolve_state(&daemon->snap, hour, now_ms, &resolved);
 	bridge_serial_send_state(&daemon->serial, resolved.ctx, resolved.flags,
 				 resolved.top_text, resolved.sub_text, now_ms);
+	if (daemon->snap.sink_vol_valid) {
+		bridge_serial_send_volume(&daemon->serial,
+					  daemon->snap.sink_vol_pct,
+					  daemon->snap.sink_muted);
+	}
 }
 
 typedef struct {
