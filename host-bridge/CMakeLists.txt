@@ -13,6 +13,7 @@ add_library(talos_bridge_core STATIC
     src/bridge_idle.c
     src/bridge_monitors.c
     src/bridge_serial.c
+    src/bridge_socket.c
     src/bridge_state.c
 )
 
@@ -24,3 +25,8 @@ add_executable(talos-bridge
     src/main.c
 )
 target_link_libraries(talos-bridge PRIVATE talos_bridge_core)
+
+add_executable(talos-evt
+    src/talos_evt.c
+)
+target_link_libraries(talos-evt PRIVATE talos_bridge_core)

@@ -15,12 +15,14 @@ static uint64_t monotonic_ms(void)
 
 static void print_usage(const char *argv0)
 {
-	printf("Usage: %s [--device /dev/ttyACM0] [--idle-sec 1800]\n", argv0);
+	printf("Usage: %s [--device /dev/ttyACM0] [--socket PATH] [--idle-sec 1800]\n",
+	       argv0);
 }
 
 int main(int argc, char **argv)
 {
 	const char *device = NULL;
+	const char *socket_path = NULL;
 	uint32_t idle_sec = BRIDGE_IDLE_TIMEOUT_SEC;
 
 	for (int i = 1; i < argc; i++) {
@@ -31,6 +33,10 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[i], "--device") == 0 && i + 1 < argc) {
 			device = argv[++i];
+			continue;
+		}
+		if (strcmp(argv[i], "--socket") == 0 && i + 1 < argc) {
+			socket_path = argv[++i];
 			continue;
 		}
 		if (strcmp(argv[i], "--idle-sec") == 0 && i + 1 < argc) {
@@ -45,6 +51,7 @@ int main(int argc, char **argv)
 	}
 
 	bridge_daemon_t daemon;
-	bridge_daemon_init(&daemon, device, idle_sec, NULL, monotonic_ms());
+	bridge_daemon_init(&daemon, device, socket_path, idle_sec, NULL,
+			   monotonic_ms());
 	return bridge_daemon_run(&daemon);
 }

@@ -44,13 +44,19 @@ static void split_part(const char **cursor, char *dst, size_t dst_size)
 }
 
 void bridge_daemon_init(bridge_daemon_t *daemon, const char *device_override,
-			uint32_t idle_timeout_sec,
+			const char *socket_override, uint32_t idle_timeout_sec,
 			const bridge_serial_ops_t *serial_ops, uint64_t now_ms)
 {
 	if (!daemon)
 		return;
 	memset(daemon, 0, sizeof(*daemon));
 	daemon->hour_override = -1;
+	daemon->sock.listen_fd = -1;
+	if (socket_override && socket_override[0] != '\0') {
+		snprintf(daemon->socket_override,
+			 sizeof(daemon->socket_override), "%s",
+			 socket_override);
+	}
 	bridge_serial_init(&daemon->serial, device_override, serial_ops);
 	bridge_idle_init(&daemon->idle, idle_timeout_sec, now_ms);
 }
@@ -211,6 +217,17 @@ void bridge_daemon_tick(bridge_daemon_t *daemon, uint64_t now_ms,
 				 resolved.top_text, resolved.sub_text, now_ms);
 }
 
+typedef struct {
+	bridge_daemon_t *daemon;
+	uint64_t now_ms;
+} sock_cb_ctx_t;
+
+static void on_socket_line(const char *line, void *raw_ctx)
+{
+	sock_cb_ctx_t *ctx = (sock_cb_ctx_t *)raw_ctx;
+	bridge_daemon_handle_line(ctx->daemon, line, ctx->now_ms);
+}
+
 int bridge_daemon_run(bridge_daemon_t *daemon)
 {
 	if (!daemon)
@@ -225,10 +242,11 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 	signal(SIGPIPE, SIG_IGN);
 
 	bridge_monitors_init(&daemon->monitors, &daemon->snap);
+	bridge_socket_open(&daemon->sock, daemon->socket_override);
 	bridge_daemon_tick(daemon, monotonic_ms(), time(NULL), false);
 
 	while (!g_stop_requested) {
-		struct pollfd pfds[3];
+		struct pollfd pfds[4 + BRIDGE_SOCK_MAX_CLIENTS];
 		nfds_t nfds = 0;
 		int sway_idx = -1;
 		int dbus_idx = -1;
@@ -254,6 +272,11 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 			};
 		}
 
+		nfds_t sock_cap =
+			(nfds_t)(sizeof(pfds) / sizeof(pfds[0])) - nfds;
+		nfds += bridge_socket_fill_pollfds(&daemon->sock, pfds + nfds,
+						   sock_cap);
+
 		int rc = poll(pfds, nfds, 500);
 		if (rc < 0 && errno == EINTR)
 			continue;
@@ -271,9 +294,12 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 		bridge_monitors_process_events(&daemon->monitors, &daemon->snap,
 					       now_ms, sway_r, dbus_r, pactl_r,
 					       &activity);
+		sock_cb_ctx_t cb_ctx = { .daemon = daemon, .now_ms = now_ms };
+		bridge_socket_service(&daemon->sock, on_socket_line, &cb_ctx);
 		bridge_daemon_tick(daemon, now_ms, time(NULL), activity);
 	}
 
+	bridge_socket_close(&daemon->sock);
 	bridge_monitors_close(&daemon->monitors);
 	bridge_serial_close(&daemon->serial);
 	return 0;

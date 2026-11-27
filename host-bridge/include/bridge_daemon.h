@@ -4,6 +4,7 @@
 #include "bridge_idle.h"
 #include "bridge_monitors.h"
 #include "bridge_serial.h"
+#include "bridge_socket.h"
 #include "bridge_state.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,6 +15,8 @@ typedef struct {
 	host_snapshot_t snap;
 	bridge_idle_t idle;
 	bridge_monitors_t monitors;
+	bridge_socket_server_t sock;
+	char socket_override[108];
 	uint64_t last_time_sync_ms;
 	int8_t hour_override;
 	uint8_t minute_override;
@@ -23,7 +26,7 @@ typedef struct {
  * Initialize daemon state, idle tracker and one-way serial transport.
  */
 void bridge_daemon_init(bridge_daemon_t *daemon, const char *device_override,
-			uint32_t idle_timeout_sec,
+			const char *socket_override, uint32_t idle_timeout_sec,
 			const bridge_serial_ops_t *serial_ops, uint64_t now_ms);
 
 /**
