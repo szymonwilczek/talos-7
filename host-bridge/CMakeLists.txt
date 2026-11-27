@@ -9,6 +9,9 @@ add_compile_options(-Wall -Wextra -Werror -pedantic)
 add_compile_definitions(_POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700)
 
 add_library(talos_bridge_core STATIC
+    src/bridge_daemon.c
+    src/bridge_idle.c
+    src/bridge_monitors.c
     src/bridge_serial.c
     src/bridge_state.c
 )
@@ -16,3 +19,8 @@ add_library(talos_bridge_core STATIC
 target_include_directories(talos_bridge_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+add_executable(talos-bridge
+    src/main.c
+)
+target_link_libraries(talos-bridge PRIVATE talos_bridge_core)
