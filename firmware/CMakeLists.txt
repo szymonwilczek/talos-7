@@ -35,6 +35,7 @@ add_executable(talos7
     src/cdc/commands/cdc_cmd_system.c
     src/cdc/cdc_dispatcher.c
     src/cdc/cdc_transport.c
+    src/companion/companion_mode.c
     src/companion/companion_renderer.c
     src/companion/companion_state.c
     src/easter_egg.c
