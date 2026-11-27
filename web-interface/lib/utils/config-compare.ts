@@ -74,5 +74,6 @@ export function cloneConfig(config: GlobalConfig): GlobalConfig {
     })),
     oledTimeout: config.oledTimeout,
     ledModes: [...config.ledModes],
+    companionAutostart: Boolean(config.companionAutostart),
   };
 }

@@ -83,6 +83,8 @@ export class SerialService {
           config.oledTimeout = parseInt(line.split("|")[1]);
         } else if (line.startsWith("LED_MODES|")) {
           this.parseLedModes(line, config);
+        } else if (line.startsWith("COMPANION_AUTOSTART|")) {
+          config.companionAutostart = line.split("|")[1]?.trim() === "1";
         } else if (line.startsWith("LAYER_NAME|")) {
           this.parseLayerName(line, config);
         } else if (line.startsWith("MACRO|")) {
@@ -236,6 +238,11 @@ export class SerialService {
     await this.sendCommandCheckOK(`SET_LED_MODE|${button}|${mode}`);
   }
 
+  async setCompanionAutostart(enabled: boolean): Promise<void> {
+    console.log(`📤 Setting Companion autostart: ${enabled}`);
+    await this.sendCommandCheckOK(`SET_COMPANION_AUTOSTART|${enabled ? 1 : 0}`);
+  }
+
   async saveFlash(): Promise<void> {
     console.log("📤 Saving to Flash...");
     await this.transport.flush();
@@ -330,6 +337,7 @@ export class SerialService {
       })),
       oledTimeout: 300,
       ledModes: createDefaultLedModes(),
+      companionAutostart: false,
       firmwareVersion: "unknown",
     };
   }

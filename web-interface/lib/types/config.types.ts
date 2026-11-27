@@ -15,6 +15,7 @@ export enum MacroType {
   MIDI_CC = 9,
   GAME = 10,
   LED_TOGGLE = 11,
+  COMPANION = 12,
 }
 
 export enum LedMode {
@@ -84,6 +85,7 @@ export interface GlobalConfig {
   layers: LayerConfig[];
   oledTimeout: number;
   ledModes: LedMode[]; // tryb LED per przycisk (NUM_BUTTONS)
+  companionAutostart?: boolean;
   firmwareVersion?: string;
 }
 
@@ -242,6 +244,7 @@ export function createDefaultConfig(): GlobalConfig {
     ),
     oledTimeout: 300,
     ledModes: createDefaultLedModes(),
+    companionAutostart: false,
   };
 }
 
@@ -254,7 +257,8 @@ export function isMacroType(value: unknown): value is MacroType {
     value === MacroType.LAYER_TOGGLE ||
     value === MacroType.SCRIPT ||
     value === MacroType.GAME ||
-    value === MacroType.LED_TOGGLE
+    value === MacroType.LED_TOGGLE ||
+    value === MacroType.COMPANION
   );
 }
 
@@ -291,6 +295,8 @@ export function formatMacroType(type: MacroType): string {
       return "Breakout Game";
     case MacroType.LED_TOGGLE:
       return "LED Toggle";
+    case MacroType.COMPANION:
+      return "Companion Mode";
     default:
       return "Unknown";
   }

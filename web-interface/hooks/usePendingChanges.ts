@@ -43,6 +43,17 @@ export function usePendingChanges(config: GlobalConfig | null) {
       });
     }
 
+    // companion autostart
+    const currentAutostart = Boolean(config.companionAutostart);
+    const originalAutostart = Boolean(originalConfig.companionAutostart);
+    if (currentAutostart !== originalAutostart) {
+      changes.set("setting-companion-autostart", {
+        type: "setting",
+        settingName: "companionAutostart",
+        value: currentAutostart,
+      });
+    }
+
     // tryby LED per przycisk
     (config.ledModes ?? []).forEach((mode, buttonIdx) => {
       const originalMode = originalConfig.ledModes?.[buttonIdx] ?? 0;
