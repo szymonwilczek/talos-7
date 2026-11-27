@@ -209,41 +209,29 @@ void oled_display_layer_info(uint8_t layer)
 	// separator
 	oled_draw_line(15);
 
-	// wycentrowany grid przyciskow
+	// wycentrowany uklad fizycznych przyciskow
 	int gap = 12; // odstep miedzy przyciskami
 	int button_width = 26 + gap; // 26px + gap
 	int grid_width = 3 * button_width - gap; // 90px (ostatni bez gap)
 	int grid_x_start = (OLED_WIDTH - grid_width) / 2; // ~19
-	int row1_y = 24;
-	int row2_y = 40;
-	int row3_y = 56;
+	int action_row_y = 26;
+	int esc_row_y = 48;
 
-	// rzad 1: [1] [2] [3]
-	oled_draw_string(grid_x_start, row1_y, "[1]");
-	oled_draw_emoji(grid_x_start + 18, row1_y,
-			config->macros[layer][0].emoji_index);
-	oled_draw_string(grid_x_start + button_width, row1_y, "[2]");
-	oled_draw_emoji(grid_x_start + button_width + 18, row1_y,
-			config->macros[layer][1].emoji_index);
-	oled_draw_string(grid_x_start + 2 * button_width, row1_y, "[3]");
-	oled_draw_emoji(grid_x_start + 2 * button_width + 18, row1_y,
-			config->macros[layer][2].emoji_index);
-
-	// rzad 2: [4] [5] [6]
-	oled_draw_string(grid_x_start, row2_y, "[4]");
-	oled_draw_emoji(grid_x_start + 18, row2_y,
+	// glowne klawisze akcji: [4] [5] [6]
+	oled_draw_string(grid_x_start, action_row_y, "[4]");
+	oled_draw_emoji(grid_x_start + 18, action_row_y,
 			config->macros[layer][3].emoji_index);
-	oled_draw_string(grid_x_start + button_width, row2_y, "[5]");
-	oled_draw_emoji(grid_x_start + button_width + 18, row2_y,
+	oled_draw_string(grid_x_start + button_width, action_row_y, "[5]");
+	oled_draw_emoji(grid_x_start + button_width + 18, action_row_y,
 			config->macros[layer][4].emoji_index);
-	oled_draw_string(grid_x_start + 2 * button_width, row2_y, "[6]");
-	oled_draw_emoji(grid_x_start + 2 * button_width + 18, row2_y,
+	oled_draw_string(grid_x_start + 2 * button_width, action_row_y, "[6]");
+	oled_draw_emoji(grid_x_start + 2 * button_width + 18, action_row_y,
 			config->macros[layer][5].emoji_index);
 
-	// rzad 3: [7]
+	// dolny klawisz funkcyjny: [7]
 	int center_x = (OLED_WIDTH - 26) / 2; // 26px dla [7] bez gap
-	oled_draw_string(center_x, row3_y, "[7]");
-	oled_draw_emoji(center_x + 18, row3_y,
+	oled_draw_string(center_x, esc_row_y, "[7]");
+	oled_draw_emoji(center_x + 18, esc_row_y,
 			config->macros[layer][6].emoji_index);
 
 	oled_update();

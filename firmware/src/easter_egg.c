@@ -124,11 +124,11 @@ void run_game_breakout(void) {
 
   // blocking loop
   while (true) {
-    // check exit
-    if (button_is_pressed(0)) {
+    // check exit ([7] ESC)
+    if (button_is_pressed(6)) {
       // debounce exit
       sleep_ms(200);
-      while (button_is_pressed(0))
+      while (button_is_pressed(6))
         tight_loop_contents();
       return;
     }
