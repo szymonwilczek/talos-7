@@ -34,6 +34,7 @@ add_executable(run_tests
     test_cdc_cmd_write.c
     test_companion_state.c
     test_companion_cdc.c
+    test_companion_renderer.c
     ../src/companion/companion_state.c
     ../src/companion/companion_renderer.c
     ../src/companion/companion_mode.c
