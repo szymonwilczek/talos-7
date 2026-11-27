@@ -105,20 +105,21 @@ Device Settings. The preference is persisted in flash past the CRC32 guard.
 
 Talos sends USB HID keycodes for Mute Mic (`F13`) and Deafen (`F14`). Because
 `xdg-desktop-portal-wlr` on Sway does not expose the `GlobalShortcuts` portal
-interface, bind them directly to PipeWire via `wpctl` in `~/.config/sway/config`:
+interface, Vesktop `v1.7.0+` exposes a Unix IPC socket (`--run-shortcut` /
+`vesktop.sock`) specifically for compositor bindings in `~/.config/sway/config`:
 
 ```sway
-bindsym F13 exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
-bindsym F14 exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym F13 exec printf 'run-shortcut toggleMute\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
+bindsym F14 exec printf 'run-shortcut toggleDeafen\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
 ```
 
-This toggles system mic/output cleanly in Vesktop and every audio app. The
-bridge monitors PipeWire `pactl subscribe` events (`source-outputs`, default
-source mute, and default sink volume/mute), keeping Companion faces and LEDs in
-sync:
+This toggles Mute/Deafen **only inside Vesktop** without muting system audio
+in PipeWire. _(For Flatpak `1.7+`, the socket path is
+`$XDG_RUNTIME_DIR/app/dev.vencord.Vesktop/vesktop.sock`; alternatively, `wpctl`
+can be used for system-wide PipeWire mute.)_
 
 - **LED #1 ON:** Mic muted
-- **LED #1 + #2 ON:** Deafened (muted headphones + mic)
+- **LED #1 + #2 ON:** Deafened or BRB (muted headphones + mic)
 
 ## Socket Protocol
 

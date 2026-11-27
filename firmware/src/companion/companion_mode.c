@@ -90,10 +90,10 @@ uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
 	}
 
 	// Unmistakable mute/deafen status LEDs for Vesktop
-	if (expr == COMP_EXPR_VESKTOP_DEAF) {
+	if (expr == COMP_EXPR_VESKTOP_DEAF || expr == COMP_EXPR_VESKTOP_BRB) {
 		return 0x03; // LED #1 + LED #2
 	}
-	if (expr == COMP_EXPR_VESKTOP_MUTED || expr == COMP_EXPR_VESKTOP_BRB) {
+	if (expr == COMP_EXPR_VESKTOP_MUTED) {
 		return 0x01; // LED #1
 	}
 
@@ -251,15 +251,23 @@ static void handle_voice_button(uint8_t btn, uint32_t now_ms)
 		break;
 	case 4: /* [5] Middle: Deafen (headphones + mic) */
 		s_state.local_deafened = !s_state.local_deafened;
+		if (!s_state.local_deafened) {
+			s_state.brb_active = false;
+		}
 		press_sequence(0, COMP_HID_KEY_DEAFEN);
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
-	case 5: /* [6] Right: BRB */
+	case 5: /* [6] Right: BRB (Deafen + Coffee) */
 		s_state.brb_active = !s_state.brb_active;
-		if (s_state.brb_active && !s_state.local_mic_muted &&
-		    (s_state.host_flags & COMP_FLAG_MIC_MUTED) == 0) {
-			s_state.local_mic_muted = true;
-			press_sequence(0, COMP_HID_KEY_MUTE_MIC);
+		if (s_state.brb_active) {
+			if (!s_state.local_deafened &&
+			    (s_state.host_flags & COMP_FLAG_DEAFENED) == 0) {
+				s_state.local_deafened = true;
+				press_sequence(0, COMP_HID_KEY_DEAFEN);
+			}
+		} else if (s_state.local_deafened) {
+			s_state.local_deafened = false;
+			press_sequence(0, COMP_HID_KEY_DEAFEN);
 		}
 		companion_state_touch_activity(&s_state, now_ms);
 		break;

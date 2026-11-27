@@ -306,11 +306,6 @@ void companion_state_set_host_context(companion_state_t *state,
 		state->last_typing_pulse_ms = now_ms;
 	}
 
-	if ((flags & COMP_FLAG_MIC_MUTED) == 0 && state->brb_active &&
-	    ctx == COMP_CTX_VESKTOP) {
-		state->brb_active = false;
-	}
-
 	if (meaningful_change) {
 		companion_state_wake(state, now_ms);
 	}

@@ -317,12 +317,31 @@ void test_media_and_voice_buttons_emit_hid_actions(void)
 	companion_mode_handle_button_event(4, true, 6000);
 	TEST_ASSERT_TRUE(st->local_deafened);
 	TEST_ASSERT_EQUAL(COMP_HID_KEY_DEAFEN, mock_last_hid_keycode);
+	TEST_ASSERT_EQUAL_UINT8(0x03,
+				companion_mode_compute_led_mask(st, 7000));
 
-	// BRB button (index 5) enables BRB and auto-mutes mic via F13
-	companion_mode_handle_button_event(5, true, 6100);
+	companion_mode_handle_button_event(4, true, 7050); // un-deafen
+	TEST_ASSERT_FALSE(st->local_deafened);
+
+	// BRB button (index 5) enables BRB and deafens via F14 (LED #1 + #2)
+	companion_mode_handle_button_event(5, true, 7100);
 	TEST_ASSERT_TRUE(st->brb_active);
-	TEST_ASSERT_TRUE(st->local_mic_muted);
-	TEST_ASSERT_EQUAL(COMP_HID_KEY_MUTE_MIC, mock_last_hid_keycode);
+	TEST_ASSERT_TRUE(st->local_deafened);
+	TEST_ASSERT_EQUAL(COMP_HID_KEY_DEAFEN, mock_last_hid_keycode);
+	TEST_ASSERT_EQUAL_UINT8(0x03,
+				companion_mode_compute_led_mask(st, 7110));
+
+	// Host frames without system mic mute (Vesktop IPC mute) must keep BRB
+	companion_state_set_host_context(st, COMP_CTX_VESKTOP,
+					 COMP_FLAG_VOICE_ACTIVE, "VESKTOP", "",
+					 7150);
+	TEST_ASSERT_TRUE(st->brb_active);
+
+	// Pressing BRB again clears BRB and un-deafens via F14
+	companion_mode_handle_button_event(5, true, 7200);
+	TEST_ASSERT_FALSE(st->brb_active);
+	TEST_ASSERT_FALSE(st->local_deafened);
+	TEST_ASSERT_EQUAL(COMP_HID_KEY_DEAFEN, mock_last_hid_keycode);
 	companion_mode_exit();
 }
 
