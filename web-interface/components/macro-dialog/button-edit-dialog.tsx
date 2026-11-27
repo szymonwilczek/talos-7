@@ -94,7 +94,7 @@ export function ButtonEditDialog({
         setMidiVelocity(macro.moveX || 127);
         setMidiChannel(macro.moveY || 1);
       } else {
-        // default 
+        // default
         setMidiNote(60);
         setMidiVelocity(127);
         setMidiChannel(1);
@@ -141,11 +141,11 @@ export function ButtonEditDialog({
       value:
         macroType === MacroType.MIDI_NOTE ? midiNote :
           macroType === MacroType.MIDI_CC ? midiCCNumber :
-            macroValue,
+          macroValue,
       moveX:
         macroType === MacroType.MIDI_NOTE ? midiVelocity :
           macroType === MacroType.MIDI_CC ? midiCCValue :
-            moveX,
+          moveX,
       moveY: (macroType === MacroType.MIDI_NOTE || macroType === MacroType.MIDI_CC) ? midiChannel : moveY,
     };
 
@@ -238,6 +238,7 @@ export function ButtonEditDialog({
                 <SelectItem value="9">MIDI Control Change (CC)</SelectItem>
                 <SelectItem value="10">Atari Breakout (Game)</SelectItem>
                 <SelectItem value="11">LED Toggle (All LEDs)</SelectItem>
+                <SelectItem value="12">Companion Mode (Desk Buddy)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -391,6 +392,22 @@ export function ButtonEditDialog({
               <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
                 <span className="text-2xl">🕹️</span>
                 <span className="text-sm">Use buttons 4 & 6 to move, button 1 to exit.</span>
+              </div>
+            </div>
+          )}
+
+          {macroType === MacroType.COMPANION && (
+            <div className="space-y-2">
+              <Label>Companion Mode (Talos Mochi)</Label>
+              <p className="text-sm text-muted-foreground">
+                Turns Talos 7 into an expressive desktop companion with live
+                Emacs, agent, Spotify, cinema, Pomodoro, and Vesktop modes.
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
+                <span className="text-2xl">🤖</span>
+                <span className="text-sm">
+                  Keys 1–6 interact per submode. Short-press [7] cycles submodes; hold [7] for 1.5s to return to macros.
+                </span>
               </div>
             </div>
           )}

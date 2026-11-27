@@ -195,6 +195,8 @@ export function OLEDDisplay({
         return { text: "Atari Breakout", alert: null };
       case 11: // LED Toggle
         return { text: "LEDs: ON -> OFF", alert: null };
+      case 12: // Companion Mode
+        return { text: "Companion Mode", alert: null };
       default:
         return { text: 'Unknown Action', alert: null };
     }

@@ -89,7 +89,7 @@ export function Configurator() {
     // JSON
     const dataStr =
       "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(config, null, 2));
+        encodeURIComponent(JSON.stringify(config, null, 2));
     const downloadAnchorNode = document.createElement("a");
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "talos_config.json");
@@ -109,12 +109,13 @@ export function Configurator() {
 
         if (
           json.layers &&
-          Array.isArray(json.layers) &&
-          json.layers.length > 0
+            Array.isArray(json.layers) &&
+            json.layers.length > 0
         ) {
           if (!Array.isArray(json.ledModes)) {
             json.ledModes = createDefaultLedModes();
           }
+          json.companionAutostart = Boolean(json.companionAutostart);
           setConfig(json as GlobalConfig);
           setSelectedButton(null);
           console.log("✅ Config imported successfully");
@@ -148,11 +149,11 @@ export function Configurator() {
       layers: config.layers.map((layer, idx) =>
         idx === activeLayer
           ? {
-              ...layer,
-              macros: layer.macros.map((m, btnIdx) =>
-                btnIdx === buttonIndex ? macro : m,
-              ),
-            }
+            ...layer,
+            macros: layer.macros.map((m, btnIdx) =>
+              btnIdx === buttonIndex ? macro : m,
+            ),
+        }
           : layer,
       ),
     });
@@ -163,6 +164,14 @@ export function Configurator() {
     setConfig({
       ...config,
       oledTimeout: val[0],
+    });
+  };
+
+  const handleCompanionAutostartChange = (checked: boolean) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      companionAutostart: checked,
     });
   };
 
@@ -227,9 +236,12 @@ export function Configurator() {
           if (change.settingName === "oledTimeout") {
             console.log(`📤 Updating OLED Timeout: ${change.value}s`);
             await serialService.setOledTimeout(change.value);
+          } else if (change.settingName === "companionAutostart") {
+            console.log(`📤 Updating Companion Autostart: ${change.value}`);
+            await serialService.setCompanionAutostart(Boolean(change.value));
           } else if (
             change.settingName === "ledMode" &&
-            change.button !== undefined
+              change.button !== undefined
           ) {
             console.log(
               `📤 Updating LED mode: B${change.button + 1} = ${change.value}`,
@@ -242,8 +254,8 @@ export function Configurator() {
           );
           if (
             change.layer !== undefined &&
-            change.name !== undefined &&
-            change.emoji !== undefined
+              change.name !== undefined &&
+              change.emoji !== undefined
           ) {
             await serialService.setLayerName(
               change.layer,
@@ -369,6 +381,8 @@ export function Configurator() {
       <DeviceSettingsCard
         oledTimeout={config.oledTimeout}
         onTimeoutChange={handleTimeoutChange}
+        companionAutostart={Boolean(config.companionAutostart)}
+        onCompanionAutostartChange={handleCompanionAutostartChange}
       />
 
       <LedSettingsCard
