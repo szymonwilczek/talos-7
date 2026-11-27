@@ -124,6 +124,16 @@ static void test_mpris_pw_dump_and_pactl_parsers(void)
 	TEST_ASSERT_TRUE(bridge_parse_pactl_source_outputs(pactl_so_corked,
 							   &voice_active));
 	TEST_ASSERT_FALSE(voice_active);
+
+	uint8_t vol = 0;
+	TEST_ASSERT_TRUE(bridge_parse_pactl_volume(
+		"Volume: front-left: 42598 /  65% / -11.20 dB, "
+		"front-right: 42598 /  65% / -11.20 dB",
+		&vol));
+	TEST_ASSERT_EQUAL_UINT8(65, vol);
+	TEST_ASSERT_TRUE(bridge_parse_pactl_volume(
+		"Volume: mono: 98304 / 150% / 10.50 dB", &vol));
+	TEST_ASSERT_EQUAL_UINT8(100, vol);
 }
 
 typedef struct {

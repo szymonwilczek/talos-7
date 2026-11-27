@@ -180,19 +180,26 @@ void test_wake_consumes_first_press_without_triggering_action(void)
 	companion_state_tick(st, 2100 + COMP_SLEEP_BEFORE_OFF_MS);
 	TEST_ASSERT_EQUAL(COMP_EXPR_OLED_OFF, companion_state_resolve_expr(st));
 
-	// First click on button 1 (Pet) wakes up, does NOT trigger PET event
+	// First click on key [4] (index 3, Pet) wakes up, does NOT trigger PET event
+	// Keys [1..3] (indices 0..2) without keycaps are ignored completely.
 	uint8_t hap_before = st->happiness;
-	companion_mode_handle_button_event(0, true, 200000);
-	companion_mode_handle_button_event(0, false, 200050);
+	companion_mode_handle_button_event(0, true, 199000);
+	TEST_ASSERT_TRUE(companion_state_is_sleeping(st));
+
+	companion_mode_handle_button_event(3, true, 200000);
+	companion_mode_handle_button_event(3, false, 200050);
 	TEST_ASSERT_FALSE(companion_state_is_sleeping(st));
 	TEST_ASSERT_EQUAL(COMP_SUBMODE_HOME, st->submode);
 	TEST_ASSERT_EQUAL(COMP_EVT_NONE, st->active_event);
 	TEST_ASSERT_EQUAL(hap_before, st->happiness);
 
-	// Second click now pets normally
-	companion_mode_handle_button_event(0, true, 200100);
+	// Second click on [4] (index 3) now pets normally; [5] triggers Coffee
+	companion_mode_handle_button_event(3, true, 200100);
 	TEST_ASSERT_EQUAL(COMP_EVT_PET, st->active_event);
 	TEST_ASSERT_TRUE(st->happiness > hap_before);
+
+	companion_mode_handle_button_event(4, true, 200200);
+	TEST_ASSERT_EQUAL(COMP_EVT_COFFEE, st->active_event);
 	companion_mode_exit();
 }
 
@@ -243,24 +250,76 @@ void test_media_and_voice_buttons_emit_hid_actions(void)
 	companion_state_t *st = companion_mode_get_state();
 	companion_state_tick(st, 2000);
 
-	// Cycle to POMODORO -> MEDIA
+	// Cycle to POMODORO: test tap Start/Pause vs 700ms hold Reset on [4] (index 3)
 	companion_mode_handle_button_event(6, true, 2000);
 	companion_mode_handle_button_event(6, false, 2050);
-	companion_mode_handle_button_event(6, true, 2100);
-	companion_mode_handle_button_event(6, false, 2150);
+	TEST_ASSERT_EQUAL(COMP_SUBMODE_POMODORO, st->submode);
+
+	companion_mode_handle_button_event(3, true, 2060);
+	companion_mode_handle_button_event(3, false,
+					   2120); // short tap -> Start
+	TEST_ASSERT_TRUE(st->pomo.running);
+	companion_mode_handle_button_event(3, true, 2200);
+	companion_mode_handle_button_event(3, false,
+					   2950); // hold >= 700ms -> Reset
+	TEST_ASSERT_FALSE(st->pomo.running);
+
+	// Cycle to MEDIA
+	companion_mode_handle_button_event(6, true, 3000);
+	companion_mode_handle_button_event(6, false, 3050);
 	TEST_ASSERT_EQUAL(COMP_SUBMODE_MEDIA, st->submode);
 
-	companion_mode_handle_button_event(1, true, 2200); // Play/Pause
+	// Short tap [5] (index 4) -> Play/Pause
+	companion_mode_handle_button_event(4, true, 3100);
+	companion_mode_handle_button_event(4, false, 3160);
 	TEST_ASSERT_EQUAL(TALOS_CONSUMER_PLAY_PAUSE, mock_last_consumer_usage);
 	TEST_ASSERT_EQUAL(1, mock_consumer_count);
 
+	// Hold [5] (index 4) >= 700ms -> Mute toggles vol_muted WITHOUT wiping vol_pct
+	companion_state_set_volume(st, 65, false, 3200, false);
+	companion_mode_handle_button_event(4, true, 3300);
+	companion_mode_handle_button_event(4, false, 4050);
+	TEST_ASSERT_EQUAL(TALOS_CONSUMER_MUTE, mock_last_consumer_usage);
+	TEST_ASSERT_TRUE(st->vol_muted);
+	TEST_ASSERT_EQUAL_UINT8(65, st->vol_pct);
+	TEST_ASSERT_EQUAL_UINT8(0, st->vol_level);
+
+	// Second Mute hold restores unmuted state and original vol_pct
+	companion_mode_handle_button_event(4, true, 4100);
+	companion_mode_handle_button_event(4, false, 4850);
+	TEST_ASSERT_FALSE(st->vol_muted);
+	TEST_ASSERT_EQUAL_UINT8(65, st->vol_pct);
+	TEST_ASSERT_TRUE(st->vol_level > 0);
+
+	// Short [6] (index 5) -> Vol+, Hold [6] -> Next Track
+	companion_mode_handle_button_event(5, true, 4900);
+	companion_mode_handle_button_event(5, false, 4950);
+	TEST_ASSERT_EQUAL(TALOS_CONSUMER_VOLUME_UP, mock_last_consumer_usage);
+	TEST_ASSERT_EQUAL_UINT8(70, st->vol_pct);
+
+	companion_mode_handle_button_event(5, true, 5000);
+	companion_mode_handle_button_event(5, false, 5750);
+	TEST_ASSERT_EQUAL(TALOS_CONSUMER_SCAN_NEXT, mock_last_consumer_usage);
+
 	// Cycle to VOICE
-	companion_mode_handle_button_event(6, true, 2300);
-	companion_mode_handle_button_event(6, false, 2350);
+	companion_mode_handle_button_event(6, true, 5800);
+	companion_mode_handle_button_event(6, false, 5850);
 	TEST_ASSERT_EQUAL(COMP_SUBMODE_VOICE, st->submode);
 
+	// [4]=Mute Mic (F13), [5]=Deafen (F14), [6]=BRB (index 5)
+	companion_mode_handle_button_event(3, true, 5900);
+	TEST_ASSERT_TRUE(st->local_mic_muted);
+	TEST_ASSERT_EQUAL(COMP_HID_KEY_MUTE_MIC, mock_last_hid_keycode);
+
+	companion_mode_handle_button_event(3, true, 5950); // unmute mic
+	TEST_ASSERT_FALSE(st->local_mic_muted);
+
+	companion_mode_handle_button_event(4, true, 6000);
+	TEST_ASSERT_TRUE(st->local_deafened);
+	TEST_ASSERT_EQUAL(COMP_HID_KEY_DEAFEN, mock_last_hid_keycode);
+
 	// BRB button (index 5) enables BRB and auto-mutes mic via F13
-	companion_mode_handle_button_event(5, true, 2400);
+	companion_mode_handle_button_event(5, true, 6100);
 	TEST_ASSERT_TRUE(st->brb_active);
 	TEST_ASSERT_TRUE(st->local_mic_muted);
 	TEST_ASSERT_EQUAL(COMP_HID_KEY_MUTE_MIC, mock_last_hid_keycode);

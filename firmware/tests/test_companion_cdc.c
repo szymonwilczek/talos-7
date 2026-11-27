@@ -68,6 +68,27 @@ void test_comp_cdc_parse_event_and_time(void)
 	TEST_ASSERT_FALSE(companion_cdc_apply_time("24|00", &st));
 	TEST_ASSERT_FALSE(companion_cdc_apply_time("12|60", &st));
 	TEST_ASSERT_FALSE(companion_cdc_apply_time("12", &st));
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_volume("65|1", &st, 3000));
+	TEST_ASSERT_EQUAL_UINT8(65, st.vol_pct);
+	TEST_ASSERT_TRUE(st.vol_muted);
+	TEST_ASSERT_EQUAL_UINT8(0, st.vol_level);
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_volume("65|0", &st, 3100));
+	TEST_ASSERT_EQUAL_UINT8(65, st.vol_pct);
+	TEST_ASSERT_FALSE(st.vol_muted);
+	TEST_ASSERT_TRUE(st.vol_level > 0);
+
+	TEST_ASSERT_FALSE(companion_cdc_apply_volume("101|0", &st, 3200));
+	TEST_ASSERT_FALSE(companion_cdc_apply_volume("50|2", &st, 3200));
+
+	TEST_ASSERT_TRUE(
+		companion_cdc_apply_media("1|Daft Punk - Voyager", &st));
+	TEST_ASSERT_TRUE(st.media_playing);
+	TEST_ASSERT_EQUAL_STRING("Daft Punk - Voyager", st.media_title);
+	TEST_ASSERT_TRUE(companion_cdc_apply_media("0|", &st));
+	TEST_ASSERT_FALSE(st.media_playing);
+	TEST_ASSERT_FALSE(companion_cdc_apply_media("2|Invalid", &st));
 }
 
 void test_companion_autostart_after_crc_and_cdc_handler(void)

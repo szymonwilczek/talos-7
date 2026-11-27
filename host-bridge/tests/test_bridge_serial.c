@@ -125,6 +125,15 @@ static void test_diff_only_and_typing_cooldown(void)
 	TEST_ASSERT_TRUE(bridge_serial_send_time(&ser, 21, 5));
 	TEST_ASSERT_TRUE(bridge_serial_send_time(&ser, 21, 6));
 	TEST_ASSERT_EQUAL(5, port.write_count);
+
+	/* Volume & media frames deduplicate cleanly */
+	TEST_ASSERT_TRUE(bridge_serial_send_volume(&ser, 65, false));
+	TEST_ASSERT_TRUE(bridge_serial_send_volume(&ser, 65, false));
+	TEST_ASSERT_TRUE(bridge_serial_send_volume(&ser, 65, true));
+	TEST_ASSERT_TRUE(bridge_serial_send_media(&ser, true, "Artist - Song"));
+	TEST_ASSERT_TRUE(bridge_serial_send_media(&ser, true, "Artist - Song"));
+	TEST_ASSERT_TRUE(bridge_serial_send_media(&ser, false, ""));
+	TEST_ASSERT_EQUAL(9, port.write_count);
 }
 
 static void test_pause_resume_and_disconnect_recovery(void)

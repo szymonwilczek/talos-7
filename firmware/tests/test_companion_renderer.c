@@ -136,6 +136,18 @@ void test_vesktop_muted_zipper_mouth_centered_at_x64(void)
 	TEST_ASSERT_EQUAL(50, min_zx);
 	TEST_ASSERT_EQUAL(77, max_zx);
 	TEST_ASSERT_EQUAL(127, min_zx + max_zx);
+
+	// Deafen and BRB both share centered zipper mouth (BRB also draws coffee cup)
+	st.local_mic_muted = false;
+	st.local_deafened = true;
+	companion_renderer_render(&st, 2100);
+	TEST_ASSERT_TRUE(mock_oled_count_lit(50, 52, 77, 52) > 20);
+	TEST_ASSERT_EQUAL(0, mock_oled_count_lit(108, 49, 118, 59));
+
+	st.brb_active = true;
+	companion_renderer_render(&st, 2200);
+	TEST_ASSERT_TRUE(mock_oled_count_lit(50, 52, 77, 52) > 20);
+	TEST_ASSERT_TRUE(mock_oled_count_lit(108, 49, 118, 59) > 10);
 }
 
 void test_spotify_marquee_never_overlaps_mode_badge(void)
