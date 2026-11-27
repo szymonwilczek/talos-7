@@ -1,6 +1,7 @@
 #include "executor/macro_executor.h"
 
 #include "cdc/cdc_transport.h"
+#include "companion/companion_mode.h"
 #include "easter_egg.h"
 #include "executor/actions/exec_hid_core.h"
 #include "executor/actions/exec_midi_core.h"
@@ -16,109 +17,124 @@
 #include <stdio.h>
 #include <string.h>
 
-void execute_macro(uint8_t layer, uint8_t button) {
-  config_data_t *config = config_get();
-  macro_entry_t *macro = &config->macros[layer][button];
+void execute_macro(uint8_t layer, uint8_t button)
+{
+	config_data_t *config = config_get();
+	macro_entry_t *macro = &config->macros[layer][button];
 
-  cdc_log("[EXECUTOR] Executing macro: L%d B%d '%s'\n", layer, button,
-          macro->name);
+	cdc_log("[EXECUTOR] Executing macro: L%d B%d '%s'\n", layer, button,
+		macro->name);
 
-  oled_trigger_preview(layer, button);
+	if (macro->type != MACRO_TYPE_COMPANION) {
+		oled_trigger_preview(layer, button);
+	}
 
-  switch (macro->type) {
-  case MACRO_TYPE_KEY_PRESS: {
-    exec_key_repeat_fast((uint8_t)macro->value, macro->repeat_count,
-                         macro->repeat_interval);
-    break;
-  }
+	switch (macro->type) {
+	case MACRO_TYPE_KEY_PRESS: {
+		exec_key_repeat_fast((uint8_t)macro->value, macro->repeat_count,
+				     macro->repeat_interval);
+		break;
+	}
 
-  case MACRO_TYPE_MOUSE_BUTTON: {
-    exec_mouse_click((uint8_t)macro->value, macro->repeat_count,
-                     macro->repeat_interval, button);
-    break;
-  }
+	case MACRO_TYPE_MOUSE_BUTTON: {
+		exec_mouse_click((uint8_t)macro->value, macro->repeat_count,
+				 macro->repeat_interval, button);
+		break;
+	}
 
-  case MACRO_TYPE_MOUSE_MOVE: {
-    exec_mouse_move(macro->move_x, macro->move_y, macro->repeat_count,
-                    macro->repeat_interval, button);
-    break;
-  }
+	case MACRO_TYPE_MOUSE_MOVE: {
+		exec_mouse_move(macro->move_x, macro->move_y,
+				macro->repeat_count, macro->repeat_interval,
+				button);
+		break;
+	}
 
-  case MACRO_TYPE_MOUSE_WHEEL: {
-    exec_mouse_wheel((int8_t)macro->value);
-    break;
-  }
+	case MACRO_TYPE_MOUSE_WHEEL: {
+		exec_mouse_wheel((int8_t)macro->value);
+		break;
+	}
 
-  case MACRO_TYPE_TEXT_STRING: {
-    exec_type_text_auto(macro->macro_string);
-    break;
-  }
+	case MACRO_TYPE_TEXT_STRING: {
+		exec_type_text_auto(macro->macro_string);
+		break;
+	}
 
-  case MACRO_TYPE_LAYER_TOGGLE: {
-    config_cycle_layer();
-    uint8_t new_layer = config_get_current_layer();
+	case MACRO_TYPE_LAYER_TOGGLE: {
+		config_cycle_layer();
+		uint8_t new_layer = config_get_current_layer();
 
-    printf("[LAYER] Switched to layer %d\n", new_layer);
+		printf("[LAYER] Switched to layer %d\n", new_layer);
 
-    oled_display_layer_info(new_layer);
-    break;
-  }
+		oled_display_layer_info(new_layer);
+		break;
+	}
 
-  case MACRO_TYPE_SCRIPT: {
-    exec_script(macro->script, macro->script_platform, macro->terminal_shortcut,
-                macro->terminal_shortcut_length);
-    break;
-  }
+	case MACRO_TYPE_SCRIPT: {
+		exec_script(macro->script, macro->script_platform,
+			    macro->terminal_shortcut,
+			    macro->terminal_shortcut_length);
+		break;
+	}
 
-  case MACRO_TYPE_KEY_SEQUENCE: {
-    exec_key_sequence(macro->sequence, macro->sequence_length);
-    break;
-  }
+	case MACRO_TYPE_KEY_SEQUENCE: {
+		exec_key_sequence(macro->sequence, macro->sequence_length);
+		break;
+	}
 
-  case MACRO_TYPE_MIDI_NOTE: {
-    // value  -> Note
-    // move_x -> Velocity (default is 127)
-    // move_y -> Channel (default is 1)
+	case MACRO_TYPE_MIDI_NOTE: {
+		// value  -> Note
+		// move_x -> Velocity (default is 127)
+		// move_y -> Channel (default is 1)
 
-    uint8_t note = (uint8_t)macro->value;
-    uint8_t velocity = (macro->move_x > 0) ? (uint8_t)macro->move_x : 127;
-    uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y : 1;
+		uint8_t note = (uint8_t)macro->value;
+		uint8_t velocity =
+			(macro->move_x > 0) ? (uint8_t)macro->move_x : 127;
+		uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y :
+							1;
 
-    exec_midi_note(note, velocity, channel);
-    break;
-  }
-  case MACRO_TYPE_MIDI_CC: {
-    uint8_t cc_num = (uint8_t)macro->value;
-    uint8_t cc_val = (macro->move_x >= 0) ? (uint8_t)macro->move_x : 127;
-    uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y : 1;
+		exec_midi_note(note, velocity, channel);
+		break;
+	}
+	case MACRO_TYPE_MIDI_CC: {
+		uint8_t cc_num = (uint8_t)macro->value;
+		uint8_t cc_val = (macro->move_x >= 0) ? (uint8_t)macro->move_x :
+							127;
+		uint8_t channel = (macro->move_y > 0) ? (uint8_t)macro->move_y :
+							1;
 
-    exec_midi_cc(cc_num, cc_val, channel);
-    break;
-  }
+		exec_midi_cc(cc_num, cc_val, channel);
+		break;
+	}
 
-  case MACRO_TYPE_GAME: {
-    run_game_breakout();
-    oled_clear();
-    oled_display_layer_info(layer);
-    oled_wake_up();
-    break;
-  }
+	case MACRO_TYPE_GAME: {
+		run_game_breakout();
+		oled_clear();
+		oled_display_layer_info(layer);
+		oled_wake_up();
+		break;
+	}
 
-  case MACRO_TYPE_LED_TOGGLE: {
-    leds_master_toggle();
-    leds_refresh();
-    break;
-  }
-  }
+	case MACRO_TYPE_LED_TOGGLE: {
+		leds_master_toggle();
+		leds_refresh();
+		break;
+	}
 
-  if (macro->type != MACRO_TYPE_LED_TOGGLE) {
-    led_toggle(button);
-    sleep_ms(10);
-    led_toggle(button);
-  }
+	case MACRO_TYPE_COMPANION: {
+		companion_mode_enter(to_ms_since_boot(get_absolute_time()));
+		break;
+	}
+	}
 
-  if (tud_hid_ready()) {
-    tud_hid_keyboard_report(1, 0, NULL);
-    tud_hid_mouse_report(2, 0, 0, 0, 0, 0);
-  }
+	if (macro->type != MACRO_TYPE_LED_TOGGLE &&
+	    macro->type != MACRO_TYPE_COMPANION) {
+		led_toggle(button);
+		sleep_ms(10);
+		led_toggle(button);
+	}
+
+	if (tud_hid_ready()) {
+		tud_hid_keyboard_report(1, 0, NULL);
+		tud_hid_mouse_report(2, 0, 0, 0, 0, 0);
+	}
 }

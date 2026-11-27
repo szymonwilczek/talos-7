@@ -385,6 +385,10 @@ void oled_display_button_preview(uint8_t layer, uint8_t button)
 			 leds_master_enabled() ? "ON -> OFF" : "OFF -> ON");
 		break;
 
+	case MACRO_TYPE_COMPANION:
+		snprintf(details, sizeof(details), "Companion Mode");
+		break;
+
 	default:
 		snprintf(details, sizeof(details), "Unknown Action");
 		break;
@@ -782,6 +786,7 @@ void oled_wake_up(void)
 
 	if (!g_oled_active) {
 		oled_set_power(true);
+		oled_set_contrast(0xCF);
 		led_rgb_update_os(detect_platform());
 		leds_refresh();
 	}
