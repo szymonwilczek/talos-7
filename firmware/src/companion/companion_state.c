@@ -316,6 +316,15 @@ void companion_state_set_host_context(companion_state_t *state,
 	}
 }
 
+void companion_state_set_media(companion_state_t *state, bool playing,
+			       const char *title)
+{
+	if (!state)
+		return;
+	state->media_playing = playing;
+	safe_copy_str(state->media_title, sizeof(state->media_title), title);
+}
+
 void companion_state_trigger_event(companion_state_t *state,
 				   companion_event_id_t evt,
 				   uint32_t duration_ms, const char *label,

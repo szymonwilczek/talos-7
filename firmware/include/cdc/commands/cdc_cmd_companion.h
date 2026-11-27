@@ -28,10 +28,16 @@ bool companion_cdc_apply_time(const char *args, companion_state_t *state);
 bool companion_cdc_apply_volume(const char *args, companion_state_t *state,
 				uint32_t now_ms);
 
+/**
+ * @brief Parses COMP_MEDIA|<playing>|<title> into state.
+ */
+bool companion_cdc_apply_media(const char *args, companion_state_t *state);
+
 void cmd_handle_comp_state(const char *args);
 void cmd_handle_comp_evt(const char *args);
 void cmd_handle_comp_time(const char *args);
 void cmd_handle_comp_vol(const char *args);
+void cmd_handle_comp_media(const char *args);
 void cmd_handle_comp_wake(void);
 void cmd_handle_comp_sleep(void);
 

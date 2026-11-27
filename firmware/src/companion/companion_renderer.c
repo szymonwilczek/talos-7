@@ -220,8 +220,16 @@ static void hud_title_for_state(const companion_state_t *state,
 			 state->top_text[0] ? state->top_text : "CINEMA");
 		return;
 	case COMP_EXPR_SPOTIFY:
-		snprintf(out, out_size, "%s",
-			 state->top_text[0] ? state->top_text : "SPOTIFY");
+		if (state->media_playing && state->media_title[0] != '\0') {
+			snprintf(out, out_size, "%s", state->media_title);
+		} else if (state->host_ctx == COMP_CTX_SPOTIFY &&
+			   state->top_text[0] != '\0') {
+			snprintf(out, out_size, "%s", state->top_text);
+		} else {
+			snprintf(out, out_size,
+				 state->media_playing ? "SPOTIFY" :
+							"SPOTIFY PAUSED");
+		}
 		return;
 	case COMP_EXPR_CODING_EMACS:
 		snprintf(out, out_size, "%s",

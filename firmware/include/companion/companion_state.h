@@ -120,6 +120,8 @@ typedef struct {
 	uint32_t host_flags;
 	char top_text[COMP_TEXT_MAX_LEN];
 	char sub_text[COMP_SUB_MAX_LEN];
+	bool media_playing;
+	char media_title[COMP_TEXT_MAX_LEN];
 
 	companion_event_id_t active_event;
 	uint32_t event_until_ms;
@@ -167,6 +169,8 @@ void companion_state_set_host_context(companion_state_t *state,
 				      companion_host_ctx_t ctx, uint32_t flags,
 				      const char *top_text,
 				      const char *sub_text, uint32_t now_ms);
+void companion_state_set_media(companion_state_t *state, bool playing,
+			       const char *title);
 void companion_state_trigger_event(companion_state_t *state,
 				   companion_event_id_t evt,
 				   uint32_t duration_ms, const char *label,

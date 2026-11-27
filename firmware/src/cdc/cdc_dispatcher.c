@@ -140,6 +140,11 @@ void process_command(const char *cmd_input)
 		return;
 	}
 
+	if (strncmp(cmd_ptr, "COMP_MEDIA|", 11) == 0) {
+		cmd_handle_comp_media(cmd_ptr + 11);
+		return;
+	}
+
 	if (strcmp(cmd_ptr, "COMP_WAKE") == 0) {
 		cmd_handle_comp_wake();
 		return;
