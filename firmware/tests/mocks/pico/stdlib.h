@@ -1,9 +1,9 @@
 #ifndef MOCK_PICO_STDLIB_SHIM_H
 #define MOCK_PICO_STDLIB_SHIM_H
 
+#include "mock_pico.h"
 #include "mock_companion_hw.h"
 #include "mock_gpio.h"
-#include "mock_pico.h"
 
 typedef uint64_t absolute_time_t;
 
