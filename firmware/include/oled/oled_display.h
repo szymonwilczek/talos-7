@@ -38,19 +38,19 @@
 #define OLED_CMD_SWITCH_CAP_VCC 0x02
 
 // Matrix Rain Effect
-#define MATRIX_COL_WIDTH 6        // pixels per column
+#define MATRIX_COL_WIDTH 6 // pixels per column
 #define MATRIX_MAX_ACTIVE_DROPS 8 // max simultaneous drops
 #define MATRIX_COLS (OLED_WIDTH / MATRIX_COL_WIDTH)
-#define MATRIX_TRAIL_LEN 3            // length of the trail in rows
+#define MATRIX_TRAIL_LEN 3 // length of the trail in rows
 #define SCREENSAVER_DURATION_MS 10000 // 10 seconds
 
 /**
  * @brief Structure to hold the state of a rain column
  */
 typedef struct {
-  int16_t y;     // Current vertical position of the drop (in character rows)
-  uint8_t speed; // Speed of the drop (rows per frame)
-  bool active;   // Is the drop currently active
+	int16_t y; // Current vertical position of the drop (in character rows)
+	uint8_t speed; // Speed of the drop (rows per frame)
+	bool active; // Is the drop currently active
 } RainColumn;
 
 /**
@@ -144,7 +144,7 @@ void oled_draw_line(uint8_t y);
  * @param bitmap Pointer to bitmap data
  */
 void oled_draw_bitmap(int x, int y, uint8_t width, uint8_t height,
-                      const uint8_t *bitmap);
+		      const uint8_t *bitmap);
 
 /**
  * @brief Draw an emoji at specified position
@@ -164,7 +164,7 @@ void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index);
  * @param icon_data Pointer to raw icon data
  */
 void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
-                        uint8_t height_pages, const uint8_t *icon_data);
+			uint8_t height_pages, const uint8_t *icon_data);
 
 /**
  * @brief Draw a single pixel at (x, y) with specified color
@@ -173,6 +173,42 @@ void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
  * @param color 1 for ON, 0 for OFF
  */
 void oled_draw_pixel(int x, int y, uint8_t color);
+
+/**
+ * @brief Draw a 5x7 character at arbitrary pixel coordinates clipped to [min_x, max_x]
+ */
+void oled_draw_char_px(int x, int y, char c, int min_x, int max_x);
+
+/**
+ * @brief Draw a string at arbitrary pixel coordinates clipped horizontally
+ */
+void oled_draw_string_clipped(int x, int y, int min_x, int max_x,
+			      const char *str);
+
+/**
+ * @brief Draw a line between two points using Bresenham's algorithm
+ */
+void oled_draw_line_pts(int x0, int y0, int x1, int y1, uint8_t color);
+
+/**
+ * @brief Draw a 1-pixel rectangle outline
+ */
+void oled_draw_rect(int x, int y, int w, int h, uint8_t color);
+
+/**
+ * @brief Draw a 1-pixel rounded rectangle outline
+ */
+void oled_draw_rounded_rect(int x, int y, int w, int h, int r, uint8_t color);
+
+/**
+ * @brief Fill a rounded rectangle
+ */
+void oled_fill_rounded_rect(int x, int y, int w, int h, int r, uint8_t color);
+
+/**
+ * @brief Set SSD1306 display contrast (0x00..0xFF)
+ */
+void oled_set_contrast(uint8_t contrast);
 
 /**
  * @brief OLED power saving task to be called in main loop

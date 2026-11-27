@@ -31,568 +31,801 @@ static struct repeating_timer matrix_timer;
 static volatile bool matrix_tick_flag = false;
 static bool timer_running = false;
 
-static bool matrix_timer_callback(struct repeating_timer *t) {
-  matrix_tick_flag = true;
-  return true;
+static bool matrix_timer_callback(struct repeating_timer *t)
+{
+	matrix_tick_flag = true;
+	return true;
 }
 
-void oled_init(void) {
-  // SPI init
-  spi_init(OLED_SPI, 8 * 1000 * 1000); // 8MHz
-  gpio_set_function(OLED_MOSI_PIN, GPIO_FUNC_SPI);
-  gpio_set_function(OLED_SCK_PIN, GPIO_FUNC_SPI);
-  gpio_set_function(OLED_CS_PIN, GPIO_FUNC_SPI);
-  gpio_set_function(OLED_DC_PIN, GPIO_FUNC_SPI);
-  gpio_set_function(OLED_RST_PIN, GPIO_FUNC_SPI);
+void oled_init(void)
+{
+	// SPI init
+	spi_init(OLED_SPI, 8 * 1000 * 1000); // 8MHz
+	gpio_set_function(OLED_MOSI_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(OLED_SCK_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(OLED_CS_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(OLED_DC_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(OLED_RST_PIN, GPIO_FUNC_SPI);
 
-  // CS jako output
-  gpio_init(OLED_CS_PIN);
-  gpio_set_dir(OLED_CS_PIN, GPIO_OUT);
-  gpio_put(OLED_CS_PIN, 1);
+	// CS jako output
+	gpio_init(OLED_CS_PIN);
+	gpio_set_dir(OLED_CS_PIN, GPIO_OUT);
+	gpio_put(OLED_CS_PIN, 1);
 
-  // DC jako output
-  gpio_init(OLED_DC_PIN);
-  gpio_set_dir(OLED_DC_PIN, GPIO_OUT);
+	// DC jako output
+	gpio_init(OLED_DC_PIN);
+	gpio_set_dir(OLED_DC_PIN, GPIO_OUT);
 
-  // RST jako output
-  gpio_init(OLED_RST_PIN);
-  gpio_set_dir(OLED_RST_PIN, GPIO_OUT);
+	// RST jako output
+	gpio_init(OLED_RST_PIN);
+	gpio_set_dir(OLED_RST_PIN, GPIO_OUT);
 
-  sleep_ms(100);
+	sleep_ms(100);
 
-  // reset OLED
-  gpio_put(OLED_RST_PIN, 0);
-  sleep_ms(10);
-  gpio_put(OLED_RST_PIN, 1);
+	// reset OLED
+	gpio_put(OLED_RST_PIN, 0);
+	sleep_ms(10);
+	gpio_put(OLED_RST_PIN, 1);
 
-  cdc_log("[OLED] SPI initialized\n");
+	cdc_log("[OLED] SPI initialized\n");
 
-  // init sequence
-  oled_write_cmd(OLED_CMD_DISPLAY_OFF);
-  oled_write_cmd(OLED_CMD_SET_DISPLAY_CLOCK_DIV);
-  oled_write_cmd(0x80);
-  oled_write_cmd(OLED_CMD_SET_MULTIPLEX);
-  oled_write_cmd(0x3F);
-  oled_write_cmd(OLED_CMD_SET_DISPLAY_OFFSET);
-  oled_write_cmd(0x00);
-  oled_write_cmd(OLED_CMD_SET_START_LINE | 0x00);
-  oled_write_cmd(OLED_CMD_CHARGE_PUMP);
-  oled_write_cmd(0x14);
-  oled_write_cmd(OLED_CMD_MEMORY_MODE);
-  oled_write_cmd(0x00);
-  oled_write_cmd(OLED_CMD_SEG_REMAP); // bez | 0x01 (odwrocony: TODO ZMIENIC PO
-                                      // SKONCZENIU PROJEKTU)
-  oled_write_cmd(OLED_CMD_COM_SCAN_INC); // zamiast DEC (odwrocony)
-  oled_write_cmd(OLED_CMD_SET_COM_PINS);
-  oled_write_cmd(0x12);
-  oled_write_cmd(OLED_CMD_SET_CONTRAST);
-  oled_write_cmd(0xCF);
-  oled_write_cmd(OLED_CMD_SET_PRECHARGE);
-  oled_write_cmd(0xF1);
-  oled_write_cmd(OLED_CMD_SET_VCOM_DETECT);
-  oled_write_cmd(0x40);
-  oled_write_cmd(OLED_CMD_DISPLAY_ALL_ON_RESUME);
-  oled_write_cmd(OLED_CMD_NORMAL_DISPLAY);
-  oled_write_cmd(OLED_CMD_DISPLAY_ON);
+	// init sequence
+	oled_write_cmd(OLED_CMD_DISPLAY_OFF);
+	oled_write_cmd(OLED_CMD_SET_DISPLAY_CLOCK_DIV);
+	oled_write_cmd(0x80);
+	oled_write_cmd(OLED_CMD_SET_MULTIPLEX);
+	oled_write_cmd(0x3F);
+	oled_write_cmd(OLED_CMD_SET_DISPLAY_OFFSET);
+	oled_write_cmd(0x00);
+	oled_write_cmd(OLED_CMD_SET_START_LINE | 0x00);
+	oled_write_cmd(OLED_CMD_CHARGE_PUMP);
+	oled_write_cmd(0x14);
+	oled_write_cmd(OLED_CMD_MEMORY_MODE);
+	oled_write_cmd(0x00);
+	oled_write_cmd(
+		OLED_CMD_SEG_REMAP); // bez | 0x01 (odwrocony: TODO ZMIENIC PO
+	// SKONCZENIU PROJEKTU)
+	oled_write_cmd(OLED_CMD_COM_SCAN_INC); // zamiast DEC (odwrocony)
+	oled_write_cmd(OLED_CMD_SET_COM_PINS);
+	oled_write_cmd(0x12);
+	oled_write_cmd(OLED_CMD_SET_CONTRAST);
+	oled_write_cmd(0xCF);
+	oled_write_cmd(OLED_CMD_SET_PRECHARGE);
+	oled_write_cmd(0xF1);
+	oled_write_cmd(OLED_CMD_SET_VCOM_DETECT);
+	oled_write_cmd(0x40);
+	oled_write_cmd(OLED_CMD_DISPLAY_ALL_ON_RESUME);
+	oled_write_cmd(OLED_CMD_NORMAL_DISPLAY);
+	oled_write_cmd(OLED_CMD_DISPLAY_ON);
 
-  oled_clear();
-  oled_draw_icon_raw(48, 2, 32, 4, talos_boot_logo_32x32);
-  oled_update();
+	oled_clear();
+	oled_draw_icon_raw(48, 2, 32, 4, talos_boot_logo_32x32);
+	oled_update();
 
-  sleep_ms(2000);
+	sleep_ms(2000);
 
-  oled_clear();
-  oled_update();
+	oled_clear();
+	oled_update();
 
-  g_last_activity_time = to_ms_since_boot(get_absolute_time());
-  g_oled_active = true;
+	g_last_activity_time = to_ms_since_boot(get_absolute_time());
+	g_oled_active = true;
 
-  cdc_log("[OLED] Initialized (128x64)\n");
+	cdc_log("[OLED] Initialized (128x64)\n");
 }
 
-void oled_clear(void) { memset(oled_buffer, 0, sizeof(oled_buffer)); }
-
-void oled_update(void) {
-  oled_write_cmd(OLED_CMD_COLUMN_ADDR);
-  oled_write_cmd(0);
-  oled_write_cmd(OLED_WIDTH - 1);
-  oled_write_cmd(OLED_CMD_PAGE_ADDR);
-  oled_write_cmd(0);
-  oled_write_cmd((OLED_HEIGHT / 8) - 1);
-
-  // send in chunks
-  for (size_t i = 0; i < sizeof(oled_buffer); i += 16) {
-    size_t chunk_size =
-        (i + 16 > sizeof(oled_buffer)) ? sizeof(oled_buffer) - i : 16;
-    oled_write_data(&oled_buffer[i], chunk_size);
-  }
+void oled_clear(void)
+{
+	memset(oled_buffer, 0, sizeof(oled_buffer));
 }
 
-void oled_write_cmd(uint8_t cmd) {
-  gpio_put(OLED_DC_PIN, 0); // command mode
-  gpio_put(OLED_CS_PIN, 0);
-  spi_write_blocking(OLED_SPI, &cmd, 1);
-  gpio_put(OLED_CS_PIN, 1);
+void oled_update(void)
+{
+	oled_write_cmd(OLED_CMD_COLUMN_ADDR);
+	oled_write_cmd(0);
+	oled_write_cmd(OLED_WIDTH - 1);
+	oled_write_cmd(OLED_CMD_PAGE_ADDR);
+	oled_write_cmd(0);
+	oled_write_cmd((OLED_HEIGHT / 8) - 1);
+
+	// send in chunks
+	for (size_t i = 0; i < sizeof(oled_buffer); i += 16) {
+		size_t chunk_size = (i + 16 > sizeof(oled_buffer)) ?
+					    sizeof(oled_buffer) - i :
+					    16;
+		oled_write_data(&oled_buffer[i], chunk_size);
+	}
 }
 
-void oled_write_data(const uint8_t *data, size_t len) {
-  gpio_put(OLED_DC_PIN, 1); // data mode
-  gpio_put(OLED_CS_PIN, 0);
-  spi_write_blocking(OLED_SPI, data, len);
-  gpio_put(OLED_CS_PIN, 1);
+void oled_write_cmd(uint8_t cmd)
+{
+	gpio_put(OLED_DC_PIN, 0); // command mode
+	gpio_put(OLED_CS_PIN, 0);
+	spi_write_blocking(OLED_SPI, &cmd, 1);
+	gpio_put(OLED_CS_PIN, 1);
 }
 
-void oled_display_layer_info(uint8_t layer) {
-  oled_clear();
-
-  if (layer >= MAX_LAYERS) {
-    oled_draw_string(0, 28, "Invalid layer!");
-    oled_update();
-    return;
-  }
-
-  if (config_mode == 1) {
-    printf("[OLED] Config mode active, displaying special screen\n");
-    oled_clear();
-    oled_draw_string(0, 16, "Setup...");
-    oled_draw_string(0, 32, "See live web preview");
-    oled_draw_string(0, 48, "Remember to apply!");
-    oled_update();
-    printf("[OLED] Special screen drawn\n");
-    return;
-  }
-
-  config_data_t *config = config_get();
-
-  // tytul
-  char line1[32];
-  if (strlen(config->layer_names[layer]) > 0) {
-    snprintf(line1, sizeof(line1), "%s", config->layer_names[layer]);
-  } else {
-    snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
-  }
-
-  int title_len = strlen(line1);
-  int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
-  int title_x = 0;
-  title_x = (OLED_WIDTH - title_width) / 2;
-  if (title_x < 0)
-    title_x = 0;
-  oled_draw_emoji(title_x, 0, config->layer_emojis[layer]);
-  oled_draw_string(title_x + 15, 0, line1);
-
-  uint8_t icon_idx = 0;
-  uint8_t detected_platform = detect_platform();
-
-  if (detected_platform == 1) {
-    icon_idx = 1; // Windows
-  } else if (detected_platform == 2) {
-    icon_idx = 2; // macOS
-  } else {
-    icon_idx = 0; // Linux
-  }
-
-  oled_draw_bitmap(120, 0, 8, 8, os_icons[icon_idx]);
-
-  // separator
-  oled_draw_line(15);
-
-  // wycentrowany grid przyciskow
-  int gap = 12;                                     // odstep miedzy przyciskami
-  int button_width = 26 + gap;                      // 26px + gap
-  int grid_width = 3 * button_width - gap;          // 90px (ostatni bez gap)
-  int grid_x_start = (OLED_WIDTH - grid_width) / 2; // ~19
-  int row1_y = 24;
-  int row2_y = 40;
-  int row3_y = 56;
-
-  // rzad 1: [1] [2] [3]
-  oled_draw_string(grid_x_start, row1_y, "[1]");
-  oled_draw_emoji(grid_x_start + 18, row1_y,
-                  config->macros[layer][0].emoji_index);
-  oled_draw_string(grid_x_start + button_width, row1_y, "[2]");
-  oled_draw_emoji(grid_x_start + button_width + 18, row1_y,
-                  config->macros[layer][1].emoji_index);
-  oled_draw_string(grid_x_start + 2 * button_width, row1_y, "[3]");
-  oled_draw_emoji(grid_x_start + 2 * button_width + 18, row1_y,
-                  config->macros[layer][2].emoji_index);
-
-  // rzad 2: [4] [5] [6]
-  oled_draw_string(grid_x_start, row2_y, "[4]");
-  oled_draw_emoji(grid_x_start + 18, row2_y,
-                  config->macros[layer][3].emoji_index);
-  oled_draw_string(grid_x_start + button_width, row2_y, "[5]");
-  oled_draw_emoji(grid_x_start + button_width + 18, row2_y,
-                  config->macros[layer][4].emoji_index);
-  oled_draw_string(grid_x_start + 2 * button_width, row2_y, "[6]");
-  oled_draw_emoji(grid_x_start + 2 * button_width + 18, row2_y,
-                  config->macros[layer][5].emoji_index);
-
-  // rzad 3: [7]
-  int center_x = (OLED_WIDTH - 26) / 2; // 26px dla [7] bez gap
-  oled_draw_string(center_x, row3_y, "[7]");
-  oled_draw_emoji(center_x + 18, row3_y, config->macros[layer][6].emoji_index);
-
-  oled_update();
+void oled_write_data(const uint8_t *data, size_t len)
+{
+	gpio_put(OLED_DC_PIN, 1); // data mode
+	gpio_put(OLED_CS_PIN, 0);
+	spi_write_blocking(OLED_SPI, data, len);
+	gpio_put(OLED_CS_PIN, 1);
 }
 
-void oled_display_button_preview(uint8_t layer, uint8_t button) {
-  oled_clear();
+void oled_display_layer_info(uint8_t layer)
+{
+	oled_clear();
 
-  config_data_t *config = config_get();
-  macro_entry_t *macro = &config->macros[layer][button];
+	if (layer >= MAX_LAYERS) {
+		oled_draw_string(0, 28, "Invalid layer!");
+		oled_update();
+		return;
+	}
 
-  // emoji + nazwa przycisku
-  char title[32];
-  if (strlen(macro->name) > 0) {
-    snprintf(title, sizeof(title), "%s", macro->name);
-  } else {
-    snprintf(title, sizeof(title), "Button %d", button + 1);
-  }
-  int title_len = strlen(title);
-  int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
-  int title_x = (OLED_WIDTH - title_width) / 2;
-  if (title_x < 0)
-    title_x = 0;
-  oled_draw_emoji(title_x, 0, macro->emoji_index);
-  oled_draw_string(title_x + 15, 0, title);
+	if (config_mode == 1) {
+		printf("[OLED] Config mode active, displaying special screen\n");
+		oled_clear();
+		oled_draw_string(0, 16, "Setup...");
+		oled_draw_string(0, 32, "See live web preview");
+		oled_draw_string(0, 48, "Remember to apply!");
+		oled_update();
+		printf("[OLED] Special screen drawn\n");
+		return;
+	}
 
-  // separator
-  oled_draw_line(16);
+	config_data_t *config = config_get();
 
-  // szczegoly akcji przycisku
-  char details[64];
-  switch (macro->type) {
-  case MACRO_TYPE_KEY_PRESS:
-    snprintf(details, sizeof(details), "Key: %s", get_key_name(macro->value));
-    break;
-  case MACRO_TYPE_TEXT_STRING: {
-    const char *analyze_ptr = macro->macro_string;
-    bool has_unicode = false;
-    bool has_visible_ascii = false;
+	// tytul
+	char line1[32];
+	if (strlen(config->layer_names[layer]) > 0) {
+		snprintf(line1, sizeof(line1), "%s",
+			 config->layer_names[layer]);
+	} else {
+		snprintf(line1, sizeof(line1), "Layer %d/4", layer + 1);
+	}
 
-    // analiza znakow w stringu
-    while (*analyze_ptr) {
-      uint32_t cp = utf8_to_codepoint(&analyze_ptr);
-      if (cp == 0)
-        continue;
+	int title_len = strlen(line1);
+	int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
+	int title_x = 0;
+	title_x = (OLED_WIDTH - title_width) / 2;
+	if (title_x < 0)
+		title_x = 0;
+	oled_draw_emoji(title_x, 0, config->layer_emojis[layer]);
+	oled_draw_string(title_x + 15, 0, line1);
 
-      if (cp > 127) {
-        has_unicode = true;
-      } else if (cp > 32 && cp < 127) {
-        has_visible_ascii = true;
-      }
-    }
+	uint8_t icon_idx = 0;
+	uint8_t detected_platform = detect_platform();
 
-    if (has_unicode && !has_visible_ascii) {
-      snprintf(details, sizeof(details), "Text: [Unicode/Emoji]");
-    } else {
-      // 10 znakow tresci + 3 kropki + null terminator
-      char safe_preview[20];
-      const char *ptr = macro->macro_string;
-      size_t idx = 0;
-      const size_t CHAR_LIMIT = 10; // limit widocznych znakow przed kropkami
+	if (detected_platform == 1) {
+		icon_idx = 1; // Windows
+	} else if (detected_platform == 2) {
+		icon_idx = 2; // macOS
+	} else {
+		icon_idx = 0; // Linux
+	}
 
-      while (*ptr && idx < CHAR_LIMIT) {
-        uint32_t cp = utf8_to_codepoint(&ptr);
-        if (cp == 0)
-          continue;
+	oled_draw_bitmap(120, 0, 8, 8, os_icons[icon_idx]);
 
-        if (cp < 128) {
-          safe_preview[idx++] = (char)cp;
-        } else {
-          safe_preview[idx++] = '?';
-        }
-      }
-      safe_preview[idx] = '\0';
+	// separator
+	oled_draw_line(15);
 
-      // cos zostalo - dodaj kropki
-      if (*ptr != '\0') {
-        strncat(safe_preview, "...", sizeof(safe_preview) - idx - 1);
-      }
+	// wycentrowany grid przyciskow
+	int gap = 12; // odstep miedzy przyciskami
+	int button_width = 26 + gap; // 26px + gap
+	int grid_width = 3 * button_width - gap; // 90px (ostatni bez gap)
+	int grid_x_start = (OLED_WIDTH - grid_width) / 2; // ~19
+	int row1_y = 24;
+	int row2_y = 40;
+	int row3_y = 56;
 
-      snprintf(details, sizeof(details), "Text: \"%s\"", safe_preview);
-    }
-    break;
-  }
-  case MACRO_TYPE_LAYER_TOGGLE:
-    snprintf(details, sizeof(details), "Layer Toggle to Layer %d",
-             macro->value + 1);
-    break;
-  case MACRO_TYPE_SCRIPT:
-    snprintf(details, sizeof(details), "Script (%s)",
-             macro->script_platform == 0   ? "Linux"
-             : macro->script_platform == 1 ? "Windows"
-                                           : "macOS");
-    break;
-  case MACRO_TYPE_KEY_SEQUENCE:
-    // skrocona wersja
-    snprintf(details, sizeof(details), "Sequence: %s",
-             format_sequence_short(macro->sequence, macro->sequence_length));
-    break;
-  case MACRO_TYPE_MOUSE_BUTTON:
-    snprintf(details, sizeof(details), "Mouse Button: %s",
-             macro->value == 1   ? "Left"
-             : macro->value == 2 ? "Right"
-             : macro->value == 4 ? "Middle"
-                                 : "Other");
-    break;
-  case MACRO_TYPE_MOUSE_MOVE:
-    snprintf(details, sizeof(details), "Mouse Move: X=%d Y=%d", macro->move_x,
-             macro->move_y);
-    break;
+	// rzad 1: [1] [2] [3]
+	oled_draw_string(grid_x_start, row1_y, "[1]");
+	oled_draw_emoji(grid_x_start + 18, row1_y,
+			config->macros[layer][0].emoji_index);
+	oled_draw_string(grid_x_start + button_width, row1_y, "[2]");
+	oled_draw_emoji(grid_x_start + button_width + 18, row1_y,
+			config->macros[layer][1].emoji_index);
+	oled_draw_string(grid_x_start + 2 * button_width, row1_y, "[3]");
+	oled_draw_emoji(grid_x_start + 2 * button_width + 18, row1_y,
+			config->macros[layer][2].emoji_index);
 
-  case MACRO_TYPE_MOUSE_WHEEL:
-    snprintf(details, sizeof(details), "Mouse Wheel (x%d)", macro->value);
-    break;
+	// rzad 2: [4] [5] [6]
+	oled_draw_string(grid_x_start, row2_y, "[4]");
+	oled_draw_emoji(grid_x_start + 18, row2_y,
+			config->macros[layer][3].emoji_index);
+	oled_draw_string(grid_x_start + button_width, row2_y, "[5]");
+	oled_draw_emoji(grid_x_start + button_width + 18, row2_y,
+			config->macros[layer][4].emoji_index);
+	oled_draw_string(grid_x_start + 2 * button_width, row2_y, "[6]");
+	oled_draw_emoji(grid_x_start + 2 * button_width + 18, row2_y,
+			config->macros[layer][5].emoji_index);
 
-  case MACRO_TYPE_MIDI_NOTE:
-    snprintf(details, sizeof(details), "Note: %d Vel: %d Ch: %d",
-             (uint8_t)macro->value,
-             (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
-             (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
-    break;
-  case MACRO_TYPE_MIDI_CC:
-    snprintf(details, sizeof(details), "CC: %d Val: %d Ch: %d",
-             (uint8_t)macro->value,
-             (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
-             (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
-    break;
+	// rzad 3: [7]
+	int center_x = (OLED_WIDTH - 26) / 2; // 26px dla [7] bez gap
+	oled_draw_string(center_x, row3_y, "[7]");
+	oled_draw_emoji(center_x + 18, row3_y,
+			config->macros[layer][6].emoji_index);
 
-  case MACRO_TYPE_LED_TOGGLE:
-    snprintf(details, sizeof(details), "LEDs: %s",
-             leds_master_enabled() ? "ON -> OFF" : "OFF -> ON");
-    break;
-
-  default:
-    snprintf(details, sizeof(details), "Unknown Action");
-    break;
-  }
-
-  // wycentrowane szczegoly
-  int len = strlen(details);
-  int x = (OLED_WIDTH - len * 6) / 2;
-  oled_draw_string(x, 40, details);
-
-  oled_update();
+	oled_update();
 }
 
-void oled_draw_char(uint8_t x, uint8_t y, char c) {
-  const uint8_t *glyph = font5x7[0]; // default space
-  if (c >= ' ' && c <= '~') {
-    glyph = font5x7[c - ' '];
-  }
+void oled_display_button_preview(uint8_t layer, uint8_t button)
+{
+	oled_clear();
 
-  for (int i = 0; i < 5; i++) {
-    if (x + i >= OLED_WIDTH)
-      break;
-    for (int j = 0; j < 8; j++) {
-      if (y + j >= OLED_HEIGHT)
-        break;
+	config_data_t *config = config_get();
+	macro_entry_t *macro = &config->macros[layer][button];
 
-      int byte_idx = (y / 8) * OLED_WIDTH + x + i;
-      int bit_idx = y % 8 + j;
+	// emoji + nazwa przycisku
+	char title[32];
+	if (strlen(macro->name) > 0) {
+		snprintf(title, sizeof(title), "%s", macro->name);
+	} else {
+		snprintf(title, sizeof(title), "Button %d", button + 1);
+	}
+	int title_len = strlen(title);
+	int title_width = 8 + title_len * 6; // emoji 8px + tekst 6px/znak
+	int title_x = (OLED_WIDTH - title_width) / 2;
+	if (title_x < 0)
+		title_x = 0;
+	oled_draw_emoji(title_x, 0, macro->emoji_index);
+	oled_draw_string(title_x + 15, 0, title);
 
-      if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
-        if (glyph[i] & (1 << j)) {
-          oled_buffer[byte_idx] |= (1 << bit_idx);
-        } else {
-          oled_buffer[byte_idx] &= ~(1 << bit_idx);
-        }
-      }
-    }
-  }
+	// separator
+	oled_draw_line(16);
+
+	// szczegoly akcji przycisku
+	char details[64];
+	switch (macro->type) {
+	case MACRO_TYPE_KEY_PRESS:
+		snprintf(details, sizeof(details), "Key: %s",
+			 get_key_name(macro->value));
+		break;
+	case MACRO_TYPE_TEXT_STRING: {
+		const char *analyze_ptr = macro->macro_string;
+		bool has_unicode = false;
+		bool has_visible_ascii = false;
+
+		// analiza znakow w stringu
+		while (*analyze_ptr) {
+			uint32_t cp = utf8_to_codepoint(&analyze_ptr);
+			if (cp == 0)
+				continue;
+
+			if (cp > 127) {
+				has_unicode = true;
+			} else if (cp > 32 && cp < 127) {
+				has_visible_ascii = true;
+			}
+		}
+
+		if (has_unicode && !has_visible_ascii) {
+			snprintf(details, sizeof(details),
+				 "Text: [Unicode/Emoji]");
+		} else {
+			// 10 znakow tresci + 3 kropki + null terminator
+			char safe_preview[20];
+			const char *ptr = macro->macro_string;
+			size_t idx = 0;
+			const size_t CHAR_LIMIT =
+				10; // limit widocznych znakow przed kropkami
+
+			while (*ptr && idx < CHAR_LIMIT) {
+				uint32_t cp = utf8_to_codepoint(&ptr);
+				if (cp == 0)
+					continue;
+
+				if (cp < 128) {
+					safe_preview[idx++] = (char)cp;
+				} else {
+					safe_preview[idx++] = '?';
+				}
+			}
+			safe_preview[idx] = '\0';
+
+			// cos zostalo - dodaj kropki
+			if (*ptr != '\0') {
+				strncat(safe_preview, "...",
+					sizeof(safe_preview) - idx - 1);
+			}
+
+			snprintf(details, sizeof(details), "Text: \"%s\"",
+				 safe_preview);
+		}
+		break;
+	}
+	case MACRO_TYPE_LAYER_TOGGLE:
+		snprintf(details, sizeof(details), "Layer Toggle to Layer %d",
+			 macro->value + 1);
+		break;
+	case MACRO_TYPE_SCRIPT:
+		snprintf(details, sizeof(details), "Script (%s)",
+			 macro->script_platform == 0 ? "Linux" :
+			 macro->script_platform == 1 ? "Windows" :
+						       "macOS");
+		break;
+	case MACRO_TYPE_KEY_SEQUENCE:
+		// skrocona wersja
+		snprintf(details, sizeof(details), "Sequence: %s",
+			 format_sequence_short(macro->sequence,
+					       macro->sequence_length));
+		break;
+	case MACRO_TYPE_MOUSE_BUTTON:
+		snprintf(details, sizeof(details), "Mouse Button: %s",
+			 macro->value == 1 ? "Left" :
+			 macro->value == 2 ? "Right" :
+			 macro->value == 4 ? "Middle" :
+					     "Other");
+		break;
+	case MACRO_TYPE_MOUSE_MOVE:
+		snprintf(details, sizeof(details), "Mouse Move: X=%d Y=%d",
+			 macro->move_x, macro->move_y);
+		break;
+
+	case MACRO_TYPE_MOUSE_WHEEL:
+		snprintf(details, sizeof(details), "Mouse Wheel (x%d)",
+			 macro->value);
+		break;
+
+	case MACRO_TYPE_MIDI_NOTE:
+		snprintf(details, sizeof(details), "Note: %d Vel: %d Ch: %d",
+			 (uint8_t)macro->value,
+			 (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
+			 (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
+		break;
+	case MACRO_TYPE_MIDI_CC:
+		snprintf(details, sizeof(details), "CC: %d Val: %d Ch: %d",
+			 (uint8_t)macro->value,
+			 (macro->move_x > 0) ? (uint8_t)macro->move_x : 127,
+			 (macro->move_y > 0) ? (uint8_t)macro->move_y : 1);
+		break;
+
+	case MACRO_TYPE_LED_TOGGLE:
+		snprintf(details, sizeof(details), "LEDs: %s",
+			 leds_master_enabled() ? "ON -> OFF" : "OFF -> ON");
+		break;
+
+	default:
+		snprintf(details, sizeof(details), "Unknown Action");
+		break;
+	}
+
+	// wycentrowane szczegoly
+	int len = strlen(details);
+	int x = (OLED_WIDTH - len * 6) / 2;
+	oled_draw_string(x, 40, details);
+
+	oled_update();
 }
 
-void oled_draw_string(uint8_t x, uint8_t y, const char *str) {
-  while (*str) {
-    oled_draw_char(x, y, *str);
-    x += 6; // 5 pixels + 1 space
-    if (x >= OLED_WIDTH - 6)
-      break; // prevent overflow
-    str++;
-  }
+void oled_draw_char(uint8_t x, uint8_t y, char c)
+{
+	const uint8_t *glyph = font5x7[0]; // default space
+	if (c >= ' ' && c <= '~') {
+		glyph = font5x7[c - ' '];
+	}
+
+	for (int i = 0; i < 5; i++) {
+		if (x + i >= OLED_WIDTH)
+			break;
+		for (int j = 0; j < 8; j++) {
+			if (y + j >= OLED_HEIGHT)
+				break;
+
+			int byte_idx = (y / 8) * OLED_WIDTH + x + i;
+			int bit_idx = y % 8 + j;
+
+			if (bit_idx < 8 && byte_idx < sizeof(oled_buffer)) {
+				if (glyph[i] & (1 << j)) {
+					oled_buffer[byte_idx] |= (1 << bit_idx);
+				} else {
+					oled_buffer[byte_idx] &=
+						~(1 << bit_idx);
+				}
+			}
+		}
+	}
 }
 
-void oled_draw_line(uint8_t y) {
-  for (int x = 0; x < OLED_WIDTH; x++) {
-    int byte_idx = (y / 8) * OLED_WIDTH + x;
-    int bit_idx = y % 8;
-    if (byte_idx < sizeof(oled_buffer)) {
-      oled_buffer[byte_idx] |= (1 << bit_idx);
-    }
-  }
+void oled_draw_string(uint8_t x, uint8_t y, const char *str)
+{
+	while (*str) {
+		oled_draw_char(x, y, *str);
+		x += 6; // 5 pixels + 1 space
+		if (x >= OLED_WIDTH - 6)
+			break; // prevent overflow
+		str++;
+	}
+}
+
+void oled_draw_line(uint8_t y)
+{
+	for (int x = 0; x < OLED_WIDTH; x++) {
+		int byte_idx = (y / 8) * OLED_WIDTH + x;
+		int bit_idx = y % 8;
+		if (byte_idx < sizeof(oled_buffer)) {
+			oled_buffer[byte_idx] |= (1 << bit_idx);
+		}
+	}
 }
 
 void oled_draw_bitmap(int x, int y, uint8_t width, uint8_t height,
-                      const uint8_t *bitmap) {
-  for (int i = 0; i < width; i++) {
-    for (int j = 0; j < height; j++) {
-      bool pixel_on = (bitmap[i] & (1 << j));
-      oled_draw_pixel(x + i, y + j, pixel_on ? 1 : 0);
-    }
-  }
+		      const uint8_t *bitmap)
+{
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
+			bool pixel_on = (bitmap[i] & (1 << j));
+			oled_draw_pixel(x + i, y + j, pixel_on ? 1 : 0);
+		}
+	}
 }
 
-void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index) {
-  if (emoji_index >= 21)
-    emoji_index = 0; // fallback
-  oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
+void oled_draw_emoji(uint8_t x, uint8_t y, uint8_t emoji_index)
+{
+	if (emoji_index >= 21)
+		emoji_index = 0; // fallback
+	oled_draw_bitmap(x, y, 8, 8, emoji_bitmaps[emoji_index]);
 }
 
 void oled_draw_icon_raw(uint8_t x, uint8_t start_page, uint8_t width_px,
-                        uint8_t height_pages, const uint8_t *icon_data) {
-  // zabezpieczenie przed wyjsciem poza ekran
-  if (x + width_px > OLED_WIDTH ||
-      start_page + height_pages > OLED_HEIGHT / 8) {
-    return;
-  }
+			uint8_t height_pages, const uint8_t *icon_data)
+{
+	// zabezpieczenie przed wyjsciem poza ekran
+	if (x + width_px > OLED_WIDTH ||
+	    start_page + height_pages > OLED_HEIGHT / 8) {
+		return;
+	}
 
-  for (uint8_t i = 0; i < height_pages; i++) {
-    // indeks dla biezacej strony
-    uint16_t buf_offset = (start_page + i) * OLED_WIDTH + x;
+	for (uint8_t i = 0; i < height_pages; i++) {
+		// indeks dla biezacej strony
+		uint16_t buf_offset = (start_page + i) * OLED_WIDTH + x;
 
-    // offest w danych ikony
-    uint16_t data_offset = i * width_px;
+		// offest w danych ikony
+		uint16_t data_offset = i * width_px;
 
-    // kopiowanie jednego wiersza danych ikony do bufora
-    memcpy(&oled_buffer[buf_offset], icon_data + data_offset, width_px);
-  }
+		// kopiowanie jednego wiersza danych ikony do bufora
+		memcpy(&oled_buffer[buf_offset], icon_data + data_offset,
+		       width_px);
+	}
 }
 
-void oled_draw_pixel(int x, int y, uint8_t color) {
-  if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT)
-    return;
+void oled_draw_pixel(int x, int y, uint8_t color)
+{
+	if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT)
+		return;
 
-  int byte_idx = (y / 8) * OLED_WIDTH + x;
-  int bit_idx = y % 8;
+	int byte_idx = (y / 8) * OLED_WIDTH + x;
+	int bit_idx = y % 8;
 
-  if (color)
-    oled_buffer[byte_idx] |= (1 << bit_idx);
-  else
-    oled_buffer[byte_idx] &= ~(1 << bit_idx);
+	if (color)
+		oled_buffer[byte_idx] |= (1 << bit_idx);
+	else
+		oled_buffer[byte_idx] &= ~(1 << bit_idx);
 }
 
-void oled_power_save_task(void) {
-  if (config_mode == 1)
-    return;
-
-  config_data_t *config = config_get();
-  uint32_t timeout_s = config->oled_timeout_s;
-
-  if (timeout_s == 0) {
-    if (!g_oled_active)
-      oled_set_power(true);
-    return;
-  }
-
-  uint32_t now = to_ms_since_boot(get_absolute_time());
-  uint32_t time_since_activity = now - g_last_activity_time;
-  uint32_t timeout_ms = timeout_s * 1000;
-
-  if (time_since_activity > timeout_ms &&
-      time_since_activity < (timeout_ms + SCREENSAVER_DURATION_MS)) {
-
-    if (!g_oled_active)
-      oled_set_power(true);
-
-    if (!timer_running) {
-      add_repeating_timer_ms(50, matrix_timer_callback, NULL, &matrix_timer);
-      timer_running = true;
-
-      screensaver_start_new_session();
-    }
-
-    if (matrix_tick_flag) {
-      screensaver_update(); // Zamiast oled_effect_matrix_rain()
-      matrix_tick_flag = false;
-    }
-  } else if (time_since_activity >= (timeout_ms + SCREENSAVER_DURATION_MS)) {
-    if (timer_running) {
-      cancel_repeating_timer(&matrix_timer);
-      timer_running = false;
-    }
-
-    if (g_oled_active) {
-      oled_clear();
-      oled_update();
-      oled_set_power(false);
-      led_rgb_set(0, 0, 0);
-      leds_refresh(); // always-on LEDs keep shining
-    }
-  } else {
-    if (timer_running) {
-      cancel_repeating_timer(&matrix_timer);
-      timer_running = false;
-    }
-
-    if (!g_oled_active) {
-      oled_set_power(true);
-      uint8_t current_layer = config_get_current_layer();
-      oled_display_layer_info(current_layer);
-    }
-  }
+static void draw_hline(int x0, int x1, int y, uint8_t color)
+{
+	if (x0 > x1) {
+		int tmp = x0;
+		x0 = x1;
+		x1 = tmp;
+	}
+	for (int x = x0; x <= x1; x++) {
+		oled_draw_pixel(x, y, color);
+	}
 }
 
-void oled_set_power(bool on) {
-  oled_write_cmd(on ? OLED_CMD_DISPLAY_ON : OLED_CMD_DISPLAY_OFF);
-  g_oled_active = on;
-  if (on) {
-    cdc_log("[OLED] Display ON\n");
-  } else {
-    cdc_log("[OLED] Display OFF (Power Save)\n");
-  }
+static void draw_vline(int x, int y0, int y1, uint8_t color)
+{
+	if (y0 > y1) {
+		int tmp = y0;
+		y0 = y1;
+		y1 = tmp;
+	}
+	for (int y = y0; y <= y1; y++) {
+		oled_draw_pixel(x, y, color);
+	}
 }
 
-void oled_wake_up(void) {
-  g_last_activity_time = to_ms_since_boot(get_absolute_time());
-  matrix_initialized = false;
-
-  if (timer_running) {
-    cancel_repeating_timer(&matrix_timer);
-    timer_running = false;
-  }
-
-  if (!g_oled_active) {
-    oled_set_power(true);
-    led_rgb_update_os(detect_platform());
-    leds_refresh();
-  }
+static int clamp_corner_radius(int w, int h, int r)
+{
+	int max_r = (w < h ? w : h) / 2;
+	if (r < 0)
+		return 0;
+	return (r > max_r) ? max_r : r;
 }
 
-bool oled_is_active(void) { return g_oled_active; }
+void oled_draw_char_px(int x, int y, char c, int min_x, int max_x)
+{
+	const uint8_t *glyph = font5x7[0];
+	if (c >= ' ' && c <= '~') {
+		glyph = font5x7[c - ' '];
+	}
 
-int count_active_drops(void) {
-  int count = 0;
-  for (int i = 0; i < MATRIX_COLS; i++) {
-    if (rain_cols[i].active)
-      count++;
-  }
-  return count;
+	for (int i = 0; i < 5; i++) {
+		int px = x + i;
+		if (px < min_x || px > max_x)
+			continue;
+		for (int j = 0; j < 7; j++) {
+			if (glyph[i] & (1 << j)) {
+				oled_draw_pixel(px, y + j, 1);
+			}
+		}
+	}
 }
 
-void oled_trigger_preview(uint8_t layer, uint8_t button) {
-  oled_display_button_preview(layer, button);
+void oled_draw_string_clipped(int x, int y, int min_x, int max_x,
+			      const char *str)
+{
+	if (!str)
+		return;
 
-  preview_end_time =
-      to_ms_since_boot(get_absolute_time()) + PREVIEW_DURATION_MS;
-  is_preview_active = true;
-
-  oled_wake_up();
+	while (*str && x <= max_x) {
+		if (x + 5 >= min_x) {
+			oled_draw_char_px(x, y, *str, min_x, max_x);
+		}
+		x += 6;
+		str++;
+	}
 }
 
-void oled_ui_task(void) {
-  if (config_mode == 1)
-    return;
+void oled_draw_line_pts(int x0, int y0, int x1, int y1, uint8_t color)
+{
+	int dx = abs(x1 - x0);
+	int sx = (x0 < x1) ? 1 : -1;
+	int dy = -abs(y1 - y0);
+	int sy = (y0 < y1) ? 1 : -1;
+	int err = dx + dy;
 
-  if (is_preview_active) {
-    uint32_t now = to_ms_since_boot(get_absolute_time());
+	while (true) {
+		oled_draw_pixel(x0, y0, color);
+		if (x0 == x1 && y0 == y1)
+			break;
+		int e2 = 2 * err;
+		if (e2 >= dy) {
+			err += dy;
+			x0 += sx;
+		}
+		if (e2 <= dx) {
+			err += dx;
+			y0 += sy;
+		}
+	}
+}
 
-    if (now > preview_end_time) {
-      is_preview_active = false;
+void oled_draw_rect(int x, int y, int w, int h, uint8_t color)
+{
+	if (w <= 0 || h <= 0)
+		return;
+	draw_hline(x, x + w - 1, y, color);
+	draw_hline(x, x + w - 1, y + h - 1, color);
+	draw_vline(x, y, y + h - 1, color);
+	draw_vline(x + w - 1, y, y + h - 1, color);
+}
 
-      uint8_t current = config_get_current_layer();
-      oled_display_layer_info(current);
-    }
-  }
+void oled_draw_rounded_rect(int x, int y, int w, int h, int r, uint8_t color)
+{
+	if (w <= 0 || h <= 0)
+		return;
+	r = clamp_corner_radius(w, h, r);
+	if (r == 0) {
+		oled_draw_rect(x, y, w, h, color);
+		return;
+	}
+
+	draw_hline(x + r, x + w - 1 - r, y, color);
+	draw_hline(x + r, x + w - 1 - r, y + h - 1, color);
+	draw_vline(x, y + r, y + h - 1 - r, color);
+	draw_vline(x + w - 1, y + r, y + h - 1 - r, color);
+
+	int cx_l = x + r;
+	int cx_r = x + w - 1 - r;
+	int cy_t = y + r;
+	int cy_b = y + h - 1 - r;
+
+	int f = 1 - r;
+	int ddF_x = 1;
+	int ddF_y = -2 * r;
+	int px = 0;
+	int py = r;
+
+	while (px <= py) {
+		oled_draw_pixel(cx_l - px, cy_t - py, color);
+		oled_draw_pixel(cx_l - py, cy_t - px, color);
+		oled_draw_pixel(cx_r + px, cy_t - py, color);
+		oled_draw_pixel(cx_r + py, cy_t - px, color);
+		oled_draw_pixel(cx_l - px, cy_b + py, color);
+		oled_draw_pixel(cx_l - py, cy_b + px, color);
+		oled_draw_pixel(cx_r + px, cy_b + py, color);
+		oled_draw_pixel(cx_r + py, cy_b + px, color);
+
+		if (f >= 0) {
+			py--;
+			ddF_y += 2;
+			f += ddF_y;
+		}
+		px++;
+		ddF_x += 2;
+		f += ddF_x;
+	}
+}
+
+void oled_fill_rounded_rect(int x, int y, int w, int h, int r, uint8_t color)
+{
+	if (w <= 0 || h <= 0)
+		return;
+	r = clamp_corner_radius(w, h, r);
+
+	for (int row = y + r; row <= y + h - 1 - r; row++) {
+		draw_hline(x, x + w - 1, row, color);
+	}
+	if (r == 0)
+		return;
+
+	int cx_l = x + r;
+	int cx_r = x + w - 1 - r;
+	int cy_t = y + r;
+	int cy_b = y + h - 1 - r;
+
+	int f = 1 - r;
+	int ddF_x = 1;
+	int ddF_y = -2 * r;
+	int px = 0;
+	int py = r;
+
+	while (px <= py) {
+		draw_hline(cx_l - px, cx_r + px, cy_t - py, color);
+		draw_hline(cx_l - px, cx_r + px, cy_b + py, color);
+		draw_hline(cx_l - py, cx_r + py, cy_t - px, color);
+		draw_hline(cx_l - py, cx_r + py, cy_b + px, color);
+
+		if (f >= 0) {
+			py--;
+			ddF_y += 2;
+			f += ddF_y;
+		}
+		px++;
+		ddF_x += 2;
+		f += ddF_x;
+	}
+}
+
+void oled_set_contrast(uint8_t contrast)
+{
+	oled_write_cmd(OLED_CMD_SET_CONTRAST);
+	oled_write_cmd(contrast);
+}
+
+void oled_power_save_task(void)
+{
+	if (config_mode == 1)
+		return;
+
+	config_data_t *config = config_get();
+	uint32_t timeout_s = config->oled_timeout_s;
+
+	if (timeout_s == 0) {
+		if (!g_oled_active)
+			oled_set_power(true);
+		return;
+	}
+
+	uint32_t now = to_ms_since_boot(get_absolute_time());
+	uint32_t time_since_activity = now - g_last_activity_time;
+	uint32_t timeout_ms = timeout_s * 1000;
+
+	if (time_since_activity > timeout_ms &&
+	    time_since_activity < (timeout_ms + SCREENSAVER_DURATION_MS)) {
+		if (!g_oled_active)
+			oled_set_power(true);
+
+		if (!timer_running) {
+			add_repeating_timer_ms(50, matrix_timer_callback, NULL,
+					       &matrix_timer);
+			timer_running = true;
+
+			screensaver_start_new_session();
+		}
+
+		if (matrix_tick_flag) {
+			screensaver_update(); // Zamiast oled_effect_matrix_rain()
+			matrix_tick_flag = false;
+		}
+	} else if (time_since_activity >=
+		   (timeout_ms + SCREENSAVER_DURATION_MS)) {
+		if (timer_running) {
+			cancel_repeating_timer(&matrix_timer);
+			timer_running = false;
+		}
+
+		if (g_oled_active) {
+			oled_clear();
+			oled_update();
+			oled_set_power(false);
+			led_rgb_set(0, 0, 0);
+			leds_refresh(); // always-on LEDs keep shining
+		}
+	} else {
+		if (timer_running) {
+			cancel_repeating_timer(&matrix_timer);
+			timer_running = false;
+		}
+
+		if (!g_oled_active) {
+			oled_set_power(true);
+			uint8_t current_layer = config_get_current_layer();
+			oled_display_layer_info(current_layer);
+		}
+	}
+}
+
+void oled_set_power(bool on)
+{
+	oled_write_cmd(on ? OLED_CMD_DISPLAY_ON : OLED_CMD_DISPLAY_OFF);
+	g_oled_active = on;
+	if (on) {
+		cdc_log("[OLED] Display ON\n");
+	} else {
+		cdc_log("[OLED] Display OFF (Power Save)\n");
+	}
+}
+
+void oled_wake_up(void)
+{
+	g_last_activity_time = to_ms_since_boot(get_absolute_time());
+	matrix_initialized = false;
+
+	if (timer_running) {
+		cancel_repeating_timer(&matrix_timer);
+		timer_running = false;
+	}
+
+	if (!g_oled_active) {
+		oled_set_power(true);
+		led_rgb_update_os(detect_platform());
+		leds_refresh();
+	}
+}
+
+bool oled_is_active(void)
+{
+	return g_oled_active;
+}
+
+int count_active_drops(void)
+{
+	int count = 0;
+	for (int i = 0; i < MATRIX_COLS; i++) {
+		if (rain_cols[i].active)
+			count++;
+	}
+	return count;
+}
+
+void oled_trigger_preview(uint8_t layer, uint8_t button)
+{
+	oled_display_button_preview(layer, button);
+
+	preview_end_time =
+		to_ms_since_boot(get_absolute_time()) + PREVIEW_DURATION_MS;
+	is_preview_active = true;
+
+	oled_wake_up();
+}
+
+void oled_ui_task(void)
+{
+	if (config_mode == 1)
+		return;
+
+	if (is_preview_active) {
+		uint32_t now = to_ms_since_boot(get_absolute_time());
+
+		if (now > preview_end_time) {
+			is_preview_active = false;
+
+			uint8_t current = config_get_current_layer();
+			oled_display_layer_info(current);
+		}
+	}
 }
