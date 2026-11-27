@@ -6,8 +6,10 @@
 #include "pin_definitions.h"
 #include <string.h>
 
+#define COMP_BTN_MIN_ACTIVE_IDX 3
 #define COMP_BTN_ESC_IDX 6
 #define COMP_DEBOUNCE_MS 12UL
+#define COMP_ACTION_HOLD_MS 700UL
 #define COMP_RENDER_INTERVAL_MS 33UL
 #define COMP_EXIT_BYE_MS 650UL
 
@@ -18,9 +20,19 @@ static uint32_t s_exit_done_ms = 0;
 static uint32_t s_last_render_ms = 0;
 static bool s_btn_prev[NUM_BUTTONS];
 static uint32_t s_btn_last_edge_ms[NUM_BUTTONS];
+static bool s_key_pressed[3];
+static uint32_t s_key_press_ms[3];
+static bool s_key_hold_fired[3];
 static bool s_ignore_esc_release = false;
 static uint8_t s_last_led_mask = 0xFF;
 static uint8_t s_last_rgb_code = 0xFF;
+
+static void reset_action_keys(void)
+{
+	memset(s_key_pressed, 0, sizeof(s_key_pressed));
+	memset(s_key_press_ms, 0, sizeof(s_key_press_ms));
+	memset(s_key_hold_fired, 0, sizeof(s_key_hold_fired));
+}
 
 static uint8_t led_mask_n_segments(uint8_t count)
 {
@@ -146,25 +158,13 @@ static void update_companion_leds(uint32_t now_ms)
 static void handle_home_button(uint8_t btn, uint32_t now_ms)
 {
 	switch (btn) {
-	case 0:
+	case 3: /* [4] Left */
 		companion_state_pet(&s_state, now_ms);
 		break;
-	case 1:
+	case 4: /* [5] Middle */
 		companion_state_coffee(&s_state, now_ms);
 		break;
-	case 2:
-		companion_pomo_start(&s_state, now_ms);
-		break;
-	case 3:
-		s_state.local_mic_muted = !s_state.local_mic_muted;
-		press_sequence(0, COMP_HID_KEY_MUTE_MIC);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 4:
-		exec_hid_consumer_press(TALOS_CONSUMER_PLAY_PAUSE);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 5:
+	case 5: /* [6] Right */
 		companion_state_sleep_now(&s_state, now_ms);
 		break;
 	default:
@@ -172,30 +172,27 @@ static void handle_home_button(uint8_t btn, uint32_t now_ms)
 	}
 }
 
-static void handle_pomo_button(uint8_t btn, uint32_t now_ms)
+static void handle_pomo_action(uint8_t btn, bool is_hold, uint32_t now_ms)
 {
 	switch (btn) {
-	case 0:
-		companion_pomo_toggle_run(&s_state, now_ms);
+	case 3: /* [4] Left: Start/Pause (Hold: Reset) */
+		if (is_hold) {
+			companion_pomo_reset(&s_state);
+			companion_state_touch_activity(&s_state, now_ms);
+		} else {
+			companion_pomo_toggle_run(&s_state, now_ms);
+		}
 		break;
-	case 1:
-		companion_pomo_reset(&s_state);
+	case 4: /* [5] Middle: Skip Phase (Hold: Deep Focus) */
+		if (is_hold) {
+			companion_pomo_toggle_deep_focus(&s_state);
+		} else {
+			companion_pomo_skip_phase(&s_state);
+		}
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
-	case 2:
-		companion_pomo_skip_phase(&s_state);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 3:
-		companion_pomo_adjust_minutes(&s_state, -5);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 4:
-		companion_pomo_adjust_minutes(&s_state, 5);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 5:
-		companion_pomo_toggle_deep_focus(&s_state);
+	case 5: /* [6] Right: +5 min (Hold: -5 min) */
+		companion_pomo_adjust_minutes(&s_state, is_hold ? -5 : 5);
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
 	default:
@@ -203,32 +200,38 @@ static void handle_pomo_button(uint8_t btn, uint32_t now_ms)
 	}
 }
 
-static void handle_media_button(uint8_t btn, uint32_t now_ms)
+static void handle_media_action(uint8_t btn, bool is_hold, uint32_t now_ms)
 {
 	switch (btn) {
-	case 0:
-		exec_hid_consumer_press(TALOS_CONSUMER_SCAN_PREV);
-		companion_state_touch_activity(&s_state, now_ms);
+	case 3: /* [4] Left: Vol- (Hold: Prev Track) */
+		if (is_hold) {
+			exec_hid_consumer_press(TALOS_CONSUMER_SCAN_PREV);
+			companion_state_touch_activity(&s_state, now_ms);
+		} else {
+			exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_DOWN);
+			companion_state_show_volume(&s_state, false, false,
+						    now_ms);
+		}
 		break;
-	case 1:
-		exec_hid_consumer_press(TALOS_CONSUMER_PLAY_PAUSE);
-		companion_state_touch_activity(&s_state, now_ms);
+	case 4: /* [5] Middle: Play/Pause (Hold: Mute) */
+		if (is_hold) {
+			exec_hid_consumer_press(TALOS_CONSUMER_MUTE);
+			companion_state_show_volume(&s_state, false, true,
+						    now_ms);
+		} else {
+			exec_hid_consumer_press(TALOS_CONSUMER_PLAY_PAUSE);
+			companion_state_touch_activity(&s_state, now_ms);
+		}
 		break;
-	case 2:
-		exec_hid_consumer_press(TALOS_CONSUMER_SCAN_NEXT);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 3:
-		exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_DOWN);
-		companion_state_show_volume(&s_state, false, false, now_ms);
-		break;
-	case 4:
-		exec_hid_consumer_press(TALOS_CONSUMER_MUTE);
-		companion_state_show_volume(&s_state, false, true, now_ms);
-		break;
-	case 5:
-		exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_UP);
-		companion_state_show_volume(&s_state, true, false, now_ms);
+	case 5: /* [6] Right: Vol+ (Hold: Next Track) */
+		if (is_hold) {
+			exec_hid_consumer_press(TALOS_CONSUMER_SCAN_NEXT);
+			companion_state_touch_activity(&s_state, now_ms);
+		} else {
+			exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_UP);
+			companion_state_show_volume(&s_state, true, false,
+						    now_ms);
+		}
 		break;
 	default:
 		break;
@@ -238,7 +241,7 @@ static void handle_media_button(uint8_t btn, uint32_t now_ms)
 static void handle_voice_button(uint8_t btn, uint32_t now_ms)
 {
 	switch (btn) {
-	case 0:
+	case 3: /* [4] Left: Mute Mic */
 		s_state.local_mic_muted = !s_state.local_mic_muted;
 		if (!s_state.local_mic_muted) {
 			s_state.brb_active = false;
@@ -246,37 +249,38 @@ static void handle_voice_button(uint8_t btn, uint32_t now_ms)
 		press_sequence(0, COMP_HID_KEY_MUTE_MIC);
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
-	case 1:
+	case 4: /* [5] Middle: Deafen (headphones + mic) */
 		s_state.local_deafened = !s_state.local_deafened;
 		press_sequence(0, COMP_HID_KEY_DEAFEN);
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
-	case 2:
-		exec_hid_consumer_press(TALOS_CONSUMER_PLAY_PAUSE);
-		companion_state_touch_activity(&s_state, now_ms);
-		break;
-	case 3:
-		exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_DOWN);
-		companion_state_show_volume(&s_state, false, false, now_ms);
-		break;
-	case 4:
-		exec_hid_consumer_press(TALOS_CONSUMER_VOLUME_UP);
-		companion_state_show_volume(&s_state, true, false, now_ms);
-		break;
-	case 5: {
+	case 5: /* [6] Right: BRB */
 		s_state.brb_active = !s_state.brb_active;
-		bool already_muted =
-			s_state.local_mic_muted ||
-			((s_state.host_flags & COMP_FLAG_MIC_MUTED) != 0);
-		if (s_state.brb_active && !already_muted) {
+		if (s_state.brb_active && !s_state.local_mic_muted &&
+		    (s_state.host_flags & COMP_FLAG_MIC_MUTED) == 0) {
 			s_state.local_mic_muted = true;
 			press_sequence(0, COMP_HID_KEY_MUTE_MIC);
 		}
 		companion_state_touch_activity(&s_state, now_ms);
 		break;
-	}
 	default:
 		break;
+	}
+}
+
+static bool submode_uses_hold(companion_submode_t submode)
+{
+	return submode == COMP_SUBMODE_POMODORO ||
+	       submode == COMP_SUBMODE_MEDIA;
+}
+
+static void dispatch_hold_aware_action(uint8_t btn, bool is_hold,
+				       uint32_t now_ms)
+{
+	if (s_state.submode == COMP_SUBMODE_POMODORO) {
+		handle_pomo_action(btn, is_hold, now_ms);
+	} else if (s_state.submode == COMP_SUBMODE_MEDIA) {
+		handle_media_action(btn, is_hold, now_ms);
 	}
 }
 
@@ -291,6 +295,7 @@ void companion_mode_enter(uint32_t now_ms)
 	s_ignore_esc_release = false;
 	s_last_led_mask = 0xFF;
 	s_last_rgb_code = 0xFF;
+	reset_action_keys();
 
 	// Seed current physical button states so the entry press never fires a submode action
 	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
@@ -305,6 +310,7 @@ void companion_mode_exit(void)
 	s_exiting = false;
 	s_state.exit_holding = false;
 	s_state.exit_hold_pct = 0;
+	reset_action_keys();
 	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
 		led_set(i, false);
 	}
@@ -325,12 +331,15 @@ companion_state_t *companion_mode_get_state(void)
 void companion_mode_handle_button_event(uint8_t button_idx, bool pressed,
 					uint32_t now_ms)
 {
-	if (!s_active || s_exiting || button_idx >= NUM_BUTTONS)
+	if (!s_active || s_exiting || button_idx < COMP_BTN_MIN_ACTIVE_IDX ||
+	    button_idx >= NUM_BUTTONS) {
 		return;
+	}
 
 	if (pressed && companion_state_is_sleeping(&s_state)) {
 		// First click wakes Companion without triggering any submode action
 		companion_state_wake(&s_state, now_ms);
+		reset_action_keys();
 		if (button_idx == COMP_BTN_ESC_IDX) {
 			s_ignore_esc_release = true;
 		}
@@ -348,7 +357,27 @@ void companion_mode_handle_button_event(uint8_t button_idx, bool pressed,
 			if (s_ignore_esc_release) {
 				s_ignore_esc_release = false;
 			} else {
+				reset_action_keys();
 				companion_state_cycle_submode(&s_state, now_ms);
+			}
+		}
+		return;
+	}
+
+	if (submode_uses_hold(s_state.submode)) {
+		uint8_t slot = (uint8_t)(button_idx - COMP_BTN_MIN_ACTIVE_IDX);
+		if (pressed) {
+			s_key_pressed[slot] = true;
+			s_key_press_ms[slot] = now_ms;
+			s_key_hold_fired[slot] = false;
+		} else if (s_key_pressed[slot]) {
+			s_key_pressed[slot] = false;
+			if (!s_key_hold_fired[slot]) {
+				bool held = ((uint32_t)(now_ms -
+							s_key_press_ms[slot]) >=
+					     COMP_ACTION_HOLD_MS);
+				dispatch_hold_aware_action(button_idx, held,
+							   now_ms);
 			}
 		}
 		return;
@@ -360,12 +389,6 @@ void companion_mode_handle_button_event(uint8_t button_idx, bool pressed,
 	switch (s_state.submode) {
 	case COMP_SUBMODE_HOME:
 		handle_home_button(button_idx, now_ms);
-		break;
-	case COMP_SUBMODE_POMODORO:
-		handle_pomo_button(button_idx, now_ms);
-		break;
-	case COMP_SUBMODE_MEDIA:
-		handle_media_button(button_idx, now_ms);
 		break;
 	case COMP_SUBMODE_VOICE:
 		handle_voice_button(button_idx, now_ms);
@@ -381,7 +404,7 @@ void companion_mode_task(uint32_t now_ms)
 	if (!s_active)
 		return;
 
-	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+	for (uint8_t i = COMP_BTN_MIN_ACTIVE_IDX; i < NUM_BUTTONS; i++) {
 		bool raw = button_is_pressed(i);
 		if (raw != s_btn_prev[i] &&
 		    (uint32_t)(now_ms - s_btn_last_edge_ms[i]) >=
@@ -389,6 +412,20 @@ void companion_mode_task(uint32_t now_ms)
 			s_btn_prev[i] = raw;
 			s_btn_last_edge_ms[i] = now_ms;
 			companion_mode_handle_button_event(i, raw, now_ms);
+		}
+	}
+
+	if (submode_uses_hold(s_state.submode)) {
+		for (uint8_t slot = 0; slot < 3; slot++) {
+			if (s_key_pressed[slot] && !s_key_hold_fired[slot] &&
+			    (uint32_t)(now_ms - s_key_press_ms[slot]) >=
+				    COMP_ACTION_HOLD_MS) {
+				s_key_hold_fired[slot] = true;
+				dispatch_hold_aware_action(
+					(uint8_t)(slot +
+						  COMP_BTN_MIN_ACTIVE_IDX),
+					true, now_ms);
+			}
 		}
 	}
 
