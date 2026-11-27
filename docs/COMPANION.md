@@ -75,14 +75,18 @@ Add to your Emacs config:
 
 ### Submodes (cycled with `[7] esc` short press)
 
-| Submode      | Keys 1–6                                                        |
-| :----------- | :-------------------------------------------------------------- |
-| **HOME**     | Pet · Coffee · Start Pomodoro · Mute Mic · Play/Pause · Sleep   |
-| **POMODORO** | Start/Pause · Reset · Skip Phase · −5 min · +5 min · Deep Focus |
-| **MEDIA**    | Prev · Play/Pause · Next · Vol- · Mute · Vol+                   |
-| **VOICE**    | Mute Mic · Deafen · Play/Pause · Vol− · Vol+ · BRB              |
+Physical buttons `[1..3]` sit behind the OLED without keycaps, so all
+Companion interactions live on `[4]`, `[5]`, `[6]` and `[7] esc`:
+
+| Submode      | `[4]` (Left)                | `[5]` (Middle)                   | `[6]` (Right)             |
+| :----------- | :-------------------------- | :------------------------------- | :------------------------ |
+| **HOME**     | Pet                         | Coffee                           | Sleep OLED                |
+| **POMODORO** | Start/Pause _(hold: Reset)_ | Skip Phase _(hold: Deep Focus)_  | +5 min _(hold: −5 min)_   |
+| **MEDIA**    | Vol− _(hold: Prev Track)_   | Play/Pause _(hold: System Mute)_ | Vol+ _(hold: Next Track)_ |
+| **VOICE**    | Mute Mic (`F13`)            | Deafen (`F14`)                   | BRB _(Deafen + Coffee)_   |
 
 Long-hold `[7] esc` (1.5s) exits Companion Mode back to normal macropad layers.
+In Breakout, `[4]`/`[6]` move the paddle and `[7] esc` exits cleanly.
 
 ### Sleep & Wake
 
@@ -99,18 +103,22 @@ Device Settings. The preference is persisted in flash past the CRC32 guard.
 
 ## Vesktop / Discord on Sway
 
-Talos sends USB HID keycodes for Mute Mic (`F13`) and Deafen (`F14`). On
-Sway, bind these as global shortcuts via `xdg-desktop-portal`:
+Talos sends USB HID keycodes for Mute Mic (`F13`) and Deafen (`F14`). Because
+`xdg-desktop-portal-wlr` on Sway does not expose the `GlobalShortcuts` portal
+interface, bind them directly to PipeWire via `wpctl` in `~/.config/sway/config`:
 
-1. Open Vesktop -> Settings -> Keybinds
-2. Set "Toggle Mute" to `F13` and "Toggle Deafen" to `F14`
-3. Vesktop on Wayland uses `xdg-desktop-portal` GlobalShortcuts automatically
+```sway
+bindsym F13 exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindsym F14 exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+```
 
-The bridge monitors PipeWire for active Vesktop voice streams and
-`pactl get-source-mute` for microphone state, updating LEDs accordingly:
+This toggles system mic/output cleanly in Vesktop and every audio app. The
+bridge monitors PipeWire `pactl subscribe` events (`source-outputs`, default
+source mute, and default sink volume/mute), keeping Companion faces and LEDs in
+sync:
 
 - **LED #1 ON:** Mic muted
-- **LED #1 + #2 ON:** Deafened
+- **LED #1 + #2 ON:** Deafened (muted headphones + mic)
 
 ## Socket Protocol
 
