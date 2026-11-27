@@ -103,15 +103,20 @@ Device Settings. The preference is persisted in flash past the CRC32 guard.
 
 ## Vesktop / Discord on Sway
 
-Talos sends USB HID keycodes for Mute Mic (`F13`) and Deafen (`F14`). Because
+Talos sends USB HID keycodes for Mute Mic (`0x68` / `F13`) and Deafen
+(`0x69` / `F14`). On Linux/Fedora, XKB (`symbols/inet`) maps `<FK13>` (`191`) to
+`XF86Tools` and `<FK14>` (`192`) to `XF86Launch5`. Because
 `xdg-desktop-portal-wlr` on Sway does not expose the `GlobalShortcuts` portal
-interface, Vesktop `v1.7.0+` exposes a Unix IPC socket (`--run-shortcut` /
-`vesktop.sock`) specifically for compositor bindings in `~/.config/sway/config`:
+interface, bind them in `~/.config/sway/config` to Vesktop `v1.7.0+`'s Unix IPC
+socket (`--run-shortcut` / `vesktop.sock`):
 
 ```sway
-bindsym F13 exec printf 'run-shortcut toggleMute\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
-bindsym F14 exec printf 'run-shortcut toggleDeafen\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
+bindsym XF86Tools exec printf 'run-shortcut toggleMute\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
+bindsym XF86Launch5 exec printf 'run-shortcut toggleDeafen\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/vesktop.sock
 ```
+
+_(Or use `bindcode 191` / `bindcode 192` to match the evdev/XKB keycodes
+regardless of XKB symbol mapping.)_
 
 This toggles Mute/Deafen **only inside Vesktop** without muting system audio
 in PipeWire. _(For Flatpak `1.7+`, the socket path is
