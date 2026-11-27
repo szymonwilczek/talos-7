@@ -30,3 +30,6 @@ add_executable(talos-evt
     src/talos_evt.c
 )
 target_link_libraries(talos-evt PRIVATE talos_bridge_core)
+
+enable_testing()
+add_subdirectory(tests)
