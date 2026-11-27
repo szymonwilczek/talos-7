@@ -139,6 +139,9 @@ void companion_state_cycle_submode(companion_state_t *state, uint32_t now_ms)
 		return;
 
 	companion_state_wake(state, now_ms);
+	if (state->active_event == COMP_EVT_BOOT_HELLO) {
+		state->active_event = COMP_EVT_NONE;
+	}
 
 	// Short esc press cycles only interactive submodes; SLEEP stays explicit.
 	switch (state->submode) {
@@ -418,6 +421,9 @@ void companion_pomo_start(companion_state_t *state, uint32_t now_ms)
 	if (!state)
 		return;
 	companion_state_wake(state, now_ms);
+	if (state->active_event == COMP_EVT_BOOT_HELLO) {
+		state->active_event = COMP_EVT_NONE;
+	}
 	state->submode = COMP_SUBMODE_POMODORO;
 	state->wake_submode = COMP_SUBMODE_POMODORO;
 	if (state->pomo.remaining_s == 0) {
