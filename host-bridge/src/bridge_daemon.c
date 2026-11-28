@@ -85,6 +85,7 @@ bool bridge_daemon_handle_line(bridge_daemon_t *daemon, const char *line,
 			   sizeof(daemon->snap.emacs_buffer));
 		split_part(&cur, daemon->snap.emacs_mode,
 			   sizeof(daemon->snap.emacs_mode));
+		daemon->snap.emacs_open = true;
 		notify_activity(daemon, now_ms);
 		return true;
 	}

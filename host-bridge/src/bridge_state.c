@@ -261,11 +261,15 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 		out->ctx = BRIDGE_CTX_SPOTIFY;
 		bridge_format_spotify_title(snap, top, sizeof(top));
 		snprintf(sub, sizeof(sub), "Spotify");
-	} else if (app_is_emacs(snap->focused_app)) {
+	} else if (app_is_emacs(snap->focused_app) ||
+		   (app_is_terminal(snap->focused_app) && snap->emacs_open)) {
 		out->ctx = BRIDGE_CTX_EMACS;
+		const char *fallback = app_is_emacs(snap->focused_app) ?
+					       snap->focused_title :
+					       "Emacs";
 		const char *buf = snap->emacs_buffer[0] != '\0' ?
 					  snap->emacs_buffer :
-					  snap->focused_title;
+					  fallback;
 		bridge_sanitize_field(buf[0] != '\0' ? buf : "Emacs", top,
 				      sizeof(top), BRIDGE_TEXT_MAX);
 		bridge_sanitize_field(snap->emacs_mode, sub, sizeof(sub),

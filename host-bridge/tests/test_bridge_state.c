@@ -119,6 +119,21 @@ static void test_strict_priority_vesktop_gaming_kino_spotify_coding(void)
 	TEST_ASSERT_EQUAL(BRIDGE_CTX_TERM, out.ctx);
 	TEST_ASSERT_TRUE((out.flags & BRIDGE_FLAG_LATE_NIGHT) == 0);
 	TEST_ASSERT_TRUE((out.flags & BRIDGE_FLAG_TYPING_PULSE) == 0);
+
+	/* 6. Emacs beats focused Terminal while Emacs frame is open */
+	strcpy(snap.focused_app, "kitty");
+	strcpy(snap.focused_title, "agy -c ");
+	strcpy(snap.emacs_buffer, "MERGE_MSG");
+	strcpy(snap.emacs_mode, "git-commit");
+	snap.emacs_open = true;
+	bridge_resolve_state(&snap, 12, 8000ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_EMACS, out.ctx);
+	TEST_ASSERT_EQUAL_STRING("MERGE_MSG", out.top_text);
+
+	snap.emacs_open = false;
+	bridge_resolve_state(&snap, 12, 8100ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_TERM, out.ctx);
+	TEST_ASSERT_EQUAL_STRING("agy -c", out.top_text);
 }
 
 static void test_late_night_boundaries(void)

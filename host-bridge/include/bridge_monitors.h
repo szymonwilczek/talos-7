@@ -11,7 +11,8 @@
 #define SWAY_IPC_MAGIC_LEN 6U
 #define SWAY_IPC_SUBSCRIBE 2U
 #define SWAY_IPC_GET_TREE 4U
-#define SWAY_IPC_EVENT_WINDOW 0x80000000U
+#define SWAY_IPC_EVENT_WORKSPACE 0x80000000U
+#define SWAY_IPC_EVENT_WINDOW 0x80000003U
 
 typedef struct {
 	int sway_fd;
@@ -54,6 +55,15 @@ void bridge_monitors_close(bridge_monitors_t *m);
 bool bridge_parse_sway_tree(const char *json, char *out_app, size_t app_size,
 			    char *out_title, size_t title_size,
 			    bool *out_fullscreen);
+
+/**
+ * Parse a Sway GET_TREE JSON payload, extracting focus and whether any open
+ * Emacs window exists in the tree.
+ */
+bool bridge_parse_sway_tree_state(const char *json, char *out_app,
+				  size_t app_size, char *out_title,
+				  size_t title_size, bool *out_fullscreen,
+				  bool *out_emacs_open);
 
 /**
  * Parse a Sway window event JSON payload. Returns true if focus/active state

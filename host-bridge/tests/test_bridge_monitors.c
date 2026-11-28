@@ -20,11 +20,24 @@ static void test_parse_sway_tree_and_events(void)
 	char app[64];
 	char title[128];
 	bool fs = true;
-	TEST_ASSERT_TRUE(bridge_parse_sway_tree(tree, app, sizeof(app), title,
-						sizeof(title), &fs));
+	bool emacs_open = false;
+	TEST_ASSERT_TRUE(bridge_parse_sway_tree_state(tree, app, sizeof(app),
+						      title, sizeof(title), &fs,
+						      &emacs_open));
 	TEST_ASSERT_EQUAL_STRING("emacs", app);
 	TEST_ASSERT_EQUAL_STRING("init.el", title);
 	TEST_ASSERT_FALSE(fs);
+	TEST_ASSERT_TRUE(emacs_open);
+
+	const char *split_tree =
+		"{\"nodes\":[{\"name\":\"ws1\",\"focused\":false,\"nodes\":["
+		"{\"app_id\":\"emacs\",\"name\":\"MERGE_MSG\",\"fullscreen_mode\":0,\"focused\":false},"
+		"{\"app_id\":\"kitty\",\"name\":\"agy -c\",\"fullscreen_mode\":0,\"focused\":true}]}]}";
+	TEST_ASSERT_TRUE(bridge_parse_sway_tree_state(
+		split_tree, app, sizeof(app), title, sizeof(title), &fs,
+		&emacs_open));
+	TEST_ASSERT_EQUAL_STRING("kitty", app);
+	TEST_ASSERT_TRUE(emacs_open);
 
 	/* Unfocused title change should be ignored */
 	const char *bg_evt =
@@ -68,6 +81,8 @@ static void test_sway_binary_frame_buffer(void)
 	TEST_ASSERT_EQUAL(1, bridge_sway_consume_frame(buf, &full_len,
 						       &out_type, out_payload,
 						       sizeof(out_payload)));
+	TEST_ASSERT_EQUAL_UINT32(0x80000003U, SWAY_IPC_EVENT_WINDOW);
+	TEST_ASSERT_EQUAL_UINT32(0x80000000U, SWAY_IPC_EVENT_WORKSPACE);
 	TEST_ASSERT_EQUAL_UINT32(SWAY_IPC_EVENT_WINDOW, out_type);
 	TEST_ASSERT_EQUAL_STRING("{\"change\":\"focus\"}", out_payload);
 	TEST_ASSERT_EQUAL(0, full_len);

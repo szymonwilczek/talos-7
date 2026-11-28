@@ -195,17 +195,19 @@ static bool extract_sway_node_props(const char *node_obj, char *out_app,
 	return true;
 }
 
-static bool walk_sway_node(const char *node_obj, char *out_app, size_t app_size,
+static void walk_sway_node(const char *node_obj, char *out_app, size_t app_size,
 			   char *out_title, size_t title_size,
-			   bool *out_fullscreen)
+			   bool *out_fullscreen, bool *out_found_focus,
+			   bool *out_emacs_open)
 {
-	const char *v = NULL;
-	if (json_obj_find_key(node_obj, "focused", &v) &&
-	    strncmp(v, "true", 4) == 0) {
-		/* Also check leaf/view identity; containers with focus can still carry name */
-		return extract_sway_node_props(node_obj, out_app, app_size,
-					       out_title, title_size,
-					       out_fullscreen, NULL);
+	char app[128] = { 0 };
+	char title[256] = { 0 };
+	bool fs = false;
+	bool focused = false;
+	extract_sway_node_props(node_obj, app, sizeof(app), title,
+				sizeof(title), &fs, &focused);
+	if (out_emacs_open && ci_contains(app, "emacs")) {
+		*out_emacs_open = true;
 	}
 
 	static const char *const CHILD_KEYS[] = { "nodes", "floating_nodes" };
@@ -218,11 +220,9 @@ static bool walk_sway_node(const char *node_obj, char *out_app, size_t app_size,
 		while (*p != '\0' && *p != ']') {
 			p = skip_ws(p);
 			if (*p == '{') {
-				if (walk_sway_node(p, out_app, app_size,
-						   out_title, title_size,
-						   out_fullscreen)) {
-					return true;
-				}
+				walk_sway_node(p, out_app, app_size, out_title,
+					       title_size, out_fullscreen,
+					       out_found_focus, out_emacs_open);
 			}
 			p = skip_json_value(p);
 			if (!p)
@@ -232,20 +232,40 @@ static bool walk_sway_node(const char *node_obj, char *out_app, size_t app_size,
 				p++;
 		}
 	}
-	return false;
+
+	if (focused && out_found_focus && !*out_found_focus) {
+		snprintf(out_app, app_size, "%s", app);
+		snprintf(out_title, title_size, "%s", title);
+		*out_fullscreen = fs;
+		*out_found_focus = true;
+	}
 }
 
-bool bridge_parse_sway_tree(const char *json, char *out_app, size_t app_size,
-			    char *out_title, size_t title_size,
-			    bool *out_fullscreen)
+bool bridge_parse_sway_tree_state(const char *json, char *out_app,
+				  size_t app_size, char *out_title,
+				  size_t title_size, bool *out_fullscreen,
+				  bool *out_emacs_open)
 {
 	if (!json || !out_app || !out_title || !out_fullscreen)
 		return false;
 	out_app[0] = '\0';
 	out_title[0] = '\0';
 	*out_fullscreen = false;
-	return walk_sway_node(json, out_app, app_size, out_title, title_size,
-			      out_fullscreen);
+	if (out_emacs_open)
+		*out_emacs_open = false;
+
+	bool found_focus = false;
+	walk_sway_node(json, out_app, app_size, out_title, title_size,
+		       out_fullscreen, &found_focus, out_emacs_open);
+	return found_focus;
+}
+
+bool bridge_parse_sway_tree(const char *json, char *out_app, size_t app_size,
+			    char *out_title, size_t title_size,
+			    bool *out_fullscreen)
+{
+	return bridge_parse_sway_tree_state(json, out_app, app_size, out_title,
+					    title_size, out_fullscreen, NULL);
 }
 
 bool bridge_parse_sway_event(const char *json, char *out_app, size_t app_size,
@@ -620,11 +640,12 @@ static void refresh_sway_tree_initial(host_snapshot_t *snap)
 						char app[64];
 						char title[128];
 						bool fs = false;
-						if (bridge_parse_sway_tree(
+						bool emacs_open = false;
+						if (bridge_parse_sway_tree_state(
 							    buf, app,
 							    sizeof(app), title,
-							    sizeof(title),
-							    &fs)) {
+							    sizeof(title), &fs,
+							    &emacs_open)) {
 							snprintf(
 								snap->focused_app,
 								sizeof(snap->focused_app),
@@ -635,6 +656,20 @@ static void refresh_sway_tree_initial(host_snapshot_t *snap)
 								"%s", title);
 							snap->focused_fullscreen =
 								fs;
+						} else {
+							snap->focused_app[0] =
+								'\0';
+							snap->focused_title[0] =
+								'\0';
+							snap->focused_fullscreen =
+								false;
+						}
+						snap->emacs_open = emacs_open;
+						if (!emacs_open) {
+							snap->emacs_buffer[0] =
+								'\0';
+							snap->emacs_mode[0] =
+								'\0';
 						}
 					}
 					free(buf);
@@ -652,7 +687,8 @@ static int connect_sway_subscription(void)
 	if (fd < 0)
 		return -1;
 
-	if (!sway_send_msg(fd, SWAY_IPC_SUBSCRIBE, "[\"window\"]")) {
+	if (!sway_send_msg(fd, SWAY_IPC_SUBSCRIBE,
+			   "[\"window\",\"workspace\"]")) {
 		close(fd);
 		return -1;
 	}
@@ -1122,6 +1158,14 @@ static void drain_sway_fd(bridge_monitors_t *m, host_snapshot_t *snap,
 					       &mtype, payload,
 					       sizeof(payload))) == 1) {
 		if (mtype == SWAY_IPC_EVENT_WINDOW) {
+			const char *chg_v = NULL;
+			char change[32] = { 0 };
+			if (json_obj_find_key(payload, "change", &chg_v) &&
+			    *chg_v == '"') {
+				parse_json_string(chg_v, change,
+						  sizeof(change));
+			}
+
 			char app[64];
 			char title[128];
 			bool fs = false;
@@ -1134,9 +1178,21 @@ static void drain_sway_fd(bridge_monitors_t *m, host_snapshot_t *snap,
 					 sizeof(snap->focused_title), "%s",
 					 title);
 				snap->focused_fullscreen = fs;
+				if (ci_contains(app, "emacs"))
+					snap->emacs_open = true;
 				if (out_activity)
 					*out_activity = true;
 			}
+			if (strcmp(change, "close") == 0 ||
+			    strcmp(change, "new") == 0) {
+				refresh_sway_tree_initial(snap);
+				if (out_activity)
+					*out_activity = true;
+			}
+		} else if (mtype == SWAY_IPC_EVENT_WORKSPACE) {
+			refresh_sway_tree_initial(snap);
+			if (out_activity)
+				*out_activity = true;
 		}
 	}
 	if (rc < 0) {

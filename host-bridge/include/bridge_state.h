@@ -12,6 +12,7 @@ typedef struct {
 
 	char emacs_buffer[64];
 	char emacs_mode[32];
+	bool emacs_open;
 
 	bool spotify_playing;
 	char spotify_artist[64];
