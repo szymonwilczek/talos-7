@@ -27,6 +27,17 @@ void test_comp_cdc_parse_state_named_and_numeric(void)
 	TEST_ASSERT_EQUAL(COMP_CTX_KINO, st.host_ctx);
 	TEST_ASSERT_EQUAL_UINT32(65U, st.host_flags);
 	TEST_ASSERT_EQUAL_STRING("NETFLIX", st.top_text);
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_state(
+		"LOAD|128|CPU 86C 52%|OVERHEAT", &st, 2300));
+	TEST_ASSERT_EQUAL(COMP_CTX_LOAD, st.host_ctx);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_HOT,
+			  companion_state_resolve_expr(&st));
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_state(
+		"LOAD|256|CPU 92C 60%|CRITICAL LOAD", &st, 2400));
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_CRITICAL,
+			  companion_state_resolve_expr(&st));
 }
 
 void test_comp_cdc_parse_state_rejects_malformed(void)

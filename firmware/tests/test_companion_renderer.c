@@ -60,7 +60,7 @@ void test_all_expressions_respect_yellow_blue_seam_y15(void)
 	const companion_host_ctx_t ctxs[] = {
 		COMP_CTX_IDLE,		 COMP_CTX_EMACS,   COMP_CTX_TERM,
 		COMP_CTX_AGENT_THINKING, COMP_CTX_VESKTOP, COMP_CTX_SPOTIFY,
-		COMP_CTX_KINO,		 COMP_CTX_GAMING
+		COMP_CTX_KINO,		 COMP_CTX_GAMING,  COMP_CTX_LOAD
 	};
 
 	for (size_t i = 0; i < sizeof(ctxs) / sizeof(ctxs[0]); i++) {
@@ -70,8 +70,19 @@ void test_all_expressions_respect_yellow_blue_seam_y15(void)
 		TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));
 	}
 
-	companion_pomo_start(&st, 2000);
-	companion_renderer_render(&st, 2000);
+	const uint32_t load_flags[3] = { 0U, COMP_FLAG_LOAD_T2,
+					 COMP_FLAG_LOAD_T3 };
+	for (size_t tier = 0; tier < 3; tier++) {
+		companion_state_set_host_context(&st, COMP_CTX_LOAD,
+						 load_flags[tier],
+						 "CPU 90C 50%", "", 2100);
+		companion_renderer_render(&st, 2100 + (uint32_t)tier * 95U);
+		TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));
+		TEST_ASSERT_TRUE(mock_oled_count_lit(0, 16, 127, 63) > 40);
+	}
+
+	companion_pomo_start(&st, 2500);
+	companion_renderer_render(&st, 2500);
 	TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));
 }
 

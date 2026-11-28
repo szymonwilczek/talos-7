@@ -159,6 +159,63 @@ static void test_idle_tracker_media_guard_and_wake(void)
 	TEST_ASSERT_FALSE(idle.sleeping);
 }
 
+static void test_load_or_logic_hysteresis_and_highest_priority(void)
+{
+	/* OR semantics across CPU temp (C) and RAM (%) */
+	TEST_ASSERT_EQUAL_UINT8(0, bridge_update_load_tier(0, 79, 79));
+	TEST_ASSERT_EQUAL_UINT8(1, bridge_update_load_tier(0, 80, 40));
+	TEST_ASSERT_EQUAL_UINT8(1, bridge_update_load_tier(0, 45, 80));
+	TEST_ASSERT_EQUAL_UINT8(2, bridge_update_load_tier(1, 85, 30));
+	TEST_ASSERT_EQUAL_UINT8(2, bridge_update_load_tier(1, 50, 85));
+	TEST_ASSERT_EQUAL_UINT8(3, bridge_update_load_tier(2, 90, 40));
+	TEST_ASSERT_EQUAL_UINT8(3, bridge_update_load_tier(2, 40, 90));
+
+	/* Hysteresis prevents flapping on small dips */
+	TEST_ASSERT_EQUAL_UINT8(3, bridge_update_load_tier(3, 88, 30));
+	TEST_ASSERT_EQUAL_UINT8(2, bridge_update_load_tier(3, 87, 30));
+	TEST_ASSERT_EQUAL_UINT8(2, bridge_update_load_tier(2, 83, 30));
+	TEST_ASSERT_EQUAL_UINT8(1, bridge_update_load_tier(2, 82, 30));
+	TEST_ASSERT_EQUAL_UINT8(1, bridge_update_load_tier(1, 76, 30));
+	TEST_ASSERT_EQUAL_UINT8(0, bridge_update_load_tier(1, 75, 75));
+
+	/* Highest priority overrides even Vesktop voice & agent thinking */
+	host_snapshot_t snap;
+	memset(&snap, 0, sizeof(snap));
+	snap.vesktop_voice_active = true;
+	snap.agent_thinking = true;
+	strcpy(snap.agent_task, "Build");
+	snap.spotify_playing = true;
+	snap.cpu_temp_c = 83;
+	snap.ram_used_pct = 54;
+	snap.load_tier = 1;
+
+	bridge_resolved_state_t out;
+	bridge_resolve_state(&snap, 14, 5000ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_LOAD, out.ctx);
+	TEST_ASSERT_EQUAL_STRING("CPU 83C 54%", out.top_text);
+	TEST_ASSERT_TRUE((out.flags & BRIDGE_FLAG_VOICE_ACTIVE) != 0);
+	TEST_ASSERT_TRUE((out.flags & BRIDGE_FLAG_MEDIA_ACTIVE) != 0);
+	TEST_ASSERT_TRUE(
+		(out.flags & (BRIDGE_FLAG_LOAD_T2 | BRIDGE_FLAG_LOAD_T3)) == 0);
+
+	/* RAM-driven Tier 2 sets T2 flag and formats RAM first */
+	snap.cpu_temp_c = 66;
+	snap.ram_used_pct = 87;
+	snap.load_tier = 2;
+	bridge_resolve_state(&snap, 14, 5500ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_LOAD, out.ctx);
+	TEST_ASSERT_TRUE((out.flags & BRIDGE_FLAG_LOAD_T2) != 0);
+	TEST_ASSERT_EQUAL_STRING("RAM 87% 66C", out.top_text);
+
+	/* Once load clears, drops back to Agent/Vesktop cleanly */
+	snap.load_tier = 0;
+	snap.cpu_temp_c = 70;
+	snap.ram_used_pct = 50;
+	snap.agent_thinking = false;
+	bridge_resolve_state(&snap, 14, 6000ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_VESKTOP, out.ctx);
+}
+
 void run_bridge_state_tests(void)
 {
 	RUN_TEST(test_priority_agent_overrides_all);
@@ -167,4 +224,5 @@ void run_bridge_state_tests(void)
 	RUN_TEST(test_strict_priority_vesktop_gaming_kino_spotify_coding);
 	RUN_TEST(test_late_night_boundaries);
 	RUN_TEST(test_idle_tracker_media_guard_and_wake);
+	RUN_TEST(test_load_or_logic_hysteresis_and_highest_priority);
 }

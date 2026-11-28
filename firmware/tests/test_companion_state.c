@@ -345,6 +345,60 @@ void test_media_and_voice_buttons_emit_hid_actions(void)
 	companion_mode_exit();
 }
 
+void test_load_tier_overrides_vesktop_and_keeps_submodes(void)
+{
+	setup_fresh();
+	companion_mode_enter(0);
+	companion_state_t *st = companion_mode_get_state();
+	companion_state_tick(st, 2000);
+
+	// Even with BRB active in HOME, COMP_CTX_LOAD takes precedence
+	st->brb_active = true;
+	companion_state_set_host_context(st, COMP_CTX_LOAD, 0U, "CPU 82C 45%",
+					 "HEAVY LOAD", 2100);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_WARM,
+			  companion_state_resolve_expr(st));
+	TEST_ASSERT_EQUAL_UINT8(0x1F,
+				companion_mode_compute_led_mask(st, 2100));
+
+	companion_state_set_host_context(st, COMP_CTX_LOAD, COMP_FLAG_LOAD_T2,
+					 "RAM 87% 65C", "OVERHEAT", 2200);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_HOT, companion_state_resolve_expr(st));
+
+	companion_state_set_host_context(st, COMP_CTX_LOAD, COMP_FLAG_LOAD_T3,
+					 "CPU 93C 70%", "CRITICAL LOAD", 2300);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_CRITICAL,
+			  companion_state_resolve_expr(st));
+
+	// Must not sleep even after 31 minutes during COMP_CTX_LOAD
+	companion_state_tick(st, 2300UL + COMP_IDLE_DROWSY_MS + 60000UL);
+	TEST_ASSERT_EQUAL(COMP_SLEEP_AWAKE, st->sleep_stage);
+
+	// Interactive VOICE submode via [7] esc still works during heavy load
+	for (int i = 0; i < 3; i++) {
+		companion_mode_handle_button_event(6, true, 3000 + i * 100);
+		companion_mode_handle_button_event(6, false, 3050 + i * 100);
+	}
+	TEST_ASSERT_EQUAL(COMP_SUBMODE_VOICE, st->submode);
+	TEST_ASSERT_EQUAL(COMP_EXPR_VESKTOP_BRB,
+			  companion_state_resolve_expr(st));
+
+	// Return to HOME -> still shows critical load while load persists
+	companion_mode_handle_button_event(6, true, 3400);
+	companion_mode_handle_button_event(6, false, 3450);
+	TEST_ASSERT_EQUAL(COMP_SUBMODE_HOME, st->submode);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_CRITICAL,
+			  companion_state_resolve_expr(st));
+
+	// Clearing load restores BRB/Vesktop immediately
+	companion_state_set_host_context(st, COMP_CTX_VESKTOP,
+					 COMP_FLAG_VOICE_ACTIVE, "Vesktop",
+					 "Voice On", 3500);
+	TEST_ASSERT_EQUAL(COMP_EXPR_VESKTOP_BRB,
+			  companion_state_resolve_expr(st));
+	companion_mode_exit();
+}
+
 void run_companion_state_tests(void)
 {
 	printf("\n=== Companion State & Mode Tests ===\n");
@@ -358,4 +412,5 @@ void run_companion_state_tests(void)
 	RUN_TEST(test_wake_consumes_first_press_without_triggering_action);
 	RUN_TEST(test_led_masks_follow_rules_and_defaults_off);
 	RUN_TEST(test_media_and_voice_buttons_emit_hid_actions);
+	RUN_TEST(test_load_tier_overrides_vesktop_and_keeps_submodes);
 }

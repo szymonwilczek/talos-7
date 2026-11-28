@@ -3,8 +3,10 @@
 #include "bridge_socket.h"
 #include "unity.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -195,6 +197,60 @@ static void test_unix_socket_roundtrip_and_daemon_commands(void)
 	TEST_ASSERT_TRUE(
 		bridge_daemon_handle_line(&daemon, "idle-30m", 1300ULL));
 	TEST_ASSERT_TRUE(daemon.snap.sleeping);
+
+	TEST_ASSERT_TRUE(
+		bridge_daemon_handle_line(&daemon, "load|87|45", 1400ULL));
+	TEST_ASSERT_TRUE(daemon.snap.load_override);
+	TEST_ASSERT_EQUAL_UINT8(2, daemon.snap.load_tier);
+	TEST_ASSERT_FALSE(daemon.snap.sleeping);
+
+	TEST_ASSERT_TRUE(
+		bridge_daemon_handle_line(&daemon, "load|clear", 1500ULL));
+	TEST_ASSERT_FALSE(daemon.snap.load_override);
+	TEST_ASSERT_EQUAL_UINT8(0, daemon.snap.load_tier);
+}
+
+static void test_meminfo_and_hwmon_temp_parsers(void)
+{
+	uint8_t ram_pct = 0;
+	const char *mem = "MemTotal:       10000000 kB\n"
+			  "MemFree:         1000000 kB\n"
+			  "MemAvailable:    1500000 kB\n";
+	TEST_ASSERT_TRUE(bridge_parse_meminfo(mem, &ram_pct));
+	TEST_ASSERT_EQUAL_UINT8(85, ram_pct);
+
+	char tmpl[] = "/tmp/talos_hwmon_XXXXXX";
+	char *root = mkdtemp(tmpl);
+	TEST_ASSERT_NOT_NULL(root);
+
+	char hw0[256], hw1[256], fpath[300];
+	snprintf(hw0, sizeof(hw0), "%s/hwmon0", root);
+	snprintf(hw1, sizeof(hw1), "%s/hwmon1", root);
+	TEST_ASSERT_EQUAL(0, mkdir(hw0, 0755));
+	TEST_ASSERT_EQUAL(0, mkdir(hw1, 0755));
+
+	snprintf(fpath, sizeof(fpath), "%s/name", hw0);
+	FILE *f = fopen(fpath, "w");
+	TEST_ASSERT_NOT_NULL(f);
+	fputs("nvme\n", f);
+	fclose(f);
+	snprintf(fpath, sizeof(fpath), "%s/temp1_input", hw0);
+	f = fopen(fpath, "w");
+	fputs("95000\n", f);
+	fclose(f);
+
+	snprintf(fpath, sizeof(fpath), "%s/name", hw1);
+	f = fopen(fpath, "w");
+	fputs("k10temp\n", f);
+	fclose(f);
+	snprintf(fpath, sizeof(fpath), "%s/temp1_input", hw1);
+	f = fopen(fpath, "w");
+	fputs("84500\n", f);
+	fclose(f);
+
+	uint8_t temp_c = 0;
+	TEST_ASSERT_TRUE(bridge_read_cpu_temp_in_sysfs(root, &temp_c));
+	TEST_ASSERT_EQUAL_UINT8(84, temp_c);
 }
 
 void run_bridge_monitors_tests(void)
@@ -203,4 +259,5 @@ void run_bridge_monitors_tests(void)
 	RUN_TEST(test_sway_binary_frame_buffer);
 	RUN_TEST(test_mpris_pw_dump_and_pactl_parsers);
 	RUN_TEST(test_unix_socket_roundtrip_and_daemon_commands);
+	RUN_TEST(test_meminfo_and_hwmon_temp_parsers);
 }
