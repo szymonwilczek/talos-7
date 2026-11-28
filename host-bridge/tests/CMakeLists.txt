@@ -1,5 +1,6 @@
 add_executable(bridge_tests
     test_runner.c
+    test_bridge_ci.c
     test_bridge_state.c
     test_bridge_serial.c
     test_bridge_monitors.c

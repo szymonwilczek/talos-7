@@ -38,6 +38,16 @@ void test_comp_cdc_parse_state_named_and_numeric(void)
 		"LOAD|256|CPU 92C 60%|CRITICAL LOAD", &st, 2400));
 	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_CRITICAL,
 			  companion_state_resolve_expr(&st));
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_ci("1|talos-7@main", &st, 2500));
+	TEST_ASSERT_EQUAL_UINT8(1, st.ci_queue_count);
+	TEST_ASSERT_EQUAL_STRING("talos-7@main", st.ci_queue[0]);
+	TEST_ASSERT_EQUAL(COMP_EXPR_CI_GREEN,
+			  companion_state_resolve_expr(&st));
+
+	TEST_ASSERT_TRUE(companion_cdc_apply_ci("0|", &st, 2600));
+	TEST_ASSERT_EQUAL_UINT8(0, st.ci_queue_count);
+	TEST_ASSERT_FALSE(companion_cdc_apply_ci("2|bad", &st, 2700));
 }
 
 void test_comp_cdc_parse_state_rejects_malformed(void)

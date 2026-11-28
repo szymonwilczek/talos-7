@@ -91,6 +91,11 @@ void test_all_expressions_respect_yellow_blue_seam_y15(void)
 		TEST_ASSERT_TRUE(mock_oled_count_lit(0, 16, 127, 63) > 60);
 	}
 
+	companion_state_push_ci(&st, "talos-7@main", 2600);
+	companion_renderer_render(&st, 2600);
+	TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));
+	TEST_ASSERT_TRUE(mock_oled_count_lit(0, 16, 127, 63) > 80);
+
 	companion_pomo_start(&st, 2500);
 	companion_renderer_render(&st, 2500);
 	TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));

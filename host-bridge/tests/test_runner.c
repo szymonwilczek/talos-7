@@ -3,6 +3,7 @@
 void run_bridge_state_tests(void);
 void run_bridge_serial_tests(void);
 void run_bridge_monitors_tests(void);
+void run_bridge_ci_tests(void);
 
 void setUp(void)
 {
@@ -17,5 +18,6 @@ int main(void)
 	run_bridge_state_tests();
 	run_bridge_serial_tests();
 	run_bridge_monitors_tests();
+	run_bridge_ci_tests();
 	return UNITY_END();
 }

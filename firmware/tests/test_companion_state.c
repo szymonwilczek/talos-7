@@ -423,6 +423,55 @@ void test_gaming_variant_locks_per_game_and_lights_subtle_leds(void)
 	companion_mode_exit();
 }
 
+void test_ci_green_is_sticky_overrides_load_and_dismisses_on_home_key(void)
+{
+	setup_fresh();
+	companion_mode_enter(0);
+	companion_state_t *st = companion_mode_get_state();
+	companion_state_tick(st, 2000);
+
+	companion_state_set_host_context(st, COMP_CTX_LOAD, COMP_FLAG_LOAD_T3,
+					 "CPU 94C 60%", "CRITICAL LOAD", 2100);
+	companion_state_push_ci(st, "talos-7@main", 2200);
+	companion_state_push_ci(st, "lota@dev", 2300);
+	TEST_ASSERT_EQUAL_UINT8(2, st->ci_queue_count);
+	TEST_ASSERT_EQUAL(COMP_EXPR_CI_GREEN, companion_state_resolve_expr(st));
+
+	// Must never auto-expire or fall asleep even after 1 hour
+	companion_state_tick(st, 2300UL + 3600000UL);
+	TEST_ASSERT_EQUAL(COMP_SLEEP_AWAKE, st->sleep_stage);
+	TEST_ASSERT_EQUAL(COMP_EXPR_CI_GREEN, companion_state_resolve_expr(st));
+
+	// Submode cycling still lets user control Voice/Media
+	companion_mode_handle_button_event(6, true, 4000);
+	companion_mode_handle_button_event(6, false, 4050);
+	TEST_ASSERT_EQUAL(COMP_SUBMODE_POMODORO, st->submode);
+	TEST_ASSERT_EQUAL(COMP_EXPR_POMO_WORK,
+			  companion_state_resolve_expr(st));
+
+	// Back to HOME -> CI GREEN still waiting
+	for (int i = 0; i < 3; i++) {
+		companion_mode_handle_button_event(6, true, 4100 + i * 100);
+		companion_mode_handle_button_event(6, false, 4150 + i * 100);
+	}
+	TEST_ASSERT_EQUAL(COMP_SUBMODE_HOME, st->submode);
+	TEST_ASSERT_EQUAL(COMP_EXPR_CI_GREEN, companion_state_resolve_expr(st));
+
+	// Any HOME key [4]/[5]/[6] dismisses head item without triggering Pet/Coffee/Sleep
+	companion_mode_handle_button_event(3, true, 4500);
+	TEST_ASSERT_EQUAL_UINT8(1, st->ci_queue_count);
+	TEST_ASSERT_EQUAL_STRING("lota@dev", st->ci_queue[0]);
+	TEST_ASSERT_EQUAL(COMP_EXPR_CI_GREEN, companion_state_resolve_expr(st));
+
+	// Second press clears queue and returns directly to underlying context
+	companion_mode_handle_button_event(5, true, 4600);
+	TEST_ASSERT_EQUAL_UINT8(0, st->ci_queue_count);
+	TEST_ASSERT_EQUAL(COMP_EXPR_LOAD_CRITICAL,
+			  companion_state_resolve_expr(st));
+	TEST_ASSERT_EQUAL(COMP_SLEEP_AWAKE, st->sleep_stage);
+	companion_mode_exit();
+}
+
 void run_companion_state_tests(void)
 {
 	printf("\n=== Companion State & Mode Tests ===\n");
@@ -438,4 +487,6 @@ void run_companion_state_tests(void)
 	RUN_TEST(test_media_and_voice_buttons_emit_hid_actions);
 	RUN_TEST(test_load_tier_overrides_vesktop_and_keeps_submodes);
 	RUN_TEST(test_gaming_variant_locks_per_game_and_lights_subtle_leds);
+	RUN_TEST(
+		test_ci_green_is_sticky_overrides_load_and_dismisses_on_home_key);
 }
