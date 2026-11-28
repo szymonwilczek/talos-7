@@ -89,6 +89,16 @@ uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
 		return mask;
 	}
 
+	// Unacknowledged GitHub CI green celebration (sweep then unread blink)
+	if (expr == COMP_EXPR_CI_GREEN) {
+		uint32_t age = now_ms - state->ci_since_ms;
+		if (age < 1500UL) {
+			uint8_t step = (uint8_t)((age / 120UL) % 7UL);
+			return (uint8_t)(1U << step);
+		}
+		return ((now_ms % 2000UL) < 350UL) ? 0x40 : 0x00; // LED #7
+	}
+
 	// Heavy load / thermal stress indicator on red LEDs
 	if (expr == COMP_EXPR_LOAD_CRITICAL) {
 		return (((now_ms / 160UL) % 2U) == 0U) ? 0x7F : 0x55;
@@ -170,6 +180,9 @@ static void update_companion_leds(uint32_t now_ms)
 		g = ((now_ms / 140UL) % 2U) == 0U;
 		b = g;
 		break;
+	case COMP_EXPR_CI_GREEN:
+		g = ((now_ms % 1400UL) < 1100UL);
+		break;
 	default:
 		break;
 	}
@@ -184,6 +197,11 @@ static void update_companion_leds(uint32_t now_ms)
 
 static void handle_home_button(uint8_t btn, uint32_t now_ms)
 {
+	if (companion_state_dismiss_ci(&s_state, now_ms)) {
+		companion_state_touch_activity(&s_state, now_ms);
+		return;
+	}
+
 	switch (btn) {
 	case 3: /* [4] Left */
 		companion_state_pet(&s_state, now_ms);

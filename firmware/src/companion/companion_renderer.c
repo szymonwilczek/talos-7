@@ -47,6 +47,7 @@ static uint8_t contrast_for_expr(companion_expr_t expr)
 	case COMP_EXPR_LOAD_WARM:
 	case COMP_EXPR_LOAD_HOT:
 	case COMP_EXPR_LOAD_CRITICAL:
+	case COMP_EXPR_CI_GREEN:
 		return 0xCF;
 	case COMP_EXPR_SPOTIFY:
 	case COMP_EXPR_VESKTOP_ON_AIR:
@@ -99,6 +100,7 @@ static companion_icon_id_t hud_icon_for_state(const companion_state_t *state,
 		return COMP_ICON_AI;
 	case COMP_EXPR_AGENT_DONE:
 	case COMP_EXPR_GIT_COMMIT:
+	case COMP_EXPR_CI_GREEN:
 		return COMP_ICON_CHECK;
 	case COMP_EXPR_AGENT_ERR:
 	case COMP_EXPR_NEEDS_INPUT:
@@ -266,6 +268,17 @@ static void hud_title_for_state(const companion_state_t *state,
 		snprintf(out, out_size, "%s",
 			 state->top_text[0] ? state->top_text : "CRITICAL!");
 		return;
+	case COMP_EXPR_CI_GREEN:
+		if (state->ci_queue_count > 1U) {
+			snprintf(out, out_size, "CI: %.36s (+%u)",
+				 state->ci_queue[0],
+				 (unsigned)(state->ci_queue_count - 1U));
+		} else {
+			snprintf(out, out_size, "CI: %.42s",
+				 state->ci_queue[0][0] ? state->ci_queue[0] :
+							 "GREEN");
+		}
+		return;
 	case COMP_EXPR_LATE_NIGHT:
 		snprintf(out, out_size, "LATE NIGHT");
 		return;
@@ -335,7 +348,8 @@ static void render_yellow_hud(const companion_state_t *state,
 	int box_w = text_max_x - text_min_x + 1;
 	int draw_x = text_min_x;
 
-	if ((expr == COMP_EXPR_SPOTIFY || expr == COMP_EXPR_GAMING) &&
+	if ((expr == COMP_EXPR_SPOTIFY || expr == COMP_EXPR_GAMING ||
+	     expr == COMP_EXPR_CI_GREEN) &&
 	    title_px > box_w) {
 		int overflow = title_px - box_w + 18;
 		int offset =
@@ -1247,6 +1261,28 @@ static void render_base_face(companion_expr_t expr,
 	case COMP_EXPR_LOAD_CRITICAL:
 		render_load_face(expr, now_ms, dx, dy);
 		break;
+
+	case COMP_EXPR_CI_GREEN: {
+		// Cool Deal-With-It sunglasses + animated white glint + checkmark badge
+		oled_fill_rounded_rect(22 + dx, 20 + dy, 31, 17, 4, 1);
+		oled_fill_rounded_rect(75 + dx, 20 + dy, 31, 17, 4, 1);
+		draw_filled_rect(53 + dx, 22 + dy, 22, 4, 1);
+		draw_filled_rect(14 + dx, 22 + dy, 8, 3, 1);
+		draw_filled_rect(106 + dx, 22 + dy, 8, 3, 1);
+
+		int glint_pos = (int)((now_ms / 50UL) % 24U);
+		oled_draw_line_pts(26 + glint_pos / 2 + dx, 34 + dy,
+				   32 + glint_pos / 2 + dx, 22 + dy, 0);
+		oled_draw_line_pts(79 + glint_pos / 2 + dx, 34 + dy,
+				   85 + glint_pos / 2 + dx, 22 + dy, 0);
+
+		draw_mouth_smirk(cx, my);
+
+		int badge_bob = (int)((now_ms / 450UL) % 2U);
+		draw_sprite(109 + dx, 45 - badge_bob + dy, PROP_CHECK_BADGE_W,
+			    PROP_CHECK_BADGE_H, PROP_CHECK_BADGE);
+		break;
+	}
 
 	default:
 		draw_eye_open(lx, ey, 0, 0, blink, true);

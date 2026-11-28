@@ -198,9 +198,10 @@ static void tick_sleep_pipeline(companion_state_t *state, uint32_t now_ms)
 		state->sleep_stage_since_ms = now_ms;
 	}
 
-	// Active media, voice calls, or heavy load block the inactivity timer.
+	// Active media, voice calls, heavy load, or unacked CI keep OLED awake.
 	bool guarded = (state->submode == COMP_SUBMODE_POMODORO &&
 			state->pomo.running) ||
+		       (state->ci_queue_count > 0U) ||
 		       (state->host_ctx == COMP_CTX_LOAD) ||
 		       ((state->host_flags & (COMP_FLAG_MEDIA_ACTIVE |
 					      COMP_FLAG_VOICE_ACTIVE)) != 0);
@@ -334,6 +335,68 @@ void companion_state_set_media(companion_state_t *state, bool playing,
 		return;
 	state->media_playing = playing;
 	safe_copy_str(state->media_title, sizeof(state->media_title), title);
+}
+
+void companion_state_push_ci(companion_state_t *state, const char *label,
+			     uint32_t now_ms)
+{
+	if (!state)
+		return;
+
+	char clean[COMP_TEXT_MAX_LEN];
+	safe_copy_str(clean, sizeof(clean),
+		      (label && label[0] != '\0') ? label : "CI GREEN");
+
+	companion_state_wake(state, now_ms);
+
+	for (uint8_t i = 0; i < state->ci_queue_count; i++) {
+		if (strcmp(state->ci_queue[i], clean) == 0) {
+			state->ci_since_ms = now_ms;
+			return;
+		}
+	}
+
+	if (state->ci_queue_count >= COMP_CI_QUEUE_CAP) {
+		for (uint8_t i = 1; i < COMP_CI_QUEUE_CAP; i++) {
+			safe_copy_str(state->ci_queue[i - 1],
+				      sizeof(state->ci_queue[i - 1]),
+				      state->ci_queue[i]);
+		}
+		state->ci_queue_count = COMP_CI_QUEUE_CAP - 1U;
+	}
+
+	safe_copy_str(state->ci_queue[state->ci_queue_count],
+		      sizeof(state->ci_queue[0]), clean);
+	state->ci_queue_count++;
+	state->ci_since_ms = now_ms;
+}
+
+bool companion_state_dismiss_ci(companion_state_t *state, uint32_t now_ms)
+{
+	if (!state || state->ci_queue_count == 0U)
+		return false;
+
+	for (uint8_t i = 1; i < state->ci_queue_count; i++) {
+		safe_copy_str(state->ci_queue[i - 1],
+			      sizeof(state->ci_queue[i - 1]),
+			      state->ci_queue[i]);
+	}
+	state->ci_queue_count--;
+	state->ci_queue[state->ci_queue_count][0] = '\0';
+	state->ci_since_ms = now_ms;
+	state->led_alert_until_ms = 0;
+	state->led_alert_mask = 0;
+	return true;
+}
+
+void companion_state_clear_ci(companion_state_t *state)
+{
+	if (!state)
+		return;
+	state->ci_queue_count = 0U;
+	for (uint8_t i = 0; i < COMP_CI_QUEUE_CAP; i++) {
+		state->ci_queue[i][0] = '\0';
+	}
 }
 
 void companion_state_trigger_event(companion_state_t *state,
@@ -619,6 +682,10 @@ companion_expr_t companion_state_resolve_expr(const companion_state_t *state)
 		return (state->host_ctx == COMP_CTX_KINO) ? COMP_EXPR_KINO :
 							    COMP_EXPR_SPOTIFY;
 	}
+
+	// Highest push priority in HOME: unacknowledged sticky GitHub CI green
+	if (state->ci_queue_count > 0U)
+		return COMP_EXPR_CI_GREEN;
 
 	// Priority 3: live desktop context in HOME (overheat/load tops all)
 	if (state->host_ctx == COMP_CTX_LOAD) {

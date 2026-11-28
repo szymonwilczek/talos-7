@@ -13,6 +13,7 @@
 #define COMP_VOL_OVERLAY_MS 1500UL
 #define COMP_STATS_OVERLAY_MS 3000UL
 #define COMP_EXIT_HOLD_MS 1500UL
+#define COMP_CI_QUEUE_CAP 4U
 
 #define COMP_POMO_DEFAULT_WORK_S (25U * 60U)
 #define COMP_POMO_DEFAULT_BREAK_S (5U * 60U)
@@ -97,6 +98,7 @@ typedef enum {
 	COMP_EXPR_LOAD_WARM,
 	COMP_EXPR_LOAD_HOT,
 	COMP_EXPR_LOAD_CRITICAL,
+	COMP_EXPR_CI_GREEN,
 	COMP_EXPR_POMO_WORK,
 	COMP_EXPR_POMO_BREAK,
 	COMP_EXPR_PET,
@@ -146,6 +148,10 @@ typedef struct {
 	uint8_t gaming_variant;
 	uint8_t gaming_nonce;
 
+	char ci_queue[COMP_CI_QUEUE_CAP][COMP_TEXT_MAX_LEN];
+	uint8_t ci_queue_count;
+	uint32_t ci_since_ms;
+
 	uint8_t time_hour;
 	uint8_t time_minute;
 	bool time_valid;
@@ -179,6 +185,10 @@ void companion_state_set_host_context(companion_state_t *state,
 				      const char *sub_text, uint32_t now_ms);
 void companion_state_set_media(companion_state_t *state, bool playing,
 			       const char *title);
+void companion_state_push_ci(companion_state_t *state, const char *label,
+			     uint32_t now_ms);
+bool companion_state_dismiss_ci(companion_state_t *state, uint32_t now_ms);
+void companion_state_clear_ci(companion_state_t *state);
 void companion_state_trigger_event(companion_state_t *state,
 				   companion_event_id_t evt,
 				   uint32_t duration_ms, const char *label,

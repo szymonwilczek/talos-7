@@ -252,6 +252,38 @@ bool companion_cdc_apply_media(const char *args, companion_state_t *state)
 	return true;
 }
 
+bool companion_cdc_apply_ci(const char *args, companion_state_t *state,
+			    uint32_t now_ms)
+{
+	if (!args || !state)
+		return false;
+
+	const char *cur = args;
+	bool more = false;
+	char active_buf[8];
+	char label_buf[COMP_TEXT_MAX_LEN] = { 0 };
+
+	split_field(&cur, active_buf, sizeof(active_buf), &more);
+	if (active_buf[0] == '\0')
+		return false;
+
+	char *end_a = NULL;
+	long active = strtol(active_buf, &end_a, 10);
+	if (*end_a != '\0' || (active != 0 && active != 1))
+		return false;
+
+	if (more) {
+		split_field(&cur, label_buf, sizeof(label_buf), &more);
+	}
+
+	if (active != 0) {
+		companion_state_push_ci(state, label_buf, now_ms);
+	} else {
+		companion_state_clear_ci(state);
+	}
+	return true;
+}
+
 void cmd_handle_comp_state(const char *args)
 {
 	uint32_t now_ms = to_ms_since_boot(get_absolute_time());
@@ -278,6 +310,12 @@ void cmd_handle_comp_vol(const char *args)
 void cmd_handle_comp_media(const char *args)
 {
 	companion_cdc_apply_media(args, companion_mode_get_state());
+}
+
+void cmd_handle_comp_ci(const char *args)
+{
+	uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+	companion_cdc_apply_ci(args, companion_mode_get_state(), now_ms);
 }
 
 void cmd_handle_comp_wake(void)

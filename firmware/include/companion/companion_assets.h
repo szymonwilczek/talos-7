@@ -129,4 +129,11 @@ static const uint16_t PROP_GAMEPAD[PROP_GAMEPAD_H] = { 0x07FC, 0x0FFF, 0x1DFB,
 						       0x18FF, 0x1DFB, 0x1FFE,
 						       0x0E0E, 0x0404 };
 
+#define PROP_CHECK_BADGE_W 11
+#define PROP_CHECK_BADGE_H 11
+static const uint16_t PROP_CHECK_BADGE[PROP_CHECK_BADGE_H] = {
+	0x03FE, 0x0401, 0x0405, 0x0409, 0x0411, 0x0521,
+	0x04C1, 0x0441, 0x0401, 0x0401, 0x03FE
+};
+
 #endif // COMPANION_ASSETS_H
