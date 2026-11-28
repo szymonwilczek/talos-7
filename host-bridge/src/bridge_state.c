@@ -90,6 +90,15 @@ static bool focused_firefox_is_video(const host_snapshot_t *snap)
 	       snap->firefox_mpris_playing;
 }
 
+static bool is_gaming_context(const host_snapshot_t *snap)
+{
+	if (app_is_game(snap->focused_app))
+		return true;
+	return snap->focused_fullscreen &&
+	       !app_is_video_player(snap->focused_app) &&
+	       !focused_firefox_is_video(snap);
+}
+
 bool bridge_is_late_night(int hour)
 {
 	return hour >= BRIDGE_LATE_NIGHT_START_HOUR &&
@@ -175,6 +184,21 @@ void bridge_format_spotify_title(const host_snapshot_t *snap, char *dst,
 	bridge_sanitize_field(combined, dst, dst_size, BRIDGE_TEXT_MAX);
 }
 
+static void fill_vesktop_fields(const host_snapshot_t *snap,
+				bridge_resolved_state_t *out, char *top,
+				size_t top_size, char *sub, size_t sub_size)
+{
+	out->ctx = BRIDGE_CTX_VESKTOP;
+	snprintf(top, top_size, "Vesktop");
+	if (snap->deafened) {
+		snprintf(sub, sub_size, "Deafened");
+	} else if (snap->mic_muted) {
+		snprintf(sub, sub_size, "Mic Muted");
+	} else if (snap->vesktop_voice_active) {
+		snprintf(sub, sub_size, "Voice On");
+	}
+}
+
 void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 			  uint64_t now_ms, bridge_resolved_state_t *out)
 {
@@ -211,7 +235,22 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 		flags |= BRIDGE_FLAG_LOAD_T2;
 	}
 
-	if (load_tier > 0U) {
+	bool gaming = is_gaming_context(snap);
+	bool vesktop = snap->vesktop_voice_active ||
+		       app_is_vesktop(snap->focused_app);
+
+	if (gaming && vesktop) {
+		fill_vesktop_fields(snap, out, top, sizeof(top), sub,
+				    sizeof(sub));
+	} else if (gaming) {
+		out->ctx = BRIDGE_CTX_GAMING;
+		const char *gm = snap->focused_title[0] != '\0' ?
+					 snap->focused_title :
+					 snap->focused_app;
+		bridge_sanitize_field(gm[0] != '\0' ? gm : "Gaming", top,
+				      sizeof(top), BRIDGE_TEXT_MAX);
+		snprintf(sub, sizeof(sub), "Fullscreen");
+	} else if (load_tier > 0U) {
 		out->ctx = BRIDGE_CTX_LOAD;
 		if (snap->cpu_temp_c >= snap->ram_used_pct) {
 			snprintf(top, sizeof(top), "CPU %uC %u%%",
@@ -233,25 +272,9 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 			snap->agent_task[0] != '\0' ? snap->agent_task : "AI";
 		bridge_sanitize_field(task, top, sizeof(top), BRIDGE_TEXT_MAX);
 		snprintf(sub, sizeof(sub), "Thinking...");
-	} else if (snap->vesktop_voice_active ||
-		   app_is_vesktop(snap->focused_app)) {
-		out->ctx = BRIDGE_CTX_VESKTOP;
-		snprintf(top, sizeof(top), "Vesktop");
-		if (snap->deafened) {
-			snprintf(sub, sizeof(sub), "Deafened");
-		} else if (snap->mic_muted) {
-			snprintf(sub, sizeof(sub), "Mic Muted");
-		} else if (snap->vesktop_voice_active) {
-			snprintf(sub, sizeof(sub), "Voice On");
-		}
-	} else if (snap->focused_fullscreen || app_is_game(snap->focused_app)) {
-		out->ctx = BRIDGE_CTX_GAMING;
-		const char *gm = snap->focused_title[0] != '\0' ?
-					 snap->focused_title :
-					 snap->focused_app;
-		bridge_sanitize_field(gm[0] != '\0' ? gm : "Gaming", top,
-				      sizeof(top), BRIDGE_TEXT_MAX);
-		snprintf(sub, sizeof(sub), "Fullscreen");
+	} else if (vesktop) {
+		fill_vesktop_fields(snap, out, top, sizeof(top), sub,
+				    sizeof(sub));
 	} else if (app_is_video_player(snap->focused_app) ||
 		   snap->firefox_mpris_playing) {
 		out->ctx = BRIDGE_CTX_KINO;

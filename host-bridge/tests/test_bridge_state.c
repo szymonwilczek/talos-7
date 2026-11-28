@@ -229,6 +229,23 @@ static void test_load_or_logic_hysteresis_and_highest_priority(void)
 	snap.agent_thinking = false;
 	bridge_resolve_state(&snap, 14, 6000ULL, &out);
 	TEST_ASSERT_EQUAL(BRIDGE_CTX_VESKTOP, out.ctx);
+
+	/* Gaming beats LOAD even at critical temperature, while fullscreen Kino stays KINO */
+	snap.vesktop_voice_active = false;
+	snap.cpu_temp_c = 93;
+	snap.load_tier = 3;
+	snap.focused_fullscreen = true;
+	strcpy(snap.focused_app, "steam_app_1234");
+	strcpy(snap.focused_title, "Hades II");
+	bridge_resolve_state(&snap, 14, 6500ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_GAMING, out.ctx);
+	TEST_ASSERT_EQUAL_STRING("Hades II", out.top_text);
+
+	strcpy(snap.focused_app, "org.mozilla.firefox");
+	strcpy(snap.focused_title, "YouTube - Video");
+	snap.firefox_mpris_playing = true;
+	bridge_resolve_state(&snap, 14, 7000ULL, &out);
+	TEST_ASSERT_EQUAL(BRIDGE_CTX_LOAD, out.ctx);
 }
 
 void run_bridge_state_tests(void)
