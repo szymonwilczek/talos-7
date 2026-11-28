@@ -96,6 +96,19 @@ In Breakout, `[4]`/`[6]` move the paddle and `[7] esc` exits cleanly.
 - **OLED off:** Prolonged sleep sends `DISPLAY_OFF`; first button press or new
   host activity wakes the display (first press is consumed, not forwarded)
 
+### Compile / Thermal & RAM Load Override
+
+`talos-bridge` polls `/sys/class/hwmon` (`k10temp`/`coretemp`) and `/proc/meminfo`
+every 2s and uses `OR` logic with hysteresis to override `HOME` above all
+desktop contexts (including Vesktop) during heavy builds:
+
+- **80-84°C CPU or 80-84% RAM** _(clears `<76`)_: sweating `> <` gritted face (`LOAD_WARM`)
+- **85-89°C CPU or 85-89% RAM** _(clears `<83`)_: dizzy `@ @` + panting tongue + thermometer (`LOAD_HOT`)
+- **>=90°C CPU or >=90% RAM** _(clears `<88`)_: shaking intense face + steam jets (`LOAD_CRITICAL`)
+
+Interactive submodes (`POMODORO`, `MEDIA`, `VOICE`) via `[7] esc` keep working normally.
+You can preview tiers via socket: `printf 'load|86|40\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/talos-bridge.sock` (and `load|clear` to restore live sensors).
+
 ### Autostart
 
 Enable "Start in Companion Mode on boot" in the web configurator under
