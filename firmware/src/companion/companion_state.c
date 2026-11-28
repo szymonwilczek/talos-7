@@ -293,6 +293,21 @@ void companion_state_set_host_context(companion_state_t *state,
 	if (!state)
 		return;
 
+	bool entering_gaming =
+		(ctx == COMP_CTX_GAMING) &&
+		(state->host_ctx != COMP_CTX_GAMING ||
+		 (top_text && strcmp(state->top_text, top_text) != 0));
+	if (entering_gaming) {
+		uint32_t h = (uint32_t)state->gaming_nonce * 7U + now_ms;
+		if (top_text) {
+			for (const char *p = top_text; *p != '\0'; p++) {
+				h = h * 31U + (uint8_t)(*p);
+			}
+		}
+		state->gaming_nonce++;
+		state->gaming_variant = (uint8_t)(h % 3U);
+	}
+
 	bool meaningful_change =
 		(state->host_ctx != ctx) || (ctx == COMP_CTX_LOAD) ||
 		((flags & (COMP_FLAG_MEDIA_ACTIVE | COMP_FLAG_VOICE_ACTIVE |

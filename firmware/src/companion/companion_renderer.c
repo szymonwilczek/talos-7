@@ -56,6 +56,7 @@ static uint8_t contrast_for_expr(companion_expr_t expr)
 	case COMP_EXPR_VESKTOP_BRB:
 		return 0x7F;
 	case COMP_EXPR_GAMING:
+		return 0x55;
 	case COMP_EXPR_LATE_NIGHT:
 		return 0x45;
 	case COMP_EXPR_IDLE_DROWSY:
@@ -250,7 +251,8 @@ static void hud_title_for_state(const companion_state_t *state,
 		snprintf(out, out_size, "AI THINKING...");
 		return;
 	case COMP_EXPR_GAMING:
-		snprintf(out, out_size, "GAMING");
+		snprintf(out, out_size, "%s",
+			 state->top_text[0] ? state->top_text : "GAMING");
 		return;
 	case COMP_EXPR_LOAD_WARM:
 		snprintf(out, out_size, "%s",
@@ -333,7 +335,8 @@ static void render_yellow_hud(const companion_state_t *state,
 	int box_w = text_max_x - text_min_x + 1;
 	int draw_x = text_min_x;
 
-	if (expr == COMP_EXPR_SPOTIFY && title_px > box_w) {
+	if ((expr == COMP_EXPR_SPOTIFY || expr == COMP_EXPR_GAMING) &&
+	    title_px > box_w) {
 		int overflow = title_px - box_w + 18;
 		int offset =
 			(int)((now_ms / 110UL) % (uint32_t)(overflow + 12));
@@ -501,6 +504,13 @@ static void draw_mouth_smile(int cx, int y)
 	oled_draw_line_pts(cx + 6, y + 6, cx + 9, y + 3, 1);
 }
 
+static void draw_mouth_smirk(int cx, int y)
+{
+	draw_filled_rect(cx - 6, y + 4, 12, 2, 1);
+	oled_draw_line_pts(cx + 5, y + 4, cx + 10, y + 1, 1);
+	oled_draw_line_pts(cx + 5, y + 5, cx + 10, y + 2, 1);
+}
+
 static void draw_mouth_flat(int cx, int y)
 {
 	draw_filled_rect(cx - 7, y + 3, 14, 2, 1);
@@ -651,6 +661,91 @@ static void draw_headset_shell(int dx, int dy, bool show_mic, bool mic_muted,
 	}
 }
 
+static void draw_target_cross(int cx, int cy)
+{
+	draw_filled_rect(cx - 3, cy, 7, 1, 1);
+	draw_filled_rect(cx, cy - 3, 1, 7, 1);
+	oled_draw_rect(cx - 1, cy - 1, 3, 3, 1);
+}
+
+static void render_gaming_face(const companion_state_t *state, uint32_t now_ms,
+			       int dx, int dy)
+{
+	int lx = LEFT_EYE_X + dx;
+	int rx = RIGHT_EYE_X + dx;
+	int ey = EYE_Y + dy;
+	int cx = FACE_CENTER_X + dx;
+	int my = MOUTH_Y + dy;
+
+	switch (state->gaming_variant % 3U) {
+	case 0: {
+		// Variant 0: Angular gaming headset + D-pad/A-B eyes + mini pad
+		oled_draw_line_pts(12 + dx, 23 + dy, 22 + dx, 17 + dy, 1);
+		oled_draw_line_pts(22 + dx, 17 + dy, 105 + dx, 17 + dy, 1);
+		oled_draw_line_pts(105 + dx, 17 + dy, 115 + dx, 23 + dy, 1);
+		draw_filled_rect(22 + dx, 18 + dy, 84, 1, 1);
+		oled_draw_rect(5 + dx, 23 + dy, 9, 19, 1);
+		oled_draw_rect(113 + dx, 23 + dy, 9, 19, 1);
+		draw_filled_rect(14 + dx, 25 + dy, 2, 15, 1);
+		draw_filled_rect(111 + dx, 25 + dy, 2, 15, 1);
+
+		oled_fill_rounded_rect(lx, ey + 1, EYE_W, EYE_H - 2, 4, 1);
+		oled_fill_rounded_rect(rx, ey + 1, EYE_W, EYE_H - 2, 4, 1);
+		draw_filled_rect(lx + 6, ey + 9, 10, 3, 0);
+		draw_filled_rect(lx + 9, ey + 6, 4, 9, 0);
+
+		bool alt = ((now_ms / 320UL) % 2U) == 0U;
+		draw_filled_rect(rx + (alt ? 6 : 7), ey + 11, 3, 3, 0);
+		draw_filled_rect(rx + (alt ? 12 : 11), ey + 6, 3, 3, 0);
+
+		draw_mouth_smirk(cx, my);
+		draw_sprite(108 + dx, 50 + dy, PROP_GAMEPAD_W, PROP_GAMEPAD_H,
+			    PROP_GAMEPAD);
+		break;
+	}
+	case 1: {
+		// Variant 1: Cyber visor with scanning targeting crosshairs
+		oled_draw_rounded_rect(22 + dx, 18 + dy, 84, 24, 5, 1);
+		oled_draw_rounded_rect(25 + dx, 21 + dy, 78, 18, 3, 1);
+		draw_filled_rect(14 + dx, 27 + dy, 8, 3, 1);
+		draw_filled_rect(106 + dx, 27 + dy, 8, 3, 1);
+
+		int sweep = (int)((now_ms / 140UL) % 12U);
+		int off = (sweep <= 6) ? (sweep - 3) : (9 - sweep);
+		draw_target_cross(lx + 11 + off, ey + 10);
+		draw_target_cross(rx + 11 + off, ey + 10);
+		draw_mouth_smirk(cx, my);
+		break;
+	}
+	case 2:
+	default: {
+		// Variant 2: Waving tryhard headband + focused eyes + pulsing pad
+		int wave = (int)((now_ms / 200UL) % 2U);
+		draw_filled_rect(24 + dx, 18 + dy, 80, 3, 1);
+		draw_filled_rect(104 + dx, 17 + dy, 4, 4, 1);
+		oled_draw_line_pts(108 + dx, 18 + dy, 120 + dx, 20 + wave + dy,
+				   1);
+		oled_draw_line_pts(108 + dx, 20 + dy, 118 + dx, 24 - wave + dy,
+				   1);
+
+		draw_eye_focused_slant(lx, ey + 2, true);
+		draw_eye_focused_slant(rx, ey + 2, false);
+		draw_mouth_smirk(cx, my);
+
+		int gx = 107 + dx;
+		int gy = 46 + dy;
+		draw_sprite(gx, gy, PROP_GAMEPAD_W, PROP_GAMEPAD_H,
+			    PROP_GAMEPAD);
+		if (((now_ms / 240UL) % 2U) == 0U) {
+			oled_draw_pixel(gx + 9, gy + 2, 0);
+		} else {
+			oled_draw_pixel(gx + 10, gy + 4, 0);
+		}
+		break;
+	}
+	}
+}
+
 static void render_coding_face(companion_expr_t expr,
 			       const companion_state_t *state, uint32_t now_ms,
 			       int dx, int dy, uint8_t blink)
@@ -710,10 +805,7 @@ static void render_coding_face(companion_expr_t expr,
 	}
 
 	if (expr == COMP_EXPR_GAMING) {
-		draw_filled_rect(25 + dx, 18 + dy, 78, 2, 1);
-		draw_eye_focused_slant(lx, ey, true);
-		draw_eye_focused_slant(rx, ey, false);
-		draw_mouth_flat(cx, my);
+		render_gaming_face(state, now_ms, dx, dy);
 		return;
 	}
 

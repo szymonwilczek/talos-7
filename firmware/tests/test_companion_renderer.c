@@ -81,6 +81,16 @@ void test_all_expressions_respect_yellow_blue_seam_y15(void)
 		TEST_ASSERT_TRUE(mock_oled_count_lit(0, 16, 127, 63) > 40);
 	}
 
+	// All 3 Gaming variants stay below y=15 and render distinct expressions
+	companion_state_set_host_context(&st, COMP_CTX_GAMING, 0U, "Hades II",
+					 "Fullscreen", 2200);
+	for (uint8_t gv = 0; gv < 3U; gv++) {
+		st.gaming_variant = gv;
+		companion_renderer_render(&st, 2200 + (uint32_t)gv * 140U);
+		TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));
+		TEST_ASSERT_TRUE(mock_oled_count_lit(0, 16, 127, 63) > 60);
+	}
+
 	companion_pomo_start(&st, 2500);
 	companion_renderer_render(&st, 2500);
 	TEST_ASSERT_EQUAL(0, mock_oled_count_lit(0, 15, 127, 15));

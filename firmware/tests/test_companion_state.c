@@ -399,6 +399,30 @@ void test_load_tier_overrides_vesktop_and_keeps_submodes(void)
 	companion_mode_exit();
 }
 
+void test_gaming_variant_locks_per_game_and_lights_subtle_leds(void)
+{
+	setup_fresh();
+	companion_mode_enter(0);
+	companion_state_t *st = companion_mode_get_state();
+	companion_state_tick(st, 2000);
+
+	companion_state_set_host_context(st, COMP_CTX_GAMING, 0U, "Hades II",
+					 "Fullscreen", 2100);
+	uint8_t first_variant = st->gaming_variant;
+	TEST_ASSERT_TRUE(first_variant < 3U);
+	TEST_ASSERT_EQUAL_UINT8(0x41,
+				companion_mode_compute_led_mask(st, 2100));
+
+	// Repeated frames for the same game must NOT change the locked variant
+	for (uint32_t t = 2200; t <= 4000; t += 200) {
+		companion_state_set_host_context(st, COMP_CTX_GAMING, 0U,
+						 "Hades II", "Fullscreen", t);
+		TEST_ASSERT_EQUAL_UINT8(first_variant, st->gaming_variant);
+	}
+
+	companion_mode_exit();
+}
+
 void run_companion_state_tests(void)
 {
 	printf("\n=== Companion State & Mode Tests ===\n");
@@ -413,4 +437,5 @@ void run_companion_state_tests(void)
 	RUN_TEST(test_led_masks_follow_rules_and_defaults_off);
 	RUN_TEST(test_media_and_voice_buttons_emit_hid_actions);
 	RUN_TEST(test_load_tier_overrides_vesktop_and_keeps_submodes);
+	RUN_TEST(test_gaming_variant_locks_per_game_and_lights_subtle_leds);
 }

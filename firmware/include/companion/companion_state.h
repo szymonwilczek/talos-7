@@ -143,6 +143,8 @@ typedef struct {
 	bool brb_active;
 	bool local_mic_muted;
 	bool local_deafened;
+	uint8_t gaming_variant;
+	uint8_t gaming_nonce;
 
 	uint8_t time_hour;
 	uint8_t time_minute;

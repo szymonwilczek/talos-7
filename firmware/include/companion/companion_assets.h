@@ -123,4 +123,10 @@ static const uint16_t PROP_SWEAT[PROP_SWEAT_H] = { 0x0004, 0x0004, 0x000E,
 						   0x001F, 0x0017, 0x001F,
 						   0x000E };
 
+#define PROP_GAMEPAD_W 13
+#define PROP_GAMEPAD_H 8
+static const uint16_t PROP_GAMEPAD[PROP_GAMEPAD_H] = { 0x07FC, 0x0FFF, 0x1DFB,
+						       0x18FF, 0x1DFB, 0x1FFE,
+						       0x0E0E, 0x0404 };
+
 #endif // COMPANION_ASSETS_H

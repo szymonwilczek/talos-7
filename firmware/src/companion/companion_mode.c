@@ -107,6 +107,9 @@ uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
 	if (expr == COMP_EXPR_VESKTOP_MUTED) {
 		return 0x01; // LED #1
 	}
+	if (expr == COMP_EXPR_GAMING) {
+		return 0x41; // Subtle outer LEDs (#1 + #7)
+	}
 
 	return 0;
 }
@@ -144,6 +147,7 @@ static void update_companion_leds(uint32_t now_ms)
 	case COMP_EXPR_POMO_WORK:
 	case COMP_EXPR_CODING_TERM:
 	case COMP_EXPR_VESKTOP_BRB:
+	case COMP_EXPR_GAMING:
 		b = true;
 		break;
 	case COMP_EXPR_AGENT_THINKING:
