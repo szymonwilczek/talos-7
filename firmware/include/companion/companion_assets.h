@@ -20,6 +20,7 @@ typedef enum {
 	COMP_ICON_HEART,
 	COMP_ICON_SPEAKER,
 	COMP_ICON_GAME,
+	COMP_ICON_FLAME,
 	COMP_ICON_COUNT
 } companion_icon_id_t;
 
@@ -57,6 +58,8 @@ static const uint8_t companion_hud_icons[COMP_ICON_COUNT][8] = {
 	{ 0x1C, 0x1C, 0x3E, 0x3E, 0x41, 0x1C, 0x22, 0x1C },
 	// COMP_ICON_GAME
 	{ 0x3C, 0x7E, 0x0A, 0x1E, 0x1E, 0x0A, 0x7E, 0x3C },
+	// COMP_ICON_FLAME
+	{ 0x00, 0x70, 0x7C, 0xFA, 0xC7, 0x7E, 0x78, 0x00 },
 };
 
 // Row-major prop sprites (MSB = left pixel, width <= 16)
@@ -113,5 +116,11 @@ static const uint16_t PROP_SLEEP_Z_BIG[PROP_SLEEP_Z_BIG_H] = {
 #define PROP_BELL_H 7
 static const uint16_t PROP_BELL[PROP_BELL_H] = { 0x0038, 0x007C, 0x007C, 0x007C,
 						 0x00FE, 0x01FF, 0x0038 };
+
+#define PROP_SWEAT_W 5
+#define PROP_SWEAT_H 7
+static const uint16_t PROP_SWEAT[PROP_SWEAT_H] = { 0x0004, 0x0004, 0x000E,
+						   0x001F, 0x0017, 0x001F,
+						   0x000E };
 
 #endif // COMPANION_ASSETS_H

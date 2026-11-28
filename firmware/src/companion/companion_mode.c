@@ -89,6 +89,17 @@ uint8_t companion_mode_compute_led_mask(const companion_state_t *state,
 		return mask;
 	}
 
+	// Heavy load / thermal stress indicator on red LEDs
+	if (expr == COMP_EXPR_LOAD_CRITICAL) {
+		return (((now_ms / 160UL) % 2U) == 0U) ? 0x7F : 0x55;
+	}
+	if (expr == COMP_EXPR_LOAD_HOT) {
+		return (((now_ms / 240UL) % 2U) == 0U) ? 0x3F : 0x1F;
+	}
+	if (expr == COMP_EXPR_LOAD_WARM) {
+		return 0x1F;
+	}
+
 	// Unmistakable mute/deafen status LEDs for Vesktop
 	if (expr == COMP_EXPR_VESKTOP_DEAF || expr == COMP_EXPR_VESKTOP_BRB) {
 		return 0x03; // LED #1 + LED #2
@@ -142,6 +153,18 @@ static void update_companion_leds(uint32_t now_ms)
 	case COMP_EXPR_AGENT_ERR:
 	case COMP_EXPR_NEEDS_INPUT:
 		b = ((now_ms / 180UL) % 2U) == 0U;
+		break;
+	case COMP_EXPR_LOAD_WARM:
+		g = true;
+		b = true;
+		break;
+	case COMP_EXPR_LOAD_HOT:
+		b = true;
+		g = ((now_ms / 250UL) % 2U) == 0U;
+		break;
+	case COMP_EXPR_LOAD_CRITICAL:
+		g = ((now_ms / 140UL) % 2U) == 0U;
+		b = g;
 		break;
 	default:
 		break;

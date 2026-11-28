@@ -44,6 +44,9 @@ static uint8_t contrast_for_expr(companion_expr_t expr)
 	case COMP_EXPR_NEEDS_INPUT:
 	case COMP_EXPR_GIT_COMMIT:
 	case COMP_EXPR_PING:
+	case COMP_EXPR_LOAD_WARM:
+	case COMP_EXPR_LOAD_HOT:
+	case COMP_EXPR_LOAD_CRITICAL:
 		return 0xCF;
 	case COMP_EXPR_SPOTIFY:
 	case COMP_EXPR_VESKTOP_ON_AIR:
@@ -114,6 +117,10 @@ static companion_icon_id_t hud_icon_for_state(const companion_state_t *state,
 		return COMP_ICON_VIDEO;
 	case COMP_EXPR_GAMING:
 		return COMP_ICON_GAME;
+	case COMP_EXPR_LOAD_WARM:
+	case COMP_EXPR_LOAD_HOT:
+	case COMP_EXPR_LOAD_CRITICAL:
+		return COMP_ICON_FLAME;
 	case COMP_EXPR_POMO_WORK:
 		return COMP_ICON_HOURGLASS;
 	case COMP_EXPR_POMO_BREAK:
@@ -245,6 +252,18 @@ static void hud_title_for_state(const companion_state_t *state,
 	case COMP_EXPR_GAMING:
 		snprintf(out, out_size, "GAMING");
 		return;
+	case COMP_EXPR_LOAD_WARM:
+		snprintf(out, out_size, "%s",
+			 state->top_text[0] ? state->top_text : "HEAVY LOAD");
+		return;
+	case COMP_EXPR_LOAD_HOT:
+		snprintf(out, out_size, "%s",
+			 state->top_text[0] ? state->top_text : "OVERHEAT!");
+		return;
+	case COMP_EXPR_LOAD_CRITICAL:
+		snprintf(out, out_size, "%s",
+			 state->top_text[0] ? state->top_text : "CRITICAL!");
+		return;
 	case COMP_EXPR_LATE_NIGHT:
 		snprintf(out, out_size, "LATE NIGHT");
 		return;
@@ -362,6 +381,21 @@ static void render_yellow_hud(const companion_state_t *state,
 			int dot_x = 16 + i * 16;
 			int h = (((i + (int)beat) % 3) == 0) ? 3 : 1;
 			draw_filled_rect(dot_x, 13 - h, 4, h, 1);
+		}
+		return;
+	}
+
+	if (expr == COMP_EXPR_LOAD_WARM || expr == COMP_EXPR_LOAD_HOT ||
+	    expr == COMP_EXPR_LOAD_CRITICAL) {
+		uint8_t base_pct =
+			(expr == COMP_EXPR_LOAD_CRITICAL) ?
+				100U :
+				((expr == COMP_EXPR_LOAD_HOT) ? 88U : 72U);
+		if (expr == COMP_EXPR_LOAD_CRITICAL &&
+		    ((now_ms / 180UL) % 2U) == 1U) {
+			draw_progress_bar(2, 10, 124, 4, 25U);
+		} else {
+			draw_progress_bar(2, 10, 124, 4, base_pct);
 		}
 		return;
 	}
@@ -496,6 +530,23 @@ static void draw_mouth_zipper(int cx, int y)
 	}
 	// Zipper pull tab hanging down on the right side
 	oled_draw_rect(cx + 12, y + 5, 4, 5, 1);
+}
+
+static void draw_mouth_gritted(int cx, int y)
+{
+	oled_fill_rounded_rect(cx - 11, y, 22, 8, 3, 1);
+	draw_filled_rect(cx - 9, y + 2, 18, 4, 0);
+	for (int tx = cx - 6; tx <= cx + 6; tx += 4) {
+		draw_filled_rect(tx, y + 2, 1, 4, 1);
+	}
+}
+
+static void draw_sweat_drop(int x, int base_y, uint32_t now_ms,
+			    uint32_t period_ms)
+{
+	uint32_t step = (now_ms % period_ms) / (period_ms / 6U);
+	int drop_y = base_y + (int)step * 2;
+	draw_sprite(x, drop_y, PROP_SWEAT_W, PROP_SWEAT_H, PROP_SWEAT);
 }
 
 static void draw_mouth_cat(int cx, int y)
@@ -758,6 +809,88 @@ static void render_agent_git_ping(companion_expr_t expr, uint32_t now_ms,
 	}
 }
 
+static void draw_eye_dizzy(int x, int y, uint32_t now_ms, bool cw)
+{
+	static const int8_t orbit_x[4] = { 4, 11, 11, 4 };
+	static const int8_t orbit_y[4] = { 4, 4, 11, 11 };
+	uint32_t idx = (now_ms / 95UL) % 4U;
+	if (!cw)
+		idx = (4U - idx) % 4U;
+
+	oled_draw_rounded_rect(x, y, EYE_W, EYE_H, EYE_RADIUS, 1);
+	oled_draw_rounded_rect(x + 3, y + 3, EYE_W - 6, EYE_H - 6, 3, 1);
+	draw_filled_rect(x + orbit_x[idx], y + orbit_y[idx], 7, 7, 1);
+}
+
+static void render_load_face(companion_expr_t expr, uint32_t now_ms, int dx,
+			     int dy)
+{
+	int lx = LEFT_EYE_X + dx;
+	int rx = RIGHT_EYE_X + dx;
+	int ey = EYE_Y + dy;
+	int cx = FACE_CENTER_X + dx;
+	int my = MOUTH_Y + dy;
+
+	if (expr == COMP_EXPR_LOAD_WARM) {
+		int trem = (((now_ms % 1800UL) < 240UL) &&
+			    (((now_ms / 60UL) % 2U) == 0U)) ?
+				   1 :
+				   0;
+		draw_eye_chevron(lx + trem, ey + 1, true);
+		draw_eye_chevron(rx + trem, ey + 1, false);
+		draw_mouth_gritted(cx + trem, my);
+
+		int wave = (int)((now_ms / 220UL) % 2U);
+		oled_draw_line_pts(11 + dx, 31 - wave + dy, 13 + dx,
+				   27 - wave + dy, 1);
+		oled_draw_line_pts(16 + dx, 33 + wave + dy, 18 + dx,
+				   29 + wave + dy, 1);
+		draw_sweat_drop(111 + dx, 20 + dy, now_ms, 900UL);
+		return;
+	}
+
+	if (expr == COMP_EXPR_LOAD_HOT) {
+		draw_eye_dizzy(lx, ey, now_ms, true);
+		draw_eye_dizzy(rx, ey, now_ms, false);
+
+		// Panting mouth with animated tongue
+		int pant = (int)((now_ms / 180UL) % 2U);
+		oled_draw_rounded_rect(cx - 7, my - 1, 14, 7, 3, 1);
+		oled_fill_rounded_rect(cx - 3, my + 2 + pant, 6, 6, 2, 1);
+
+		draw_sweat_drop(9 + dx, 21 + dy, now_ms, 660UL);
+
+		// Full thermometer on right side
+		int tx = 112 + dx;
+		int ty = 22 + dy;
+		oled_draw_rounded_rect(tx, ty, 6, 20, 2, 1);
+		draw_filled_circle(tx + 2, ty + 21, 4, 1);
+		draw_filled_rect(tx + 2, ty + 2, 2, 18, 1);
+		if (((now_ms / 200UL) % 2U) == 0U) {
+			oled_draw_line_pts(tx - 1, ty - 2, tx + 1, ty - 4, 1);
+			oled_draw_line_pts(tx + 5, ty - 2, tx + 7, ty - 4, 1);
+		}
+		return;
+	}
+
+	// COMP_EXPR_LOAD_CRITICAL (>= 90)
+	int shake = (((now_ms / 65UL) % 2U) == 0U) ? 1 : -1;
+	draw_eye_focused_slant(lx + shake, ey + 1, true);
+	draw_eye_focused_slant(rx + shake, ey + 1, false);
+	draw_mouth_gritted(cx + shake, my);
+
+	int steam = (int)((now_ms / 110UL) % 3U);
+	oled_draw_line_pts(6 + dx, 27 - steam + dy, 11 + dx, 25 - steam + dy,
+			   1);
+	oled_draw_line_pts(5 + dx, 33 - steam + dy, 11 + dx, 31 - steam + dy,
+			   1);
+	oled_draw_line_pts(116 + dx, 25 - steam + dy, 121 + dx, 27 - steam + dy,
+			   1);
+	oled_draw_line_pts(116 + dx, 31 - steam + dy, 122 + dx, 33 - steam + dy,
+			   1);
+	draw_sweat_drop(16 + dx, 18 + dy, now_ms, 450UL);
+}
+
 static void render_media_voice_pomo(companion_expr_t expr,
 				    const companion_state_t *state,
 				    uint32_t now_ms, int dx, int dy,
@@ -1015,6 +1148,12 @@ static void render_base_face(companion_expr_t expr,
 	case COMP_EXPR_POMO_WORK:
 	case COMP_EXPR_POMO_BREAK:
 		render_media_voice_pomo(expr, state, now_ms, dx, dy, blink);
+		break;
+
+	case COMP_EXPR_LOAD_WARM:
+	case COMP_EXPR_LOAD_HOT:
+	case COMP_EXPR_LOAD_CRITICAL:
+		render_load_face(expr, now_ms, dx, dy);
 		break;
 
 	default:
