@@ -99,8 +99,9 @@ In Breakout, `[4]`/`[6]` move the paddle and `[7] esc` exits cleanly.
 ### Compile / Thermal & RAM Load Override
 
 `talos-bridge` polls `/sys/class/hwmon` (`k10temp`/`coretemp`) and `/proc/meminfo`
-every 2s and uses `OR` logic with hysteresis to override `HOME` above all
-desktop contexts (including Vesktop) during heavy builds:
+every 2s and uses `OR` logic with hysteresis to override `HOME` above desktop
+contexts (`Gaming` takes precedence over `LOAD` so full-screen games stay
+themed):
 
 - **80-84°C CPU or 80-84% RAM** _(clears `<76`)_: sweating `> <` gritted face (`LOAD_WARM`)
 - **85-89°C CPU or 85-89% RAM** _(clears `<83`)_: dizzy `@ @` + panting tongue + thermometer (`LOAD_HOT`)
@@ -108,6 +109,29 @@ desktop contexts (including Vesktop) during heavy builds:
 
 Interactive submodes (`POMODORO`, `MEDIA`, `VOICE`) via `[7] esc` keep working normally.
 You can preview tiers via socket: `printf 'load|86|40\n' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/talos-bridge.sock` (and `load|clear` to restore live sensors).
+
+### GitHub CI Green Notifier
+
+Watch multiple repositories and branch patterns (`release/*`, `main`, etc.) in
+`~/.config/talos-bridge/ci.conf`. When the latest `HEAD` commit on a watched
+branch turns green (`completed` with `success`/`neutral`/`skipped` check runs),
+Talos shows a sticky **Cool Glasses + Checkmark** alert (`COMP_CI`) in `HOME`
+until dismissed:
+
+```bash
+talos-evt ci-add szymonwilczek/talos-7 main,release/* talos-7
+talos-evt ci-list
+talos-evt ci-check
+talos-evt ci-test "talos-7@main"
+talos-evt ci-dismiss
+talos-evt ci-rm szymonwilczek/talos-7 main
+```
+
+- **Dismiss on Talos:** Press any key `[4]`, `[5]`, or `[6]` in `HOME` (first
+  press is consumed so it won't trigger Pet/Coffee/Sleep; queued alerts advance
+  one by one).
+- **Private repos / higher rate limit:** Authenticate `gh auth login` (or set
+  `token = ...` in `ci.conf` / `GITHUB_TOKEN`).
 
 ### Autostart
 
