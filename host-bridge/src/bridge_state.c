@@ -116,9 +116,30 @@ bool bridge_is_media_or_voice_busy(const host_snapshot_t *snap)
 	if (!snap)
 		return false;
 	return snap->spotify_playing || snap->firefox_mpris_playing ||
-	       snap->vesktop_voice_active ||
+	       snap->vesktop_voice_active || snap->load_tier > 0 ||
+	       snap->cpu_temp_c >= 80U || snap->ram_used_pct >= 80U ||
 	       app_is_video_player(snap->focused_app) ||
 	       focused_firefox_is_video(snap);
+}
+
+uint8_t bridge_update_load_tier(uint8_t prev_tier, uint8_t cpu_temp_c,
+				uint8_t ram_used_pct)
+{
+	uint8_t peak = (cpu_temp_c > ram_used_pct) ? cpu_temp_c : ram_used_pct;
+
+	if (peak >= 90U)
+		return 3U;
+	if (prev_tier >= 3U && peak >= 88U)
+		return 3U;
+	if (peak >= 85U)
+		return 2U;
+	if (prev_tier >= 2U && peak >= 83U)
+		return 2U;
+	if (peak >= 80U)
+		return 1U;
+	if (prev_tier >= 1U && peak >= 76U)
+		return 1U;
+	return 0U;
 }
 
 static void pick_kino_title(const host_snapshot_t *snap, char *dst,
@@ -179,7 +200,34 @@ void bridge_resolve_state(const host_snapshot_t *snap, int hour,
 	char top[BRIDGE_TEXT_MAX + 1] = { 0 };
 	char sub[BRIDGE_SUB_MAX + 1] = { 0 };
 
-	if (snap->agent_thinking) {
+	uint8_t load_tier = (snap->load_tier > 0U) ?
+				    snap->load_tier :
+				    bridge_update_load_tier(0U,
+							    snap->cpu_temp_c,
+							    snap->ram_used_pct);
+	if (load_tier >= 3U) {
+		flags |= BRIDGE_FLAG_LOAD_T3;
+	} else if (load_tier == 2U) {
+		flags |= BRIDGE_FLAG_LOAD_T2;
+	}
+
+	if (load_tier > 0U) {
+		out->ctx = BRIDGE_CTX_LOAD;
+		if (snap->cpu_temp_c >= snap->ram_used_pct) {
+			snprintf(top, sizeof(top), "CPU %uC %u%%",
+				 (unsigned)snap->cpu_temp_c,
+				 (unsigned)snap->ram_used_pct);
+		} else {
+			snprintf(top, sizeof(top), "RAM %u%% %uC",
+				 (unsigned)snap->ram_used_pct,
+				 (unsigned)snap->cpu_temp_c);
+		}
+		snprintf(sub, sizeof(sub), "%s",
+			 (load_tier >= 3U) ?
+				 "CRITICAL LOAD" :
+				 ((load_tier == 2U) ? "OVERHEAT" :
+						      "HEAVY LOAD"));
+	} else if (snap->agent_thinking) {
 		out->ctx = BRIDGE_CTX_AGENT_THINKING;
 		const char *task =
 			snap->agent_task[0] != '\0' ? snap->agent_task : "AI";

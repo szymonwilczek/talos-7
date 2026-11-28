@@ -34,6 +34,11 @@ typedef struct {
 	bool sleeping;
 	bool typing_active;
 	uint64_t typing_expires_ms;
+
+	uint8_t cpu_temp_c;
+	uint8_t ram_used_pct;
+	uint8_t load_tier;
+	bool load_override;
 } host_snapshot_t;
 
 typedef struct {
@@ -64,6 +69,13 @@ bool bridge_title_matches_video(const char *title);
  */
 void bridge_format_spotify_title(const host_snapshot_t *snap, char *dst,
 				 size_t dst_size);
+
+/**
+ * Update compile/overheat load tier (0..3) from CPU temp (C) OR RAM usage (%)
+ * with hysteresis so borders do not flicker.
+ */
+uint8_t bridge_update_load_tier(uint8_t prev_tier, uint8_t cpu_temp_c,
+				uint8_t ram_used_pct);
 
 /**
  * Resolve the current host snapshot into a single Talos COMP_STATE descriptor.

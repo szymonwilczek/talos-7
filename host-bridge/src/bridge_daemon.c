@@ -161,6 +161,37 @@ bool bridge_daemon_handle_line(bridge_daemon_t *daemon, const char *line,
 		notify_activity(daemon, now_ms);
 		return true;
 	}
+	if (strcmp(cmd, "load") == 0) {
+		char arg1[16] = { 0 };
+		char arg2[16] = { 0 };
+		split_part(&cur, arg1, sizeof(arg1));
+		split_part(&cur, arg2, sizeof(arg2));
+		if (strcmp(arg1, "clear") == 0 || strcmp(arg1, "off") == 0) {
+			daemon->snap.load_override = false;
+			daemon->snap.cpu_temp_c = 0;
+			daemon->snap.ram_used_pct = 0;
+			daemon->snap.load_tier = 0;
+		} else {
+			long cpu = strtol(arg1, NULL, 10);
+			long ram = arg2[0] ? strtol(arg2, NULL, 10) : 0L;
+			if (cpu < 0)
+				cpu = 0;
+			if (cpu > 150)
+				cpu = 150;
+			if (ram < 0)
+				ram = 0;
+			if (ram > 100)
+				ram = 100;
+			daemon->snap.load_override = true;
+			daemon->snap.cpu_temp_c = (uint8_t)cpu;
+			daemon->snap.ram_used_pct = (uint8_t)ram;
+			daemon->snap.load_tier = bridge_update_load_tier(
+				daemon->snap.load_tier, daemon->snap.cpu_temp_c,
+				daemon->snap.ram_used_pct);
+			notify_activity(daemon, now_ms);
+		}
+		return true;
+	}
 	return false;
 }
 

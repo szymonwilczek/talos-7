@@ -186,6 +186,8 @@ static const char *ctx_to_token(bridge_ctx_t ctx)
 		return "KINO";
 	case BRIDGE_CTX_GAMING:
 		return "GAMING";
+	case BRIDGE_CTX_LOAD:
+		return "LOAD";
 	case BRIDGE_CTX_IDLE:
 	default:
 		return "IDLE";

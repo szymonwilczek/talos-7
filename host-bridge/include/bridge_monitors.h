@@ -34,6 +34,7 @@ typedef struct {
 	uint64_t next_reconnect_ms;
 	uint64_t last_mpris_poll_ms;
 	uint64_t last_audio_poll_ms;
+	uint64_t last_stats_poll_ms;
 } bridge_monitors_t;
 
 /**
@@ -97,6 +98,16 @@ bool bridge_parse_pactl_volume(const char *text, uint8_t *out_pct);
  */
 int bridge_sway_consume_frame(uint8_t *buf, size_t *len, uint32_t *out_type,
 			      char *out_payload, size_t payload_cap);
+
+/**
+ * Parse `/proc/meminfo` contents into used RAM percentage (0..100).
+ */
+bool bridge_parse_meminfo(const char *text, uint8_t *out_ram_pct);
+
+/**
+ * Read CPU package/Tctl temperature (C) from a sysfs hwmon root directory.
+ */
+bool bridge_read_cpu_temp_in_sysfs(const char *hwmon_root, uint8_t *out_temp_c);
 
 /**
  * Drain readable watcher FDs and run coalesced MPRIS / PipeWire refreshes.

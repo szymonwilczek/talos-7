@@ -1,8 +1,10 @@
 #include "bridge_monitors.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -866,6 +868,140 @@ static void refresh_audio(host_snapshot_t *snap)
 	snap->deafened = snap->vesktop_voice_active && snap->sink_muted;
 }
 
+static bool read_small_file(const char *path, char *buf, size_t buf_size)
+{
+	if (!path || !buf || buf_size < 2)
+		return false;
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return false;
+	ssize_t n = read(fd, buf, buf_size - 1);
+	close(fd);
+	if (n <= 0)
+		return false;
+	buf[n] = '\0';
+	return true;
+}
+
+bool bridge_parse_meminfo(const char *text, uint8_t *out_ram_pct)
+{
+	if (!text || !out_ram_pct)
+		return false;
+
+	uint64_t total_kb = 0;
+	uint64_t avail_kb = 0;
+	uint64_t free_kb = 0;
+	bool has_total = false;
+	bool has_avail = false;
+	bool has_free = false;
+
+	const char *line = text;
+	while (*line != '\0') {
+		const char *eol = strchr(line, '\n');
+		if (strncmp(line, "MemTotal:", 9) == 0) {
+			total_kb = strtoull(line + 9, NULL, 10);
+			has_total = true;
+		} else if (strncmp(line, "MemAvailable:", 13) == 0) {
+			avail_kb = strtoull(line + 13, NULL, 10);
+			has_avail = true;
+		} else if (strncmp(line, "MemFree:", 8) == 0) {
+			free_kb = strtoull(line + 8, NULL, 10);
+			has_free = true;
+		}
+		if (!eol)
+			break;
+		line = eol + 1;
+	}
+
+	if (!has_total || total_kb == 0 || (!has_avail && !has_free))
+		return false;
+
+	uint64_t usable = has_avail ? avail_kb : free_kb;
+	if (usable > total_kb)
+		usable = total_kb;
+	uint64_t used = total_kb - usable;
+	uint64_t pct = (used * 100ULL) / total_kb;
+	if (pct > 100ULL)
+		pct = 100ULL;
+	*out_ram_pct = (uint8_t)pct;
+	return true;
+}
+
+static bool is_cpu_hwmon_name(const char *name)
+{
+	static const char *const CPU_HWMON[] = { "k10temp", "coretemp",
+						 "zenpower", "cpu_thermal" };
+	for (size_t i = 0; i < sizeof(CPU_HWMON) / sizeof(CPU_HWMON[0]); i++) {
+		if (ci_contains(name, CPU_HWMON[i]))
+			return true;
+	}
+	return false;
+}
+
+bool bridge_read_cpu_temp_in_sysfs(const char *hwmon_root, uint8_t *out_temp_c)
+{
+	if (!hwmon_root || !out_temp_c)
+		return false;
+
+	DIR *dir = opendir(hwmon_root);
+	if (!dir)
+		return false;
+
+	bool found = false;
+	uint8_t best_c = 0;
+	struct dirent *ent;
+	while ((ent = readdir(dir)) != NULL) {
+		if (strncmp(ent->d_name, "hwmon", 5) != 0)
+			continue;
+
+		char path[PATH_MAX];
+		char name_buf[64];
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s/name",
+				     hwmon_root, ent->d_name) >= sizeof(path) ||
+		    !read_small_file(path, name_buf, sizeof(name_buf)) ||
+		    !is_cpu_hwmon_name(name_buf)) {
+			continue;
+		}
+
+		char temp_buf[32];
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s/temp1_input",
+				     hwmon_root, ent->d_name) >= sizeof(path) ||
+		    !read_small_file(path, temp_buf, sizeof(temp_buf))) {
+			continue;
+		}
+
+		long milli = strtol(temp_buf, NULL, 10);
+		if (milli < 0)
+			milli = 0;
+		long deg_c = milli / 1000L;
+		if (deg_c > 150L)
+			deg_c = 150L;
+		if (!found || (uint8_t)deg_c > best_c) {
+			best_c = (uint8_t)deg_c;
+			found = true;
+		}
+	}
+	closedir(dir);
+
+	if (found)
+		*out_temp_c = best_c;
+	return found;
+}
+
+static void refresh_stats(host_snapshot_t *snap)
+{
+	if (!snap || snap->load_override)
+		return;
+
+	char mem_buf[2048];
+	if (read_small_file("/proc/meminfo", mem_buf, sizeof(mem_buf))) {
+		bridge_parse_meminfo(mem_buf, &snap->ram_used_pct);
+	}
+	bridge_read_cpu_temp_in_sysfs("/sys/class/hwmon", &snap->cpu_temp_c);
+	snap->load_tier = bridge_update_load_tier(
+		snap->load_tier, snap->cpu_temp_c, snap->ram_used_pct);
+}
+
 int bridge_sway_consume_frame(uint8_t *buf, size_t *len, uint32_t *out_type,
 			      char *out_payload, size_t payload_cap)
 {
@@ -914,6 +1050,7 @@ void bridge_monitors_init(bridge_monitors_t *m, host_snapshot_t *snap)
 		refresh_sway_tree_initial(snap);
 		refresh_mpris(snap);
 		refresh_audio(snap);
+		refresh_stats(snap);
 	}
 
 	m->sway_fd = connect_sway_subscription();
@@ -1123,6 +1260,16 @@ void bridge_monitors_process_events(bridge_monitors_t *m, host_snapshot_t *snap,
 		if (((!prev_voice && snap->vesktop_voice_active) ||
 		     vol_changed) &&
 		    out_activity) {
+			*out_activity = true;
+		}
+	}
+
+	if (now_ms >= m->last_stats_poll_ms &&
+	    (now_ms - m->last_stats_poll_ms) >= 2000ULL) {
+		uint8_t prev_tier = snap->load_tier;
+		refresh_stats(snap);
+		m->last_stats_poll_ms = now_ms;
+		if (prev_tier == 0U && snap->load_tier > 0U && out_activity) {
 			*out_activity = true;
 		}
 	}
