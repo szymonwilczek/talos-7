@@ -9,6 +9,7 @@ add_compile_options(-Wall -Wextra -Werror -pedantic)
 add_compile_definitions(_POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700)
 
 add_library(talos_bridge_core STATIC
+    src/bridge_ci.c
     src/bridge_daemon.c
     src/bridge_idle.c
     src/bridge_monitors.c

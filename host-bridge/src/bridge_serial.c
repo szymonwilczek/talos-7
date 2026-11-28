@@ -492,6 +492,22 @@ bool bridge_serial_send_media(bridge_serial_t *serial, bool playing,
 	return true;
 }
 
+bool bridge_serial_send_ci(bridge_serial_t *serial, bool active,
+			   const char *label)
+{
+	if (!serial || serial->paused)
+		return false;
+
+	char clean_label[BRIDGE_TEXT_MAX + 1];
+	bridge_sanitize_field(label, clean_label, sizeof(clean_label),
+			      BRIDGE_TEXT_MAX);
+
+	char frame[128];
+	snprintf(frame, sizeof(frame), "COMP_CI|%u|%s\n", active ? 1U : 0U,
+		 active ? clean_label : "");
+	return write_line(serial, frame);
+}
+
 bool bridge_serial_send_command(bridge_serial_t *serial, const char *cmd)
 {
 	if (!serial || serial->paused || !cmd || cmd[0] == '\0')

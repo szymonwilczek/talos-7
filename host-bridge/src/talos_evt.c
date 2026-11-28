@@ -1,3 +1,4 @@
+#include "bridge_ci.h"
 #include "bridge_socket.h"
 
 #include <errno.h>
@@ -12,23 +13,84 @@ static void print_usage(const char *argv0)
 	printf("Usage: %s [--socket PATH] [--quiet] <event> [arg...]\n"
 	       "Events: agent-start, agent-done, agent-err, agent-input,\n"
 	       "        git-commit, emacs-buf, typing, ping, pet, coffee,\n"
-	       "        pause, resume, idle-30m, idle-resume\n",
+	       "        pause, resume, idle-30m, idle-resume,\n"
+	       "        ci-list, ci-add <owner/repo> <branches> [alias],\n"
+	       "        ci-rm <owner/repo> [branch], ci-check, ci-dismiss,\n"
+	       "        ci-test [label], ci-reload\n",
 	       argv0);
 }
 
 static bool is_valid_event(const char *evt)
 {
 	static const char *const EVENTS[] = {
-		"agent-start", "agent-done", "agent-err", "agent-input",
-		"git-commit",  "emacs-buf",  "typing",	  "ping",
-		"pet",	       "coffee",     "pause",	  "resume",
-		"idle-30m",    "idle-resume"
+		"agent-start", "agent-done",  "agent-err", "agent-input",
+		"git-commit",  "emacs-buf",   "typing",	   "ping",
+		"pet",	       "coffee",      "pause",	   "resume",
+		"idle-30m",    "idle-resume", "ci-check",  "ci-dismiss",
+		"ci-test",     "ci-reload"
 	};
 	for (size_t i = 0; i < sizeof(EVENTS) / sizeof(EVENTS[0]); i++) {
 		if (strcmp(evt, EVENTS[i]) == 0)
 			return true;
 	}
 	return false;
+}
+
+static int handle_ci_local_cmd(int arg_idx, int argc, char **argv,
+			       const char **out_reload_line)
+{
+	const char *cmd = argv[arg_idx];
+	if (strcmp(cmd, "ci-list") == 0) {
+		bridge_ci_t ci;
+		bridge_ci_init(&ci, NULL, NULL);
+		char summary[2048];
+		bridge_ci_format_summary(&ci, summary, sizeof(summary));
+		printf("%s", summary);
+		return 0;
+	}
+	if (strcmp(cmd, "ci-add") == 0) {
+		if (arg_idx + 2 >= argc) {
+			fprintf(stderr,
+				"Usage: talos-evt ci-add <owner/repo> <branches_csv> [alias]\n");
+			return 1;
+		}
+		bridge_ci_t ci;
+		bridge_ci_init(&ci, NULL, NULL);
+		const char *alias = (arg_idx + 3 < argc) ? argv[arg_idx + 3] :
+							   NULL;
+		if (!bridge_ci_config_add_repo(&ci.cfg, argv[arg_idx + 1],
+					       argv[arg_idx + 2], alias) ||
+		    !bridge_ci_save_config(ci.config_path, &ci.cfg)) {
+			fprintf(stderr, "Failed to update %s\n",
+				ci.config_path);
+			return 1;
+		}
+		printf("Updated %s (%s)\n", ci.config_path, argv[arg_idx + 1]);
+		*out_reload_line = "ci-reload\n";
+		return 2;
+	}
+	if (strcmp(cmd, "ci-rm") == 0) {
+		if (arg_idx + 1 >= argc) {
+			fprintf(stderr,
+				"Usage: talos-evt ci-rm <owner/repo> [branch]\n");
+			return 1;
+		}
+		bridge_ci_t ci;
+		bridge_ci_init(&ci, NULL, NULL);
+		const char *branch = (arg_idx + 2 < argc) ? argv[arg_idx + 2] :
+							    NULL;
+		if (!bridge_ci_config_remove_repo(&ci.cfg, argv[arg_idx + 1],
+						  branch) ||
+		    !bridge_ci_save_config(ci.config_path, &ci.cfg)) {
+			fprintf(stderr, "Entry not found in %s\n",
+				ci.config_path);
+			return 1;
+		}
+		printf("Updated %s\n", ci.config_path);
+		*out_reload_line = "ci-reload\n";
+		return 2;
+	}
+	return -1;
 }
 
 static int build_payload(int arg_idx, int argc, char **argv, char *out,
@@ -99,7 +161,14 @@ int main(int argc, char **argv)
 	}
 
 	char line[256];
-	if (build_payload(i, argc, argv, line, sizeof(line)) != 0) {
+	const char *reload_line = NULL;
+	int local_rc = handle_ci_local_cmd(i, argc, argv, &reload_line);
+	if (local_rc == 0 || local_rc == 1)
+		return local_rc;
+	if (local_rc == 2 && reload_line) {
+		snprintf(line, sizeof(line), "%s", reload_line);
+		quiet = true; /* Config saved; daemon might not be running */
+	} else if (build_payload(i, argc, argv, line, sizeof(line)) != 0) {
 		if (!quiet)
 			fprintf(stderr, "Unknown event: %s\n", argv[i]);
 		return 1;

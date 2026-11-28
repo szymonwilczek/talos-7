@@ -1,6 +1,7 @@
 #ifndef BRIDGE_DAEMON_H
 #define BRIDGE_DAEMON_H
 
+#include "bridge_ci.h"
 #include "bridge_idle.h"
 #include "bridge_monitors.h"
 #include "bridge_serial.h"
@@ -14,6 +15,7 @@ typedef struct {
 	bridge_serial_t serial;
 	host_snapshot_t snap;
 	bridge_idle_t idle;
+	bridge_ci_t ci;
 	bridge_monitors_t monitors;
 	bridge_socket_server_t sock;
 	char socket_override[108];

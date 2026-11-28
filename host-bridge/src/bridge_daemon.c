@@ -59,6 +59,7 @@ void bridge_daemon_init(bridge_daemon_t *daemon, const char *device_override,
 	}
 	bridge_serial_init(&daemon->serial, device_override, serial_ops);
 	bridge_idle_init(&daemon->idle, idle_timeout_sec, now_ms);
+	bridge_ci_init(&daemon->ci, NULL, NULL);
 }
 
 static void notify_activity(bridge_daemon_t *daemon, uint64_t now_ms)
@@ -193,6 +194,27 @@ bool bridge_daemon_handle_line(bridge_daemon_t *daemon, const char *line,
 		}
 		return true;
 	}
+	if (strcmp(cmd, "ci-reload") == 0) {
+		daemon->ci.config_mtime = 0;
+		bridge_ci_reload_if_changed(&daemon->ci);
+		return true;
+	}
+	if (strcmp(cmd, "ci-check") == 0) {
+		daemon->ci.force_poll = true;
+		return true;
+	}
+	if (strcmp(cmd, "ci-dismiss") == 0) {
+		bridge_serial_send_ci(&daemon->serial, false, "");
+		return true;
+	}
+	if (strcmp(cmd, "ci-test") == 0) {
+		char label[64] = { 0 };
+		split_part(&cur, label, sizeof(label));
+		notify_activity(daemon, now_ms);
+		bridge_serial_send_ci(&daemon->serial, true,
+				      label[0] ? label : "talos-7@main");
+		return true;
+	}
 	return false;
 }
 
@@ -266,6 +288,13 @@ typedef struct {
 	uint64_t now_ms;
 } sock_cb_ctx_t;
 
+static void on_ci_alert(const char *label, void *raw_ctx)
+{
+	sock_cb_ctx_t *ctx = (sock_cb_ctx_t *)raw_ctx;
+	notify_activity(ctx->daemon, ctx->now_ms);
+	bridge_serial_send_ci(&ctx->daemon->serial, true, label);
+}
+
 static void on_socket_line(const char *line, void *raw_ctx)
 {
 	sock_cb_ctx_t *ctx = (sock_cb_ctx_t *)raw_ctx;
@@ -290,11 +319,12 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 	bridge_daemon_tick(daemon, monotonic_ms(), time(NULL), false);
 
 	while (!g_stop_requested) {
-		struct pollfd pfds[4 + BRIDGE_SOCK_MAX_CLIENTS];
+		struct pollfd pfds[5 + BRIDGE_SOCK_MAX_CLIENTS];
 		nfds_t nfds = 0;
 		int sway_idx = -1;
 		int dbus_idx = -1;
 		int pactl_idx = -1;
+		int ci_idx = -1;
 
 		if (daemon->monitors.sway_fd >= 0) {
 			sway_idx = (int)nfds;
@@ -315,6 +345,12 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 				.events = POLLIN
 			};
 		}
+		if (daemon->ci.worker_fd >= 0) {
+			ci_idx = (int)nfds;
+			pfds[nfds++] =
+				(struct pollfd){ .fd = daemon->ci.worker_fd,
+						 .events = POLLIN };
+		}
 
 		nfds_t sock_cap =
 			(nfds_t)(sizeof(pfds) / sizeof(pfds[0])) - nfds;
@@ -332,6 +368,8 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 		bool pactl_r =
 			(pactl_idx >= 0 && (pfds[pactl_idx].revents &
 					    (POLLIN | POLLHUP | POLLERR)));
+		bool ci_r = (ci_idx >= 0 && (pfds[ci_idx].revents &
+					     (POLLIN | POLLHUP | POLLERR)));
 
 		uint64_t now_ms = monotonic_ms();
 		bool activity = false;
@@ -339,10 +377,13 @@ int bridge_daemon_run(bridge_daemon_t *daemon)
 					       now_ms, sway_r, dbus_r, pactl_r,
 					       &activity);
 		sock_cb_ctx_t cb_ctx = { .daemon = daemon, .now_ms = now_ms };
+		bridge_ci_service(&daemon->ci, now_ms, ci_r, on_ci_alert,
+				  &cb_ctx);
 		bridge_socket_service(&daemon->sock, on_socket_line, &cb_ctx);
 		bridge_daemon_tick(daemon, now_ms, time(NULL), activity);
 	}
 
+	bridge_ci_close(&daemon->ci);
 	bridge_socket_close(&daemon->sock);
 	bridge_monitors_close(&daemon->monitors);
 	bridge_serial_close(&daemon->serial);

@@ -112,6 +112,12 @@ bool bridge_serial_send_media(bridge_serial_t *serial, bool playing,
 			      const char *title);
 
 /**
+ * Send COMP_CI|<active>|<label> for sticky GitHub CI green alerts.
+ */
+bool bridge_serial_send_ci(bridge_serial_t *serial, bool active,
+			   const char *label);
+
+/**
  * Send an uncached single-line command such as "COMP_WAKE" or "COMP_SLEEP".
  */
 bool bridge_serial_send_command(bridge_serial_t *serial, const char *cmd);
