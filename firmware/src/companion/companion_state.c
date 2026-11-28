@@ -198,9 +198,10 @@ static void tick_sleep_pipeline(companion_state_t *state, uint32_t now_ms)
 		state->sleep_stage_since_ms = now_ms;
 	}
 
-	// Active media playback or voice calls block the 30-min inactivity timer.
+	// Active media, voice calls, or heavy load block the inactivity timer.
 	bool guarded = (state->submode == COMP_SUBMODE_POMODORO &&
 			state->pomo.running) ||
+		       (state->host_ctx == COMP_CTX_LOAD) ||
 		       ((state->host_flags & (COMP_FLAG_MEDIA_ACTIVE |
 					      COMP_FLAG_VOICE_ACTIVE)) != 0);
 
@@ -293,7 +294,7 @@ void companion_state_set_host_context(companion_state_t *state,
 		return;
 
 	bool meaningful_change =
-		(state->host_ctx != ctx) ||
+		(state->host_ctx != ctx) || (ctx == COMP_CTX_LOAD) ||
 		((flags & (COMP_FLAG_MEDIA_ACTIVE | COMP_FLAG_VOICE_ACTIVE |
 			   COMP_FLAG_TYPING_PULSE)) != 0);
 
@@ -604,7 +605,15 @@ companion_expr_t companion_state_resolve_expr(const companion_state_t *state)
 							    COMP_EXPR_SPOTIFY;
 	}
 
-	// Priority 3: live desktop context in HOME
+	// Priority 3: live desktop context in HOME (overheat/load tops all)
+	if (state->host_ctx == COMP_CTX_LOAD) {
+		if ((state->host_flags & COMP_FLAG_LOAD_T3) != 0)
+			return COMP_EXPR_LOAD_CRITICAL;
+		if ((state->host_flags & COMP_FLAG_LOAD_T2) != 0)
+			return COMP_EXPR_LOAD_HOT;
+		return COMP_EXPR_LOAD_WARM;
+	}
+
 	if (state->brb_active)
 		return COMP_EXPR_VESKTOP_BRB;
 

@@ -19,6 +19,7 @@ static const token_map_t CTX_MAP[] = {
 	{ "SPOTIFY", COMP_CTX_SPOTIFY },
 	{ "KINO", COMP_CTX_KINO },
 	{ "GAMING", COMP_CTX_GAMING },
+	{ "LOAD", COMP_CTX_LOAD },
 };
 
 static const token_map_t EVT_MAP[] = {
@@ -97,7 +98,7 @@ bool companion_cdc_apply_state(const char *args, companion_state_t *state,
 	int ctx_id = 0;
 	if (!parse_token_or_int(ctx_buf, CTX_MAP,
 				sizeof(CTX_MAP) / sizeof(CTX_MAP[0]),
-				COMP_CTX_IDLE, COMP_CTX_GAMING, &ctx_id)) {
+				COMP_CTX_IDLE, COMP_CTX_LOAD, &ctx_id)) {
 		return false;
 	}
 
