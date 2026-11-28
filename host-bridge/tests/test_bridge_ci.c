@@ -126,6 +126,13 @@ static void test_ci_eval_transitions_and_seen_persistence(void)
 	TEST_ASSERT_FALSE(bridge_ci_eval_result(
 		&ci, "szymonwilczek/talos-7", "talos-7", "main", "sha1",
 		CI_STATUS_GREEN, label, sizeof(label)));
+	ci.startup_done = true;
+
+	/* Branch added after startup fires on first green commit */
+	TEST_ASSERT_TRUE(bridge_ci_eval_result(
+		&ci, "szymonwilczek/lota", "lota", "lota-next", "sha_lota",
+		CI_STATUS_GREEN, label, sizeof(label)));
+	TEST_ASSERT_EQUAL_STRING("lota@lota-next", label);
 
 	/* Pending commit -> transition to green fires once */
 	TEST_ASSERT_FALSE(bridge_ci_eval_result(
@@ -158,9 +165,57 @@ static void test_ci_eval_transitions_and_seen_persistence(void)
 	unlink(state_path);
 }
 
+static void test_ci_http_header_split_and_large_check_runs(void)
+{
+	int code = 0;
+	char etag[96] = { 0 };
+	const char *body = NULL;
+
+	const char *resp_200 = "HTTP/2 200 \r\n"
+			       "ETag: W/\"deadbeef\"\r\n"
+			       "Content-Type: application/json\r\n\r\n"
+			       "{\"total_count\":1,\"check_runs\":[]}";
+	TEST_ASSERT_TRUE(bridge_ci_split_http_response(resp_200, &code, etag,
+						       sizeof(etag), &body));
+	TEST_ASSERT_EQUAL_INT(200, code);
+	TEST_ASSERT_EQUAL_STRING("W/\"deadbeef\"", etag);
+	TEST_ASSERT_EQUAL_STRING("{\"total_count\":1,\"check_runs\":[]}", body);
+
+	const char *resp_401 = "HTTP/2 401 \r\n\r\n{\"message\":\"Bad\"}";
+	TEST_ASSERT_TRUE(bridge_ci_split_http_response(resp_401, &code, etag,
+						       sizeof(etag), &body));
+	TEST_ASSERT_EQUAL_INT(401, code);
+
+	/* Simulate 60 check-runs (~240 KB JSON) */
+	size_t cap = 260000U;
+	char *big = malloc(cap);
+	TEST_ASSERT_NOT_NULL(big);
+	size_t off = (size_t)snprintf(big, cap, "{\"check_runs\":[");
+	for (int i = 0; i < 60; i++) {
+		off += (size_t)snprintf(
+			big + off, cap - off,
+			"%s{\"head_sha\":\"bigsha999\",\"status\":\"completed\","
+			"\"conclusion\":\"success\",\"pad\":\"",
+			(i > 0) ? "," : "");
+		memset(big + off, 'x', 3800);
+		off += 3800;
+		off += (size_t)snprintf(big + off, cap - off, "\"}");
+	}
+	snprintf(big + off, cap - off, "]}");
+
+	char sha[48] = { 0 };
+	bridge_ci_status_t st = CI_STATUS_UNKNOWN;
+	TEST_ASSERT_TRUE(
+		bridge_ci_parse_rest_check_runs(big, sha, sizeof(sha), &st));
+	TEST_ASSERT_EQUAL_STRING("bigsha999", sha);
+	TEST_ASSERT_EQUAL(CI_STATUS_GREEN, st);
+	free(big);
+}
+
 void run_bridge_ci_tests(void)
 {
 	RUN_TEST(test_ci_config_parse_save_and_mutations);
 	RUN_TEST(test_ci_branch_glob_and_api_parsers);
 	RUN_TEST(test_ci_eval_transitions_and_seen_persistence);
+	RUN_TEST(test_ci_http_header_split_and_large_check_runs);
 }

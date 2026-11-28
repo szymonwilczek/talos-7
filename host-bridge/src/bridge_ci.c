@@ -582,7 +582,8 @@ bool bridge_ci_eval_result(bridge_ci_t *ci, const char *slug, const char *alias,
 	bool fire = false;
 	if (effective == CI_STATUS_GREEN && sha[0] != '\0' &&
 	    strcmp(ent->notified_sha, sha) != 0) {
-		if (!ent->seen_once && !ci->cfg.notify_on_startup) {
+		if (!ci->startup_done && !ent->seen_once &&
+		    !ci->cfg.notify_on_startup) {
 			/* Baseline existing green commit silently at startup */
 			copy_str(ent->notified_sha, sizeof(ent->notified_sha),
 				 sha);
@@ -733,17 +734,20 @@ void bridge_ci_close(bridge_ci_t *ci)
 	}
 }
 
-static bool capture_cmd(const char *const argv[], char *out, size_t out_sz)
+static char *capture_cmd_dyn(const char *const argv[], size_t max_bytes,
+			     size_t *out_len)
 {
-	out[0] = '\0';
+	if (out_len)
+		*out_len = 0;
+
 	int pfd[2];
 	if (pipe(pfd) != 0)
-		return false;
+		return NULL;
 	pid_t pid = fork();
 	if (pid < 0) {
 		close(pfd[0]);
 		close(pfd[1]);
-		return false;
+		return NULL;
 	}
 	if (pid == 0) {
 		close(pfd[0]);
@@ -758,9 +762,31 @@ static bool capture_cmd(const char *const argv[], char *out, size_t out_sz)
 		_exit(127);
 	}
 	close(pfd[1]);
+
+	size_t cap = 16384U;
 	size_t tot = 0;
-	while (tot + 1 < out_sz) {
-		ssize_t n = read(pfd[0], out + tot, out_sz - 1 - tot);
+	char *buf = malloc(cap);
+	if (!buf) {
+		close(pfd[0]);
+		while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {
+		}
+		return NULL;
+	}
+
+	for (;;) {
+		if (tot + 1 >= cap) {
+			if (cap >= max_bytes)
+				break;
+			size_t next_cap = cap * 2U;
+			if (next_cap > max_bytes)
+				next_cap = max_bytes;
+			char *nbuf = realloc(buf, next_cap);
+			if (!nbuf)
+				break;
+			buf = nbuf;
+			cap = next_cap;
+		}
+		ssize_t n = read(pfd[0], buf + tot, cap - 1 - tot);
 		if (n > 0) {
 			tot += (size_t)n;
 			continue;
@@ -770,11 +796,97 @@ static bool capture_cmd(const char *const argv[], char *out, size_t out_sz)
 		break;
 	}
 	close(pfd[0]);
-	out[tot] = '\0';
+	buf[tot] = '\0';
+
 	int status = 0;
 	while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
 	}
-	return WIFEXITED(status) && WEXITSTATUS(status) == 0 && tot > 0;
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0 || tot == 0) {
+		free(buf);
+		return NULL;
+	}
+	if (out_len)
+		*out_len = tot;
+	return buf;
+}
+
+static bool capture_cmd(const char *const argv[], char *out, size_t out_sz)
+{
+	out[0] = '\0';
+	size_t len = 0;
+	char *dyn = capture_cmd_dyn(argv, out_sz, &len);
+	if (!dyn)
+		return false;
+	copy_str(out, out_sz, dyn);
+	free(dyn);
+	return out[0] != '\0';
+}
+
+bool bridge_ci_split_http_response(const char *raw, int *out_status,
+				   char *out_etag, size_t etag_sz,
+				   const char **out_body)
+{
+	if (!raw || !out_status || !out_body)
+		return false;
+	*out_status = 0;
+	if (out_etag && etag_sz > 0)
+		out_etag[0] = '\0';
+	*out_body = raw;
+
+	const char *blk = raw;
+	while (strncmp(blk, "HTTP/", 5) == 0) {
+		const char *sep = strstr(blk, "\r\n\r\n");
+		size_t sep_len = 4;
+		const char *lf_sep = strstr(blk, "\n\n");
+		if (!sep || (lf_sep && lf_sep < sep)) {
+			sep = lf_sep;
+			sep_len = 2;
+		}
+		if (!sep)
+			return false;
+
+		const char *sp = strchr(blk, ' ');
+		if (sp && sp < sep) {
+			*out_status = (int)strtol(sp + 1, NULL, 10);
+		}
+		if (out_etag && etag_sz > 0) {
+			out_etag[0] = '\0';
+			const char *line = blk;
+			while (line < sep) {
+				const char *eol = strchr(line, '\n');
+				if (!eol || eol > sep)
+					eol = sep;
+				size_t llen = (size_t)(eol - line);
+				if (llen > 5 &&
+				    tolower((unsigned char)line[0]) == 'e' &&
+				    tolower((unsigned char)line[1]) == 't' &&
+				    tolower((unsigned char)line[2]) == 'a' &&
+				    tolower((unsigned char)line[3]) == 'g' &&
+				    line[4] == ':') {
+					const char *v = line + 5;
+					while (v < eol &&
+					       (*v == ' ' || *v == '\t'))
+						v++;
+					size_t vlen = (size_t)(eol - v);
+					while (vlen > 0 &&
+					       (v[vlen - 1] == '\r' ||
+						v[vlen - 1] == ' ' ||
+						v[vlen - 1] == '\t')) {
+						vlen--;
+					}
+					if (vlen >= etag_sz)
+						vlen = etag_sz - 1;
+					memcpy(out_etag, v, vlen);
+					out_etag[vlen] = '\0';
+				}
+				line = (eol < sep) ? (eol + 1) : sep;
+			}
+		}
+
+		blk = sep + sep_len;
+		*out_body = blk;
+	}
+	return *out_status > 0;
 }
 
 static const char *status_to_tok(bridge_ci_status_t st)
@@ -803,61 +915,133 @@ static bridge_ci_status_t tok_to_status(const char *tok)
 	return CI_STATUS_NONE;
 }
 
-static void worker_poll_repo_branch_rest(size_t repo_idx,
+static char *curl_fetch_github(const char *url, const char *tok,
+			       bool *tok_usable, const char *if_none_match,
+			       int *out_status, char *out_etag, size_t etag_sz,
+			       const char **out_body)
+{
+	for (int attempt = 0; attempt < 2; attempt++) {
+		bool use_tok =
+			(tok && tok[0] != '\0' && (!tok_usable || *tok_usable));
+		char auth_hdr[192];
+		char inm_hdr[128];
+		const char *argv[16];
+		int ac = 0;
+		argv[ac++] = "curl";
+		argv[ac++] = "-sL";
+		argv[ac++] = "-i";
+		argv[ac++] = "--max-time";
+		argv[ac++] = "12";
+		argv[ac++] = "-H";
+		argv[ac++] = "Accept: application/vnd.github+json";
+		if (use_tok) {
+			snprintf(auth_hdr, sizeof(auth_hdr),
+				 "Authorization: Bearer %.127s", tok);
+			argv[ac++] = "-H";
+			argv[ac++] = auth_hdr;
+		}
+		if (if_none_match && if_none_match[0] != '\0') {
+			snprintf(inm_hdr, sizeof(inm_hdr),
+				 "If-None-Match: %.95s", if_none_match);
+			argv[ac++] = "-H";
+			argv[ac++] = inm_hdr;
+		}
+		argv[ac++] = url;
+		argv[ac++] = NULL;
+
+		char *raw = capture_cmd_dyn(argv, 2U * 1024U * 1024U, NULL);
+		if (!raw)
+			return NULL;
+
+		int code = 0;
+		const char *body = NULL;
+		if (!bridge_ci_split_http_response(raw, &code, out_etag,
+						   etag_sz, &body)) {
+			free(raw);
+			return NULL;
+		}
+		if (code == 401 && use_tok) {
+			if (tok_usable)
+				*tok_usable = false;
+			free(raw);
+			continue;
+		}
+		*out_status = code;
+		*out_body = body;
+		return raw;
+	}
+	return NULL;
+}
+
+static const char *lookup_entry_etag(const bridge_ci_t *ci, const char *slug,
+				     const char *branch)
+{
+	char key[144];
+	snprintf(key, sizeof(key), "%.90s#%.46s", slug, branch);
+	for (size_t i = 0; i < ci->entry_count; i++) {
+		if (strcmp(ci->entries[i].key, key) == 0)
+			return ci->entries[i].etag;
+	}
+	return "";
+}
+
+static void worker_poll_repo_branch_rest(const bridge_ci_t *ci, size_t repo_idx,
 					 const bridge_ci_repo_t *repo,
 					 const char *branch, const char *token,
-					 int out_fd)
+					 bool *tok_usable, int out_fd)
 {
 	char url[256];
-	snprintf(url, sizeof(url),
-		 "https://api.github.com/repos/%s/commits/%s/check-runs",
-		 repo->slug, branch);
+	snprintf(
+		url, sizeof(url),
+		"https://api.github.com/repos/%s/commits/%s/check-runs?per_page=100",
+		repo->slug, branch);
 
-	char auth_hdr[192];
-	const char *argv[12];
-	int ac = 0;
-	argv[ac++] = "curl";
-	argv[ac++] = "-sfL";
-	argv[ac++] = "--max-time";
-	argv[ac++] = "10";
-	argv[ac++] = "-H";
-	argv[ac++] = "Accept: application/vnd.github+json";
-	if (token && token[0] != '\0') {
-		snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s",
-			 token);
-		argv[ac++] = "-H";
-		argv[ac++] = auth_hdr;
-	}
-	argv[ac++] = url;
-	argv[ac++] = NULL;
-
-	char *json = malloc(65536);
-	if (!json)
+	const char *inm = lookup_entry_etag(ci, repo->slug, branch);
+	int status_code = 0;
+	char new_etag[96] = { 0 };
+	const char *body = NULL;
+	char *raw = curl_fetch_github(url, token, tok_usable, inm, &status_code,
+				      new_etag, sizeof(new_etag), &body);
+	if (!raw)
 		return;
-	if (capture_cmd(argv, json, 65536)) {
-		char sha[48] = { 0 };
-		bridge_ci_status_t st = CI_STATUS_NONE;
-		if (bridge_ci_parse_rest_check_runs(json, sha, sizeof(sha),
-						    &st)) {
-			if (sha[0] == '\0') {
-				/* Fetch commit SHA directly when 0 check_runs yet */
-				char sha_url[256];
-				snprintf(
-					sha_url, sizeof(sha_url),
-					"https://api.github.com/repos/%s/commits/%s",
-					repo->slug, branch);
-				argv[ac - 2] = sha_url;
-				char cjson[4096];
-				if (capture_cmd(argv, cjson, sizeof(cjson))) {
-					extract_json_str_after(
-						cjson, "sha", sha, sizeof(sha));
-				}
-			}
-			dprintf(out_fd, "RES|%zu|%s|%s|%s\n", repo_idx, branch,
-				sha, status_to_tok(st));
-		}
+
+	if (status_code == 304) {
+		free(raw);
+		return;
 	}
-	free(json);
+	if (status_code != 200) {
+		free(raw);
+		return;
+	}
+
+	char sha[48] = { 0 };
+	bridge_ci_status_t st = CI_STATUS_NONE;
+	if (bridge_ci_parse_rest_check_runs(body, sha, sizeof(sha), &st)) {
+		if (sha[0] == '\0') {
+			char sha_url[256];
+			snprintf(sha_url, sizeof(sha_url),
+				 "https://api.github.com/repos/%s/commits/%s",
+				 repo->slug, branch);
+			int sc2 = 0;
+			const char *b2 = NULL;
+			char *r2 = curl_fetch_github(sha_url, token, tok_usable,
+						     "", &sc2, NULL, 0, &b2);
+			if (r2) {
+				if (sc2 == 200) {
+					extract_json_str_after(b2, "sha", sha,
+							       sizeof(sha));
+				}
+				free(r2);
+			}
+		}
+		if (new_etag[0] != '\0') {
+			dprintf(out_fd, "ETAG|%zu|%s|%s\n", repo_idx, branch,
+				new_etag);
+		}
+		dprintf(out_fd, "RES|%zu|%s|%s|%s\n", repo_idx, branch, sha,
+			status_to_tok(st));
+	}
+	free(raw);
 }
 
 static bool repo_has_wildcard(const bridge_ci_repo_t *r)
@@ -869,8 +1053,9 @@ static bool repo_has_wildcard(const bridge_ci_repo_t *r)
 	return false;
 }
 
-static void worker_run(const bridge_ci_config_t *cfg, int out_fd)
+static void worker_run(const bridge_ci_t *ci, int out_fd)
 {
+	const bridge_ci_config_t *cfg = &ci->cfg;
 	char gh_tok[128] = { 0 };
 	const char *tok = cfg->token;
 	if (!tok || tok[0] == '\0') {
@@ -889,15 +1074,17 @@ static void worker_run(const bridge_ci_config_t *cfg, int out_fd)
 			}
 		}
 	}
+	bool tok_usable = (tok[0] != '\0');
 
 	/* List branch names matching wildcards via REST branches endpoint, then query check-runs */
 	for (size_t r = 0; r < cfg->repo_count; r++) {
 		const bridge_ci_repo_t *repo = &cfg->repos[r];
 		if (!repo_has_wildcard(repo)) {
 			for (size_t b = 0; b < repo->branch_count; b++) {
-				worker_poll_repo_branch_rest(r, repo,
+				worker_poll_repo_branch_rest(ci, r, repo,
 							     repo->branches[b],
-							     tok, out_fd);
+							     tok, &tok_usable,
+							     out_fd);
 			}
 			continue;
 		}
@@ -906,27 +1093,14 @@ static void worker_run(const bridge_ci_config_t *cfg, int out_fd)
 		snprintf(burl, sizeof(burl),
 			 "https://api.github.com/repos/%s/branches?per_page=30",
 			 repo->slug);
-		char auth_hdr[192];
-		const char *bargv[12];
-		int ac = 0;
-		bargv[ac++] = "curl";
-		bargv[ac++] = "-sfL";
-		bargv[ac++] = "--max-time";
-		bargv[ac++] = "10";
-		bargv[ac++] = "-H";
-		bargv[ac++] = "Accept: application/vnd.github+json";
-		if (tok[0] != '\0') {
-			snprintf(auth_hdr, sizeof(auth_hdr),
-				 "Authorization: Bearer %s", tok);
-			bargv[ac++] = "-H";
-			bargv[ac++] = auth_hdr;
-		}
-		bargv[ac++] = burl;
-		bargv[ac++] = NULL;
-
-		char bjson[32768];
-		if (!capture_cmd(bargv, bjson, sizeof(bjson)))
+		int bcode = 0;
+		const char *bjson = NULL;
+		char *braw = curl_fetch_github(burl, tok, &tok_usable, "",
+					       &bcode, NULL, 0, &bjson);
+		if (!braw || bcode != 200) {
+			free(braw);
 			continue;
+		}
 
 		const char *cur = bjson;
 		char matched[BRIDGE_CI_MAX_BRANCHES][48];
@@ -949,9 +1123,10 @@ static void worker_run(const bridge_ci_config_t *cfg, int out_fd)
 			}
 			cur += 6;
 		}
+		free(braw);
 		for (size_t m = 0; m < mcount; m++) {
-			worker_poll_repo_branch_rest(r, repo, matched[m], tok,
-						     out_fd);
+			worker_poll_repo_branch_rest(ci, r, repo, matched[m],
+						     tok, &tok_usable, out_fd);
 		}
 	}
 }
@@ -973,7 +1148,7 @@ static void spawn_worker(bridge_ci_t *ci)
 	}
 	if (pid == 0) {
 		close(pfd[0]);
-		worker_run(&ci->cfg, pfd[1]);
+		worker_run(ci, pfd[1]);
 		close(pfd[1]);
 		_exit(0);
 	}
@@ -991,6 +1166,29 @@ static void process_worker_line(bridge_ci_t *ci, const char *line,
 				void (*on_alert)(const char *label, void *ctx),
 				void *ctx, bool *changed_state)
 {
+	if (strncmp(line, "ETAG|", 5) == 0) {
+		char copy[256];
+		copy_str(copy, sizeof(copy), line + 5);
+		char *p1 = strchr(copy, '|');
+		if (!p1)
+			return;
+		*p1++ = '\0';
+		char *p2 = strchr(p1, '|');
+		if (!p2)
+			return;
+		*p2++ = '\0';
+		size_t idx = (size_t)strtoul(copy, NULL, 10);
+		if (idx >= ci->cfg.repo_count)
+			return;
+		char key[144];
+		snprintf(key, sizeof(key), "%.90s#%.46s",
+			 ci->cfg.repos[idx].slug, p1);
+		bridge_ci_entry_t *ent = find_or_create_entry(ci, key);
+		if (ent)
+			copy_str(ent->etag, sizeof(ent->etag), p2);
+		return;
+	}
+
 	if (strncmp(line, "RES|", 4) != 0)
 		return;
 	char copy[256];
@@ -1073,6 +1271,7 @@ void bridge_ci_service(bridge_ci_t *ci, uint64_t now_ms, bool fd_readable,
 				waitpid(ci->worker_pid, NULL, 0);
 				ci->worker_pid = -1;
 			}
+			ci->startup_done = true;
 		}
 		if (changed_state)
 			bridge_ci_save_seen_state(ci);

@@ -45,6 +45,7 @@ typedef struct {
 	char key[144]; /* owner/repo#branch */
 	char last_sha[48];
 	char notified_sha[48];
+	char etag[96];
 	bridge_ci_status_t last_status;
 	bool seen_once;
 } bridge_ci_entry_t;
@@ -63,6 +64,7 @@ typedef struct {
 	size_t worker_rx_len;
 	uint64_t last_poll_ms;
 	bool force_poll;
+	bool startup_done;
 } bridge_ci_t;
 
 /**
@@ -116,6 +118,13 @@ bool bridge_ci_branch_matches(const char *pattern, const char *branch);
 bool bridge_ci_parse_rest_check_runs(const char *json, char *out_sha,
 				     size_t sha_sz,
 				     bridge_ci_status_t *out_status);
+
+/**
+ * Split a `curl -i` HTTP response into HTTP status, optional ETag, and body.
+ */
+bool bridge_ci_split_http_response(const char *raw, int *out_status,
+				   char *out_etag, size_t etag_sz,
+				   const char **out_body);
 
 /**
  * Parse GitHub GraphQL `ref { name target { ... on Commit { oid statusCheckRollup ... } } }`
